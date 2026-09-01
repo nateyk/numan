@@ -26,8 +26,6 @@ class FreightPost extends Model
         'origin_exact_lng',
         'destination_exact_lat',
         'destination_exact_lng',
-        'origin_site_notes',
-        'destination_site_notes',
         'origin_site_note',
         'destination_site_note',
         'origin_point_confirmed_at',
@@ -92,11 +90,6 @@ class FreightPost extends Model
     public function truckType(): BelongsTo
     {
         return $this->belongsTo(TruckType::class, 'required_truck_type_id');
-    }
-
-    public function route(): HasOne
-    {
-        return $this->hasOne(FreightPostRoute::class);
     }
 
     public function routeSnapshot(): HasOne

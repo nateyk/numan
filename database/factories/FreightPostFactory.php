@@ -30,8 +30,6 @@ class FreightPostFactory extends Factory
             'origin_exact_lng' => fake()->longitude(33, 48),
             'destination_exact_lat' => fake()->latitude(3, 15),
             'destination_exact_lng' => fake()->longitude(33, 48),
-            'origin_site_notes' => fake()->optional()->sentence(),
-            'destination_site_notes' => fake()->optional()->sentence(),
             'origin_site_note' => fake()->optional()->sentence(),
             'destination_site_note' => fake()->optional()->sentence(),
             'origin_point_confirmed_at' => now(),

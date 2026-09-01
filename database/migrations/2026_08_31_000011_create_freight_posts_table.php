@@ -21,8 +21,6 @@ return new class extends Migration
             $table->decimal('destination_exact_lat', 10, 7)->nullable();
             $table->decimal('destination_exact_lng', 10, 7)->nullable();
 
-            $table->text('origin_site_notes')->nullable();
-            $table->text('destination_site_notes')->nullable();
             $table->text('origin_site_note')->nullable();
             $table->text('destination_site_note')->nullable();
             $table->timestamp('origin_point_confirmed_at')->nullable();

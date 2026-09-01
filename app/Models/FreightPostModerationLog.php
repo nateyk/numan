@@ -18,11 +18,6 @@ class FreightPostModerationLog extends Model
         'moderator_id',
     ];
 
-    protected function casts(): array
-    {
-        return [];
-    }
-
     public function freightPost(): BelongsTo
     {
         return $this->belongsTo(FreightPost::class);
