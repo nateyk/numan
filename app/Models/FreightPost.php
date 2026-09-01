@@ -109,4 +109,17 @@ class FreightPost extends Model
     {
         return $query->where('status', FreightPostStatus::Active->value);
     }
+
+    /**
+     * @param  Builder<FreightPost>  $query
+     */
+    public function scopeOwnedBy(Builder $query, User $user): Builder
+    {
+        return $query->where('user_id', $user->id);
+    }
+
+    public function completionScore(): int
+    {
+        return app(\App\Services\FreightCompletionService::class)->score($this);
+    }
 }

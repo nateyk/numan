@@ -59,4 +59,15 @@ return [
         'redirect' => '/auth/google/callback',
     ],
 
+    'osrm' => [
+        'url' => env('OSRM_URL', 'https://router.project-osrm.org'),
+    ],
+
+    'map' => [
+        'tile_url' => env('MAP_TILE_URL', 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+        'tile_attribution' => env('MAP_TILE_ATTRIBUTION', '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'),
+        'default_center' => [9.03, 38.74],
+        'default_zoom' => 6,
+    ],
+
 ];
