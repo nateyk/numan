@@ -22,3 +22,6 @@ Schedule::command('app:send-plan-usage-alerts')->dailyAt('10:00')->withoutOverla
 
 // Send API key expiry alerts daily at 08:00 UTC
 Schedule::command('app:send-api-key-expiry-alerts')->dailyAt('08:00')->withoutOverlapping();
+
+// Expire freight posts past pickup window daily at 02:00 UTC
+Schedule::command('freight:expire')->dailyAt('02:00')->withoutOverlapping();

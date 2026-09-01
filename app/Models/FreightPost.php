@@ -121,6 +121,33 @@ class FreightPost extends Model
     /**
      * @param  Builder<FreightPost>  $query
      */
+    public function scopeExpired(Builder $query): Builder
+    {
+        return $query->where('status', FreightPostStatus::Expired->value);
+    }
+
+    public function expireIfPastPickup(): bool
+    {
+        if ($this->status !== FreightPostStatus::Active->value || ! $this->pickup_date) {
+            return false;
+        }
+
+        $pickup = $this->pickup_date instanceof \Carbon\Carbon ? $this->pickup_date : \Carbon\Carbon::parse($this->pickup_date);
+        $flex = (int) ($this->pickup_date_flexibility_days ?? 0);
+        $expiresAt = $pickup->copy()->addDays($flex)->endOfDay();
+
+        if ($expiresAt->isPast()) {
+            $this->update(['status' => FreightPostStatus::Expired->value]);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  Builder<FreightPost>  $query
+     */
     public function scopeSearch(Builder $query, ?string $term): Builder
     {
         if (empty($term)) {
