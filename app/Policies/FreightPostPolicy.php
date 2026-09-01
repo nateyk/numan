@@ -28,6 +28,10 @@ class FreightPostPolicy
 
     public function create(User $user): bool
     {
+        if ((bool) $user->is_superadmin) {
+            return true;
+        }
+
         if (! $user->isProfileOnboarded()) {
             return false;
         }
@@ -35,12 +39,10 @@ class FreightPostPolicy
         $profile = $user->profile()->first();
 
         if (! $profile) {
-            return $user->is_superadmin;
+            return false;
         }
 
-        $caps = $profile->capabilities ?? [];
-
-        return in_array('posts_freight', (array) $caps, true) || (bool) $user->is_superadmin;
+        return (bool) $profile->posts_freight;
     }
 
     public function update(User $user, FreightPost $post): bool

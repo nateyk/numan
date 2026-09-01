@@ -1,8 +1,12 @@
 <?php
 
 use App\Http\Controllers\ActivityReactionController;
+use App\Http\Controllers\Admin\AdminCargoTypeController;
+use App\Http\Controllers\Admin\AdminLocationController;
 use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\AdminSearchController;
+use App\Http\Controllers\Admin\AdminTransporterController;
+use App\Http\Controllers\Admin\AdminTruckTypeController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BroadcastController;
@@ -42,6 +46,7 @@ use App\Http\Controllers\ExperienceFeedbackController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\LocationSearchController;
 use App\Http\Controllers\MemberActivityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
@@ -55,6 +60,13 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamImportController;
 use App\Http\Controllers\TourController;
+use App\Http\Controllers\Freight\FreightCargoController;
+use App\Http\Controllers\Freight\FreightPostController;
+use App\Http\Controllers\Freight\FreightReviewController;
+use App\Http\Controllers\Freight\FreightRouteController;
+use App\Http\Controllers\Freight\FreightScheduleController;
+use App\Http\Controllers\Freight\RoutePreviewController;
+use App\Http\Controllers\TransporterProfileController;
 use App\Http\Controllers\UsageController;
 use App\Http\Controllers\WebhookEndpointController;
 use App\Http\Controllers\WebhookLogController;
@@ -263,6 +275,27 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     // Usage Dashboard
     Route::get('/usage', [UsageController::class, 'index'])->name('usage.index');
 
+    // Transporter Profile (supply foundation)
+    Route::get('/my-transporter-profile', [TransporterProfileController::class, 'index'])->name('transporter.profile.index');
+    Route::post('/my-transporter-profile', [TransporterProfileController::class, 'store'])->name('transporter.profile.store');
+    Route::put('/my-transporter-profile', [TransporterProfileController::class, 'update'])->name('transporter.profile.update');
+    Route::get('/transporters', [TransporterProfileController::class, 'directory'])->name('transporters.index');
+    Route::get('/transporters/{slug}', [TransporterProfileController::class, 'show'])->name('transporters.show');
+
+    // Freight posting — draft-first wizard
+    Route::get('/my-freight', [FreightPostController::class, 'index'])->name('freight.index');
+    Route::post('/my-freight', [FreightPostController::class, 'store'])->name('freight.store');
+    Route::get('/my-freight/{ulid}', [FreightPostController::class, 'show'])->name('freight.show');
+    Route::get('/my-freight/{ulid}/route', [FreightRouteController::class, 'show'])->name('freight.route.show');
+    Route::put('/my-freight/{ulid}/route', [FreightRouteController::class, 'update'])->name('freight.route.update');
+    Route::get('/my-freight/{ulid}/cargo', [FreightCargoController::class, 'show'])->name('freight.cargo.show');
+    Route::put('/my-freight/{ulid}/cargo', [FreightCargoController::class, 'update'])->name('freight.cargo.update');
+    Route::get('/my-freight/{ulid}/schedule', [FreightScheduleController::class, 'show'])->name('freight.schedule.show');
+    Route::put('/my-freight/{ulid}/schedule', [FreightScheduleController::class, 'update'])->name('freight.schedule.update');
+    Route::get('/my-freight/{ulid}/review', [FreightReviewController::class, 'show'])->name('freight.review.show');
+    Route::post('/my-freight/{ulid}/submit', [FreightReviewController::class, 'submit'])->name('freight.submit');
+    Route::post('/freight/routes/preview', [RoutePreviewController::class, 'preview'])->name('freight.routes.preview');
+
     // Impersonation
     Route::post('/admin/impersonate/leave', [ImpersonationController::class, 'leave'])->name('admin.impersonate.leave');
 });
@@ -292,10 +325,16 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace'])->group(functio
 });
 
 Route::middleware(['auth'])->group(function () {
-    // Onboarding Sequences (Exempt from onboarded check)
+    // Onboarding Sequences (Exempt from onboarded check) — NumanFreight 3-step public profile
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
+    Route::post('/onboarding/capabilities', [OnboardingController::class, 'storeCapabilities'])->name('onboarding.capabilities');
+    Route::post('/onboarding/account-type', [OnboardingController::class, 'storeAccountType'])->name('onboarding.account-type');
+    Route::post('/onboarding/details', [OnboardingController::class, 'storeDetails'])->name('onboarding.details');
     Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
     Route::post('/onboarding/track-step', [OnboardingController::class, 'trackStep'])->name('onboarding.track-step');
+
+    // Reference data search (available during onboarding and after)
+    Route::get('/locations/search', [LocationSearchController::class, '__invoke'])->name('locations.search');
 
     Route::middleware(['onboarded'])->group(function () {
         Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
@@ -504,6 +543,38 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
             Route::get('/tickets/{ticket}', 'show')->name('tickets.show');
             Route::patch('/tickets/{ticket}', 'update')->name('tickets.update');
             Route::post('/tickets/{ticket}/replies', 'storeReply')->name('tickets.reply.store');
+        });
+
+        // Reference Data
+        Route::controller(AdminLocationController::class)->name('admin.locations.')->group(function () {
+            Route::get('/reference-data/locations', 'index')->name('index');
+            Route::post('/reference-data/locations', 'store')->name('store');
+            Route::put('/reference-data/locations/{location}', 'update')->name('update');
+            Route::delete('/reference-data/locations/{location}', 'destroy')->name('destroy');
+            Route::patch('/reference-data/locations/{location}/toggle', 'toggle')->name('toggle');
+        });
+        Route::controller(AdminCargoTypeController::class)->name('admin.cargo-types.')->group(function () {
+            Route::get('/reference-data/cargo-types', 'index')->name('index');
+            Route::post('/reference-data/cargo-types', 'store')->name('store');
+            Route::put('/reference-data/cargo-types/{cargoType}', 'update')->name('update');
+            Route::delete('/reference-data/cargo-types/{cargoType}', 'destroy')->name('destroy');
+            Route::patch('/reference-data/cargo-types/{cargoType}/toggle', 'toggle')->name('toggle');
+        });
+        Route::controller(AdminTruckTypeController::class)->name('admin.truck-types.')->group(function () {
+            Route::get('/reference-data/truck-types', 'index')->name('index');
+            Route::post('/reference-data/truck-types', 'store')->name('store');
+            Route::put('/reference-data/truck-types/{truckType}', 'update')->name('update');
+            Route::delete('/reference-data/truck-types/{truckType}', 'destroy')->name('destroy');
+            Route::patch('/reference-data/truck-types/{truckType}/toggle', 'toggle')->name('toggle');
+        });
+
+        // Transporter Management (admin)
+        Route::controller(AdminTransporterController::class)->name('admin.transporters.')->group(function () {
+            Route::get('/transporters', 'index')->name('index');
+            Route::get('/transporters/{transporterProfile}', 'show')->name('show');
+            Route::patch('/transporters/{transporterProfile}/moderate', 'moderate')->name('moderate');
+            Route::patch('/transporters/documents/{document}/review', 'reviewDocument')->name('documents.review');
+            Route::get('/transporters/documents/{document}/download', 'downloadDocument')->name('documents.download');
         });
     });
 });
