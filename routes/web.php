@@ -62,12 +62,15 @@ use App\Http\Controllers\TeamImportController;
 use App\Http\Controllers\TourController;
 use App\Http\Controllers\Admin\AdminFreightController;
 use App\Http\Controllers\Freight\FreightCargoController;
+use App\Http\Controllers\Freight\FreightInterestAcceptanceController;
 use App\Http\Controllers\Freight\FreightInterestController;
 use App\Http\Controllers\Freight\FreightInterestStatusController;
 use App\Http\Controllers\Freight\FreightPostController;
 use App\Http\Controllers\Freight\FreightReviewController;
 use App\Http\Controllers\Freight\FreightRouteController;
 use App\Http\Controllers\Freight\FreightScheduleController;
+use App\Http\Controllers\Freight\MarketplaceConnectionController;
+use App\Http\Controllers\Freight\MarketplaceConnectionOutcomeController;
 use App\Http\Controllers\Freight\PublicFreightDiscoveryController;
 use App\Http\Controllers\Freight\RoutePreviewController;
 use App\Http\Controllers\Freight\TransporterMyInterestsController;
@@ -309,7 +312,14 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::post('/interests/{interest}/withdraw', [TransporterMyInterestsController::class, 'withdraw'])->name('freight.interests.withdraw');
     Route::post('/interests/{interest}/shortlist', [FreightInterestStatusController::class, 'shortlist'])->name('freight.interests.shortlist');
     Route::post('/interests/{interest}/reject', [FreightInterestStatusController::class, 'reject'])->name('freight.interests.reject');
+    Route::post('/interests/{interest}/accept', [FreightInterestAcceptanceController::class, 'accept'])->name('freight.interests.accept');
     Route::get('/my-interests', [TransporterMyInterestsController::class, 'index'])->name('freight.my-interests');
+
+    // Connections
+    Route::get('/connections', [MarketplaceConnectionController::class, 'index'])->name('connections.index');
+    Route::get('/connections/{public_id}', [MarketplaceConnectionController::class, 'show'])->name('connections.show');
+    Route::post('/connections/{public_id}/outcome', [MarketplaceConnectionOutcomeController::class, 'store'])->name('connections.outcome');
+    Route::post('/connections/{public_id}/reveal', [MarketplaceConnectionController::class, 'reveal'])->name('connections.reveal');
 
     // Impersonation
     Route::post('/admin/impersonate/leave', [ImpersonationController::class, 'leave'])->name('admin.impersonate.leave');

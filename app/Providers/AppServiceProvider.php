@@ -15,10 +15,12 @@ use App\Listeners\LogWebhookCall;
 use App\Models\FeatureFlag;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Models\MarketplaceConnection;
 use App\Models\Workspace;
 use App\Observers\ActivityLogObserver;
 use App\Policies\FreightInterestPolicy;
 use App\Policies\FreightPostPolicy;
+use App\Policies\MarketplaceConnectionPolicy;
 use App\Policies\WorkspacePolicy;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -86,6 +88,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Workspace::class, WorkspacePolicy::class);
         Gate::policy(FreightPost::class, FreightPostPolicy::class);
         Gate::policy(FreightInterest::class, FreightInterestPolicy::class);
+        Gate::policy(MarketplaceConnection::class, MarketplaceConnectionPolicy::class);
 
         Event::listen(WebhookCallSucceededEvent::class, [LogWebhookCall::class, 'handleSuccessfulCall']);
         Event::listen(WebhookCallFailedEvent::class, [LogWebhookCall::class, 'handleFailedCall']);
