@@ -118,6 +118,34 @@ class FreightPost extends Model
         return $query->where('user_id', $user->id);
     }
 
+    /**
+     * @param  Builder<FreightPost>  $query
+     */
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        if (empty($term)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($term): void {
+            $q->where('cargo_description', 'like', "%{$term}%")
+                ->orWhere('ulid', 'like', "%{$term}%");
+        });
+    }
+
+    /**
+     * @param  Builder<FreightPost>  $query
+     * @param  array<string, mixed>  $filters
+     */
+    public function scopeFilter(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when($filters['origin'] ?? null, fn ($q, $v) => $q->where('origin_location_id', $v))
+            ->when($filters['destination'] ?? null, fn ($q, $v) => $q->where('destination_location_id', $v))
+            ->when($filters['cargo_type'] ?? null, fn ($q, $v) => $q->where('cargo_type_id', $v))
+            ->when($filters['truck_type'] ?? null, fn ($q, $v) => $q->where('required_truck_type_id', $v));
+    }
+
     public function completionScore(): int
     {
         return app(\App\Services\FreightCompletionService::class)->score($this);

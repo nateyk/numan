@@ -66,6 +66,7 @@ use App\Http\Controllers\Freight\FreightPostController;
 use App\Http\Controllers\Freight\FreightReviewController;
 use App\Http\Controllers\Freight\FreightRouteController;
 use App\Http\Controllers\Freight\FreightScheduleController;
+use App\Http\Controllers\Freight\PublicFreightDiscoveryController;
 use App\Http\Controllers\Freight\RoutePreviewController;
 use App\Http\Controllers\TransporterProfileController;
 use App\Http\Controllers\UsageController;
@@ -93,6 +94,9 @@ Route::get('/', function () {
         'canRegister' => Features::enabled(Features::registration()),
     ]);
 })->name('home');
+
+Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name('freight.discovery');
+Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
 
 // Magic Link Auth Routes
 Route::middleware('guest')->group(function () {
