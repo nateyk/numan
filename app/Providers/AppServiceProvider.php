@@ -13,8 +13,10 @@ use App\Listeners\LogNotificationDelivery;
 use App\Listeners\LogSuccessfulLogin;
 use App\Listeners\LogWebhookCall;
 use App\Models\FeatureFlag;
+use App\Models\FreightPost;
 use App\Models\Workspace;
 use App\Observers\ActivityLogObserver;
+use App\Policies\FreightPostPolicy;
 use App\Policies\WorkspacePolicy;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -80,6 +82,7 @@ class AppServiceProvider extends ServiceProvider
         Activity::observe(ActivityLogObserver::class);
 
         Gate::policy(Workspace::class, WorkspacePolicy::class);
+        Gate::policy(FreightPost::class, FreightPostPolicy::class);
 
         Event::listen(WebhookCallSucceededEvent::class, [LogWebhookCall::class, 'handleSuccessfulCall']);
         Event::listen(WebhookCallFailedEvent::class, [LogWebhookCall::class, 'handleFailedCall']);
