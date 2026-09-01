@@ -62,12 +62,15 @@ use App\Http\Controllers\TeamImportController;
 use App\Http\Controllers\TourController;
 use App\Http\Controllers\Admin\AdminFreightController;
 use App\Http\Controllers\Freight\FreightCargoController;
+use App\Http\Controllers\Freight\FreightInterestController;
+use App\Http\Controllers\Freight\FreightInterestStatusController;
 use App\Http\Controllers\Freight\FreightPostController;
 use App\Http\Controllers\Freight\FreightReviewController;
 use App\Http\Controllers\Freight\FreightRouteController;
 use App\Http\Controllers\Freight\FreightScheduleController;
 use App\Http\Controllers\Freight\PublicFreightDiscoveryController;
 use App\Http\Controllers\Freight\RoutePreviewController;
+use App\Http\Controllers\Freight\TransporterMyInterestsController;
 use App\Http\Controllers\TransporterProfileController;
 use App\Http\Controllers\UsageController;
 use App\Http\Controllers\WebhookEndpointController;
@@ -300,6 +303,13 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::get('/my-freight/{ulid}/review', [FreightReviewController::class, 'show'])->name('freight.review.show');
     Route::post('/my-freight/{ulid}/submit', [FreightReviewController::class, 'submit'])->name('freight.submit');
     Route::post('/freight/routes/preview', [RoutePreviewController::class, 'preview'])->name('freight.routes.preview');
+
+    // Freight interests
+    Route::post('/my-freight/{ulid}/interests', [FreightInterestController::class, 'store'])->name('freight.interests.store');
+    Route::post('/interests/{interest}/withdraw', [TransporterMyInterestsController::class, 'withdraw'])->name('freight.interests.withdraw');
+    Route::post('/interests/{interest}/shortlist', [FreightInterestStatusController::class, 'shortlist'])->name('freight.interests.shortlist');
+    Route::post('/interests/{interest}/reject', [FreightInterestStatusController::class, 'reject'])->name('freight.interests.reject');
+    Route::get('/my-interests', [TransporterMyInterestsController::class, 'index'])->name('freight.my-interests');
 
     // Impersonation
     Route::post('/admin/impersonate/leave', [ImpersonationController::class, 'leave'])->name('admin.impersonate.leave');
