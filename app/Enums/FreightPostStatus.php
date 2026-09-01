@@ -29,7 +29,7 @@ enum FreightPostStatus: string
     {
         return match ($this) {
             self::Draft => in_array($target, [self::Submitted], true),
-            self::Submitted => in_array($target, [self::UnderReview, self::Rejected], true),
+            self::Submitted => in_array($target, [self::UnderReview, self::Active, self::Rejected], true),
             self::UnderReview => in_array($target, [self::Active, self::Rejected], true),
             self::Active => in_array($target, [self::Closed, self::Expired], true),
             default => false,

@@ -60,6 +60,7 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamImportController;
 use App\Http\Controllers\TourController;
+use App\Http\Controllers\Admin\AdminFreightController;
 use App\Http\Controllers\Freight\FreightCargoController;
 use App\Http\Controllers\Freight\FreightPostController;
 use App\Http\Controllers\Freight\FreightReviewController;
@@ -575,6 +576,13 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
             Route::patch('/transporters/{transporterProfile}/moderate', 'moderate')->name('moderate');
             Route::patch('/transporters/documents/{document}/review', 'reviewDocument')->name('documents.review');
             Route::get('/transporters/documents/{document}/download', 'downloadDocument')->name('documents.download');
+        });
+
+        // Freight Moderation (admin)
+        Route::controller(AdminFreightController::class)->name('admin.freight.')->group(function () {
+            Route::get('/freight', 'index')->name('index');
+            Route::get('/freight/{ulid}', 'show')->name('show');
+            Route::post('/freight/{ulid}/moderate', 'moderate')->name('moderate');
         });
     });
 });
