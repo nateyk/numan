@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\FreightPostStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FreightPost;
+use App\Notifications\FreightPostModerated;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -89,6 +91,13 @@ class AdminFreightController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Freight post moderated to ' . $to->value . '.');
+        $action = match ($to->value) {
+            FreightPostStatus::Active->value => 'approved',
+            FreightPostStatus::Rejected->value => 'rejected',
+            default => 'updated',
+        };
+        Notification::send($post->user, new FreightPostModerated($post->fresh(), $action));
+
+        return back()->with('success', 'Freight post moderated to '.$to->value.'.');
     }
 }

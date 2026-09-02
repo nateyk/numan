@@ -54,8 +54,7 @@ export default function WorkspaceApiKeys({
 }: Props) {
     const { props } = usePage();
     const flash = props.flash as
-        | { newKey?: string; success?: string }
-        | undefined;
+        { newKey?: string; success?: string } | undefined;
 
     const [showForm, setShowForm] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<ApiKey | null>(null);

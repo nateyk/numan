@@ -1,20 +1,21 @@
 {
     "mcpServers": {
         "laravel-boost": {
-            "command": "php",
+            "command": "ddev",
             "args": [
+                "exec",
+                "php",
                 "artisan",
                 "boost:mcp"
             ]
         },
-        "herd": {
-            "command": "php",
+        "shadcn": {
+            "command": "npx",
             "args": [
-                "/Applications/Herd.app/Contents/Resources/herd-mcp.phar"
-            ],
-            "env": {
-                "SITE_PATH": "./Laravel-SAAS-Starter"
-            }
+                "-y",
+                "shadcn@latest",
+                "mcp"
+            ]
         }
     }
 }

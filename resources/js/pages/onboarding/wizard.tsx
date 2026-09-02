@@ -495,9 +495,7 @@ export default function OnboardingWizard() {
                                             setData(
                                                 'onboarding_plan',
                                                 plan.id as
-                                                    | 'free'
-                                                    | 'pro'
-                                                    | 'business',
+                                                    'free' | 'pro' | 'business',
                                             )
                                         }
                                     />

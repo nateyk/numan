@@ -7,6 +7,7 @@ import { useTranslations } from '@/hooks/use-translations';
 import AuthLayout from '@/layouts/auth-layout';
 import { store } from '@/routes/password/confirm';
 import { Form, Head } from '@inertiajs/react';
+import { ShieldCheck } from 'lucide-react';
 
 export default function ConfirmPassword() {
     const { t } = useTranslations();
@@ -19,7 +20,7 @@ export default function ConfirmPassword() {
             )}
             description={t(
                 'auth.confirm_password_page.description',
-                'This is a secure area of the application. Please confirm your password before continuing.',
+                'This is a secure area. Please confirm your password before continuing.',
             )}
         >
             <Head
@@ -29,10 +30,18 @@ export default function ConfirmPassword() {
                 )}
             />
 
-            <Form {...store.form()} resetOnSuccess={['password']}>
+            <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted">
+                <ShieldCheck className="size-5 text-muted-foreground" />
+            </div>
+
+            <Form
+                {...store.form()}
+                resetOnSuccess={['password']}
+                className="flex flex-col gap-4"
+            >
                 {({ processing, errors }) => (
-                    <div className="space-y-6">
-                        <div className="grid gap-2">
+                    <div className="grid gap-4">
+                        <div className="grid gap-1.5">
                             <Label htmlFor="password">
                                 {t('auth.password', 'Password')}
                             </Label>
@@ -43,24 +52,24 @@ export default function ConfirmPassword() {
                                 placeholder={t('auth.password', 'Password')}
                                 autoComplete="current-password"
                                 autoFocus
+                                required
                             />
-
                             <InputError message={errors.password} />
                         </div>
 
-                        <div className="flex items-center">
-                            <Button
-                                className="w-full"
-                                disabled={processing}
-                                data-test="confirm-password-button"
-                            >
-                                {processing && <Spinner />}
-                                {t(
-                                    'auth.confirm_password_page.button',
-                                    'Confirm password',
-                                )}
-                            </Button>
-                        </div>
+                        <Button
+                            className="w-full"
+                            size="lg"
+                            disabled={processing}
+                            type="submit"
+                            data-test="confirm-password-button"
+                        >
+                            {processing && <Spinner />}
+                            {t(
+                                'auth.confirm_password_page.button',
+                                'Confirm password',
+                            )}
+                        </Button>
                     </div>
                 )}
             </Form>

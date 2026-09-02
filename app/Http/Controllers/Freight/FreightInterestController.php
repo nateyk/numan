@@ -5,11 +5,12 @@ namespace App\Http\Controllers\Freight;
 use App\Enums\FreightInterestStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreFreightInterestRequest;
-use App\Models\FreightPost;
 use App\Models\FreightInterest;
+use App\Models\FreightPost;
+use App\Notifications\FreightInterestSubmitted;
 use App\Policies\FreightInterestPolicy;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 
 class FreightInterestController extends Controller
 {
@@ -18,7 +19,7 @@ class FreightInterestController extends Controller
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
         $user = $request->user();
 
-        $policy = new FreightInterestPolicy();
+        $policy = new FreightInterestPolicy;
         if (! $policy->create($user, $post)) {
             abort(403);
         }
@@ -35,6 +36,9 @@ class FreightInterestController extends Controller
             'to_status' => FreightInterestStatus::Submitted->value,
             'changed_by' => $user->id,
         ]);
+
+        // Notify consignor
+        Notification::send($post->user, new FreightInterestSubmitted($interest, $post->load('user')));
 
         return back()->with('success', 'Interest expressed.');
     }

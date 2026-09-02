@@ -184,7 +184,9 @@ export function LandingFeatures() {
                             <div
                                 className={`inline-flex h-10 w-10 items-center justify-center rounded-md ${feature.bgColor}`}
                             >
-                                <feature.icon className={`h-5 w-5 ${feature.color}`} />
+                                <feature.icon
+                                    className={`h-5 w-5 ${feature.color}`}
+                                />
                             </div>
                             <h3 className="mt-3 text-sm font-semibold">
                                 {feature.title}

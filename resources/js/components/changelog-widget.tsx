@@ -46,7 +46,9 @@ export function ChangelogWidget() {
     const handleOpen = (value: boolean) => {
         setOpen(value);
         if (value && hasUnread) {
-            axios.post('/changelog-widget/mark-read').then(() => setHasUnread(false));
+            axios
+                .post('/changelog-widget/mark-read')
+                .then(() => setHasUnread(false));
         }
     };
 

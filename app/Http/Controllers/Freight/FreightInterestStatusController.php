@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Freight;
 use App\Enums\FreightInterestStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FreightInterest;
+use App\Notifications\FreightInterestStatusChanged;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 
 class FreightInterestStatusController extends Controller
 {
@@ -26,12 +28,17 @@ class FreightInterestStatusController extends Controller
             return back()->withErrors(['status' => 'Invalid transition.']);
         }
 
+        $oldStatus = $interest->status;
         $interest->update(['status' => $to->value]);
         $interest->statusHistories()->create([
             'from_status' => $from->value,
             'to_status' => $to->value,
             'changed_by' => $user->id,
         ]);
+
+        Notification::send($interest->user, new FreightInterestStatusChanged(
+            $interest, $interest->freightPost, $oldStatus, $to->value
+        ));
 
         return back()->with('success', 'Interest shortlisted.');
     }
@@ -52,12 +59,17 @@ class FreightInterestStatusController extends Controller
             return back()->withErrors(['status' => 'Invalid transition.']);
         }
 
+        $oldStatus = $interest->status;
         $interest->update(['status' => $to->value]);
         $interest->statusHistories()->create([
             'from_status' => $from->value,
             'to_status' => $to->value,
             'changed_by' => $user->id,
         ]);
+
+        Notification::send($interest->user, new FreightInterestStatusChanged(
+            $interest, $interest->freightPost, $oldStatus, $to->value
+        ));
 
         return back()->with('success', 'Interest rejected.');
     }

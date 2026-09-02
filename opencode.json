@@ -5,21 +5,22 @@
             "type": "local",
             "enabled": true,
             "command": [
+                "ddev",
+                "exec",
                 "php",
                 "artisan",
                 "boost:mcp"
             ]
         },
-        "herd": {
+        "shadcn": {
             "type": "local",
             "enabled": true,
             "command": [
-                "php",
-                "/Applications/Herd.app/Contents/Resources/herd-mcp.phar"
-            ],
-            "environment": {
-                "SITE_PATH": "./Laravel-SAAS-Starter"
-            }
+                "npx",
+                "-y",
+                "shadcn@latest",
+                "mcp"
+            ]
         }
     }
 }

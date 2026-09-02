@@ -294,9 +294,9 @@ export default function Notifications({
                                 'Send yourself a test notification through your enabled channels.',
                             )}
                         </p>
-                        {testErrors.message && (
+                        {(testErrors as Record<string, string>).message && (
                             <p className="text-sm text-red-600">
-                                {testErrors.message}
+                                {(testErrors as Record<string, string>).message}
                             </p>
                         )}
                     </div>

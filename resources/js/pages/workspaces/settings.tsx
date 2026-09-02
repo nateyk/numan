@@ -35,8 +35,6 @@ import {
     Download,
     Key,
     Palette,
-    Plus,
-    Save,
     Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -46,6 +44,9 @@ interface OnboardingStep {
     label: string;
     completed: boolean;
 }
+
+type TagType = { id: number | string; name: string };
+type CustomField = { id: number | string; key: string; value: string };
 
 interface WorkspaceSettingsProps {
     workspace: Workspace & { created_at: string };

@@ -59,8 +59,7 @@ export default function WorkspaceDangerZone({
     const { t } = useTranslations();
     const { props } = usePage();
     const flash = props.flash as
-        | { error?: string; success?: string }
-        | undefined;
+        { error?: string; success?: string } | undefined;
     const isOwner = userRole === 'owner';
     const [deleteConfirm, setDeleteConfirm] = useState('');
     const [showDeleteForm, setShowDeleteForm] = useState(false);

@@ -1,18 +1,20 @@
-// Components
-import { login } from '@/routes';
-import { email } from '@/routes/password';
-import { Form, Head } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
-
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { useTranslations } from '@/hooks/use-translations';
 import AuthLayout from '@/layouts/auth-layout';
+import { login } from '@/routes';
+import { email } from '@/routes/password';
+import { Form, Head } from '@inertiajs/react';
 
-export default function ForgotPassword({ status }: { status?: string }) {
+interface ForgotPasswordProps {
+    status?: string;
+}
+
+export default function ForgotPassword({ status }: ForgotPasswordProps) {
     const { t } = useTranslations();
 
     return (
@@ -20,71 +22,70 @@ export default function ForgotPassword({ status }: { status?: string }) {
             title={t('auth.forgot_password.title', 'Forgot your password?')}
             description={t(
                 'auth.forgot_password.description',
-                'No problem. Just let us know your email address and we will email you a password reset link.',
+                'Enter your email and we will send you a password reset link. It expires quickly for your safety.',
             )}
         >
             <Head
-                title={t('auth.forgot_password.page_title', 'Forgot Password')}
+                title={t('auth.forgot_password.page_title', 'Forgot password')}
             />
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div
+                    role="status"
+                    className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-center text-sm font-medium text-green-700 dark:border-green-900/40 dark:bg-green-950/40 dark:text-green-300"
+                >
                     {status}
                 </div>
             )}
 
-            <div className="space-y-6">
-                <Form {...email.form()}>
-                    {({ processing, errors }) => (
-                        <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">
-                                    {t('auth.email', 'Email address')}
-                                </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    autoComplete="off"
-                                    autoFocus
-                                    placeholder={t(
-                                        'auth.email',
-                                        'Email address',
-                                    )}
-                                />
+            <Form {...email.form()} className="flex flex-col gap-4">
+                {({ processing, errors }) => (
+                    <>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="email">
+                                {t('auth.email', 'Email address')}
+                            </Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                name="email"
+                                autoComplete="email"
+                                autoFocus
+                                required
+                                placeholder={t(
+                                    'auth.email_placeholder',
+                                    'email@example.com',
+                                )}
+                            />
+                            <InputError message={errors.email} />
+                        </div>
 
-                                <InputError message={errors.email} />
-                            </div>
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            size="lg"
+                            disabled={processing}
+                            data-test="email-password-reset-link-button"
+                        >
+                            {processing && <Spinner />}
+                            {t(
+                                'auth.forgot_password.button',
+                                'Send reset link',
+                            )}
+                        </Button>
 
-                            <div className="my-6 flex items-center justify-start">
-                                <Button
-                                    className="w-full"
-                                    size="lg"
-                                    disabled={processing}
-                                    data-test="email-password-reset-link-button"
-                                >
-                                    {processing && (
-                                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                                    )}
-                                    {t(
-                                        'auth.forgot_password.button',
-                                        'Send Reset Link',
-                                    )}
-                                </Button>
-                            </div>
-                        </>
-                    )}
-                </Form>
-
-                <div className="space-x-1 text-center text-sm text-muted-foreground">
-                    <span>
-                        {t('auth.reset_password.or_return', 'Or, return to')}
-                    </span>
-                    <TextLink href={login()} className="font-semibold">
-                        {t('auth.log_in', 'Sign in')}
-                    </TextLink>
-                </div>
-            </div>
+                        <p className="text-center text-sm text-muted-foreground">
+                            {t(
+                                'auth.reset_password.or_return',
+                                'Or, return to',
+                            )}{' '}
+                            <TextLink href={login()} className="font-semibold">
+                                {t('auth.log_in', 'Sign in')}
+                            </TextLink>
+                        </p>
+                    </>
+                )}
+            </Form>
         </AuthLayout>
     );
 }

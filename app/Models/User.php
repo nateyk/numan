@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -204,6 +205,48 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Public marketplace profile (NumanFreight) — modern one-to-one profile.
+     */
+    public function profile(): HasOne
+    {
+        return $this->hasOne(Profile::class);
+    }
+
+    /**
+     * Alias for `profile()` — kept for ergonomic `publicProfile` naming requested.
+     */
+    public function publicProfile(): HasOne
+    {
+        return $this->hasOne(Profile::class);
+    }
+
+    public function hasPublicProfile(): bool
+    {
+        return $this->relationLoaded('profile') ? $this->profile !== null : $this->profile()->exists();
+    }
+
+    public function isProfileOnboarded(): bool
+    {
+        $profile = $this->relationLoaded('profile') ? $this->profile : $this->profile()->first();
+
+        if (! $profile) {
+            return false;
+        }
+
+        return $profile->isOnboarded();
+    }
+
+    public function transporterProfile(): HasOne
+    {
+        return $this->hasOne(TransporterProfile::class);
+    }
+
+    public function hasTransporterProfile(): bool
+    {
+        return $this->relationLoaded('transporterProfile') ? $this->transporterProfile !== null : $this->transporterProfile()->exists();
+    }
+
+    /**
      * Mark the user as having completed onboarding.
      */
     public function completeOnboarding(): void
@@ -215,6 +258,25 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->forceFill([
             'onboarded_at' => now(),
         ])->save();
+    }
+
+    public function completeProfileOnboarding(): void
+    {
+        $profile = $this->profile()->first();
+
+        if (! $profile) {
+            $profile = $this->profile()->create([
+                'onboarding_step' => 'completed',
+                'onboarding_completed_at' => now(),
+            ]);
+        } else {
+            $profile->forceFill([
+                'onboarding_step' => 'completed',
+                'onboarding_completed_at' => now(),
+            ])->save();
+        }
+
+        $this->completeOnboarding();
     }
 
     /**

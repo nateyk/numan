@@ -92,9 +92,12 @@ export function ExperienceFeedbackModal() {
                             <button
                                 key={value}
                                 type="button"
-                                aria-label={t('feedback.experience.star_label', {
-                                    rating: value,
-                                })}
+                                aria-label={t(
+                                    'feedback.experience.star_label',
+                                    {
+                                        rating: value,
+                                    },
+                                )}
                                 onMouseEnter={() => setHovered(value)}
                                 onClick={() => {
                                     setRating(value);

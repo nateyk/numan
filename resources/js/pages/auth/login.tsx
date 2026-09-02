@@ -1,5 +1,4 @@
 import InputError from '@/components/input-error';
-import SocialLoginButtons from '@/components/social-login-buttons';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,12 +10,15 @@ import AuthLayout from '@/layouts/auth-layout';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head } from '@inertiajs/react';
+import { Eye, EyeOff, Fingerprint } from 'lucide-react';
+import { useState } from 'react';
 
 interface LoginProps {
     status?: string;
     canResetPassword: boolean;
-    canRegister: boolean;
+    canRegister?: boolean;
+    canRegisterSocialite?: boolean;
     email?: string;
     redirect?: string;
 }
@@ -24,40 +26,63 @@ interface LoginProps {
 export default function Login({
     status,
     canResetPassword,
-    canRegister,
+    canRegister = true,
     email,
     redirect,
 }: LoginProps) {
     const { t } = useTranslations();
+    const [showPassword, setShowPassword] = useState<boolean>(false);
 
-    // Build register URL with email and redirect params if present
-    const registerUrl = () => {
-        const baseUrl = register();
+    const registerUrl = (): string => {
+        const baseUrl = register.url();
         const params = new URLSearchParams();
         if (email) params.set('email', email);
         if (redirect) params.set('redirect', redirect);
         return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
     };
 
+    const hasPasskeys = (): boolean => {
+        // Guard: only render if @laravel/passkeys is available — check for Fortify passkey route existence at runtime
+        // We do not import a missing package; this keeps build green when passkeys not installed.
+        try {
+            // Wayfinder will generate a passkey route helper if installed; absence just means this stays false
+
+            const maybe = (globalThis as unknown as Record<string, unknown>)
+                .__PASSKEYS_AVAILABLE__;
+            return Boolean(maybe);
+        } catch {
+            return false;
+        }
+    };
+
     return (
         <AuthLayout
-            title={t('auth.login.title', 'Log in to your account')}
+            title={t('auth.login.title', 'Sign in to NumanFreight')}
             description={t(
                 'auth.login.description',
-                'Enter your email and password below to log in',
+                'Move freight with more confidence. Enter your credentials to continue.',
             )}
         >
-            <Head title={t('auth.login.page_title', 'Log in')} />
+            <Head title={t('auth.login.page_title', 'Sign in')} />
+
+            {status && (
+                <div
+                    role="status"
+                    className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-center text-sm font-medium text-green-700 dark:border-green-900/40 dark:bg-green-950/40 dark:text-green-300"
+                >
+                    {status}
+                </div>
+            )}
 
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-5"
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-6">
-                            <div className="grid gap-2">
+                        <div className="grid gap-4">
+                            <div className="grid gap-1.5">
                                 <Label htmlFor="email">
                                     {t('auth.email', 'Email address')}
                                 </Label>
@@ -78,7 +103,7 @@ export default function Login({
                                 <InputError message={errors.email} />
                             </div>
 
-                            <div className="grid gap-2">
+                            <div className="grid gap-1.5">
                                 <div className="flex items-center">
                                     <Label htmlFor="password">
                                         {t('auth.password', 'Password')}
@@ -86,7 +111,7 @@ export default function Login({
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}
-                                            className="ml-auto text-sm font-semibold"
+                                            className="ml-auto text-sm font-medium"
                                             tabIndex={5}
                                         >
                                             {t(
@@ -96,20 +121,47 @@ export default function Login({
                                         </TextLink>
                                     )}
                                 </div>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    name="password"
-                                    required
-                                    tabIndex={2}
-                                    autoComplete="current-password"
-                                    placeholder={t('auth.password', 'Password')}
-                                    autoFocus={!!email}
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        type={
+                                            showPassword ? 'text' : 'password'
+                                        }
+                                        name="password"
+                                        required
+                                        tabIndex={2}
+                                        autoComplete="current-password"
+                                        placeholder={t(
+                                            'auth.password',
+                                            'Password',
+                                        )}
+                                        autoFocus={!!email}
+                                        className="pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label={
+                                            showPassword
+                                                ? 'Hide password'
+                                                : 'Show password'
+                                        }
+                                        onClick={() =>
+                                            setShowPassword((v) => !v)
+                                        }
+                                        className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="size-4" />
+                                        ) : (
+                                            <Eye className="size-4" />
+                                        )}
+                                    </button>
+                                </div>
                                 <InputError message={errors.password} />
                             </div>
 
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="remember"
                                     name="remember"
@@ -135,31 +187,44 @@ export default function Login({
                                 {t('auth.login.button', 'Sign in')}
                             </Button>
 
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-background px-2 text-muted-foreground">
-                                        Or
-                                    </span>
-                                </div>
-                            </div>
-
-                            <Link href="/magic-login" className="w-full">
+                            {hasPasskeys() && (
                                 <Button
                                     type="button"
                                     variant="outline"
                                     className="w-full"
                                     size="lg"
+                                    data-test="passkey-button"
                                 >
-                                    Sign in with Magic Link
+                                    <Fingerprint className="size-4" />
+                                    Continue with passkey
                                 </Button>
-                            </Link>
+                            )}
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                size="lg"
+                                asChild
+                            >
+                                <a href="/magic-login">
+                                    Sign in with Magic Link
+                                </a>
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                size="lg"
+                                asChild
+                            >
+                                <a href={registerUrl()}>Create account</a>
+                            </Button>
                         </div>
 
                         {canRegister && (
-                            <div className="text-center text-sm text-muted-foreground">
+                            <p className="text-center text-sm text-muted-foreground">
                                 {t('auth.no_account', "Don't have an account?")}{' '}
                                 <TextLink
                                     href={registerUrl()}
@@ -168,89 +233,29 @@ export default function Login({
                                 >
                                     {t('auth.sign_up', 'Sign up')}
                                 </TextLink>
-                            </div>
+                            </p>
                         )}
-                        <div className="mt-2 space-y-3 border-t pt-4">
-                            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                                Developer Quick Login
-                            </span>
-                            <div className="grid grid-cols-3 gap-2">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    className="h-8 bg-red-100 px-2 text-xs text-red-800 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
-                                    onClick={() => {
-                                        const e = document.getElementById(
-                                            'email',
-                                        ) as HTMLInputElement;
-                                        const p = document.getElementById(
-                                            'password',
-                                        ) as HTMLInputElement;
-                                        if (e && p) {
-                                            e.value = 'superadmin@example.com';
-                                            p.value = 'password';
-                                            e.form?.requestSubmit();
-                                        }
-                                    }}
-                                >
-                                    Super Admin
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    className="h-8 px-2 text-xs"
-                                    onClick={() => {
-                                        const e = document.getElementById(
-                                            'email',
-                                        ) as HTMLInputElement;
-                                        const p = document.getElementById(
-                                            'password',
-                                        ) as HTMLInputElement;
-                                        if (e && p) {
-                                            e.value = 'admin@example.com';
-                                            p.value = 'password';
-                                            e.form?.requestSubmit();
-                                        }
-                                    }}
-                                >
-                                    Admin
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    className="h-8 px-2 text-xs"
-                                    onClick={() => {
-                                        const e = document.getElementById(
-                                            'email',
-                                        ) as HTMLInputElement;
-                                        const p = document.getElementById(
-                                            'password',
-                                        ) as HTMLInputElement;
-                                        if (e && p) {
-                                            e.value = 'demo@example.com';
-                                            p.value = 'password';
-                                            e.form?.requestSubmit();
-                                        }
-                                    }}
-                                >
-                                    Demo
-                                </Button>
-                            </div>
-                        </div>
 
-                        <SocialLoginButtons />
+                        <p className="text-center text-xs text-muted-foreground">
+                            By continuing you agree to our{' '}
+                            <a
+                                href="#"
+                                className="underline decoration-border underline-offset-4 hover:decoration-foreground"
+                            >
+                                Terms
+                            </a>{' '}
+                            and{' '}
+                            <a
+                                href="#"
+                                className="underline decoration-border underline-offset-4 hover:decoration-foreground"
+                            >
+                                Privacy
+                            </a>
+                            .
+                        </p>
                     </>
                 )}
             </Form>
-
-            {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
         </AuthLayout>
     );
 }

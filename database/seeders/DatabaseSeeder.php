@@ -7,12 +7,17 @@ use App\Models\ChangelogEntry;
 use App\Models\ConnectedAccount;
 use App\Models\FeatureFlag;
 use App\Models\Feedback;
+use App\Models\Location;
 use App\Models\LoginActivity;
 use App\Models\NotificationDeliveryLog;
 use App\Models\OnboardingStepLog;
 use App\Models\PermissionPreset;
+use App\Models\Profile;
 use App\Models\SeoMetadata;
 use App\Models\StatusIncident;
+use App\Models\TransporterProfile;
+use App\Models\TransporterRoute;
+use App\Models\TruckType;
 use App\Models\User;
 use App\Models\UserNote;
 use App\Models\WebhookEndpoint;
@@ -34,6 +39,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Seed Ethiopian reference data first — required for profiles and transporter
+        $this->call(LocationSeeder::class);
+        $this->call(CargoTypeSeeder::class);
+        $this->call(TruckTypeSeeder::class);
+
         DB::transaction(function () {
             $workspaceService = app(WorkspaceService::class);
 
@@ -114,6 +124,172 @@ class DatabaseSeeder extends Seeder
             $users->each(function (User $user) use ($workspaceService) {
                 $workspaceService->createPersonalWorkspace($user);
             });
+
+            // 3b. Seed public profiles (NumanFreight) — modern onboarding
+            $addis = Location::where('name', 'Addis Ababa')->first();
+            $hawassa = Location::where('name', 'Hawassa')->first();
+            $kombolcha = Location::where('name', 'Kombolcha')->first();
+
+            // Completed profiles for core demo accounts
+            foreach ([$admin, $demo, $superadmin] as $u) {
+                Profile::firstOrCreate(
+                    ['user_id' => $u->id],
+                    [
+                        'posts_freight' => true,
+                        'provides_transport' => $u->id === $demo->id,
+                        'account_type' => 'business',
+                        'display_name' => $u->name,
+                        'phone' => '+251 91 '.fake()->numerify('### ####'),
+                        'primary_location_id' => $addis?->id,
+                        'legal_name' => $u->name.' Transport PLC',
+                        'legal_form' => 'Private Limited Company (PLC)',
+                        'onboarding_step' => 'completed',
+                        'onboarding_completed_at' => now(),
+                    ]
+                );
+            }
+
+            // Partial profiles for funnel testing (additionalUsers)
+            $additionalUsers->each(function (User $u, int $idx) use ($hawassa, $kombolcha): void {
+                $step = match ($idx % 4) {
+                    0 => ['posts_freight' => true, 'provides_transport' => false, 'onboarding_step' => 'account_type'],
+                    1 => ['posts_freight' => false, 'provides_transport' => true, 'onboarding_step' => 'account_type', 'account_type' => 'personal'],
+                    2 => ['posts_freight' => true, 'provides_transport' => true, 'onboarding_step' => 'details', 'account_type' => 'business', 'legal_name' => 'Demo Business PLC', 'legal_form' => 'Private Limited Company (PLC)'],
+                    default => ['posts_freight' => false, 'provides_transport' => false, 'onboarding_step' => 'capabilities'],
+                };
+
+                Profile::firstOrCreate(
+                    ['user_id' => $u->id],
+                    array_merge([
+                        'display_name' => null,
+                        'phone' => null,
+                        'primary_location_id' => $idx % 2 === 0 ? $hawassa?->id : $kombolcha?->id,
+                        'onboarding_step' => $step['onboarding_step'],
+                    ], $step)
+                );
+            });
+
+            // 3c. NumanFreight Pilot Seed Accounts (per NUMANFREIGHT_FRESH_BUILD_GUIDE.md §26)
+            // Password for ALL demo accounts: Password123!
+            $numanPilotAccounts = [
+                ['email' => 'admin@numanfreight.com', 'name' => 'Numan System Administrator', 'is_superadmin' => true, 'posts_freight' => true, 'provides_transport' => true, 'account_type' => 'business', 'onboarding_step' => 'completed', 'location' => $addis],
+                ['email' => 'moderator@numanfreight.com', 'name' => 'Numan Moderator', 'is_superadmin' => false, 'posts_freight' => true, 'provides_transport' => true, 'account_type' => 'business', 'onboarding_step' => 'completed', 'location' => $addis],
+                ['email' => 'shipper.ethiopia@numanfreight.com', 'name' => 'Ethiopia Shipper', 'is_superadmin' => false, 'posts_freight' => true, 'provides_transport' => false, 'account_type' => 'business', 'onboarding_step' => 'completed', 'location' => $addis],
+                ['email' => 'shipper.adama@numanfreight.com', 'name' => 'Adama Shipper', 'is_superadmin' => false, 'posts_freight' => true, 'provides_transport' => false, 'account_type' => 'personal', 'onboarding_step' => 'completed', 'location' => $hawassa],
+                ['email' => 'transporter.express@numanfreight.com', 'name' => 'Express Transporter', 'is_superadmin' => false, 'posts_freight' => false, 'provides_transport' => true, 'account_type' => 'business', 'onboarding_step' => 'completed', 'location' => $kombolcha],
+                ['email' => 'transporter.heavy@numanfreight.com', 'name' => 'Heavy Transporter', 'is_superadmin' => false, 'posts_freight' => false, 'provides_transport' => true, 'account_type' => 'business', 'onboarding_step' => 'completed', 'location' => $hawassa],
+                ['email' => 'transporter.pending@numanfreight.com', 'name' => 'Pending Transporter', 'is_superadmin' => false, 'posts_freight' => false, 'provides_transport' => true, 'account_type' => 'business', 'onboarding_step' => 'details', 'location' => $addis],
+            ];
+
+            $numanUsers = collect();
+            foreach ($numanPilotAccounts as $acct) {
+                $u = User::firstOrCreate(
+                    ['email' => $acct['email']],
+                    [
+                        'name' => $acct['name'],
+                        'password' => Hash::make('Password123!'),
+                        'email_verified_at' => now(),
+                        'locale' => 'en',
+                        'is_superadmin' => $acct['is_superadmin'],
+                        'onboarded_at' => $acct['onboarding_step'] === 'completed' ? now() : null,
+                    ]
+                );
+
+                // Ensure profile exists with correct onboarding step
+                Profile::firstOrCreate(
+                    ['user_id' => $u->id],
+                    [
+                        'posts_freight' => $acct['posts_freight'],
+                        'provides_transport' => $acct['provides_transport'],
+                        'account_type' => $acct['account_type'],
+                        'display_name' => $acct['name'],
+                        'phone' => '+251 91 '.fake()->numerify('### ####'),
+                        'primary_location_id' => $acct['location']?->id ?? $addis?->id,
+                        'legal_name' => $acct['account_type'] === 'business' ? $acct['name'].' PLC' : null,
+                        'legal_form' => $acct['account_type'] === 'business' ? 'Private Limited Company (PLC)' : null,
+                        'onboarding_step' => $acct['onboarding_step'],
+                        'onboarding_completed_at' => $acct['onboarding_step'] === 'completed' ? now() : null,
+                    ]
+                );
+
+                // Create personal workspace for Numan pilot users as well
+                $workspaceService->createPersonalWorkspace($u);
+
+                $numanUsers->push($u);
+            }
+
+            // Merge Numan users into main collection for later workspace/team logic if needed
+            $users = $users->merge($numanUsers);
+
+            // 3d. Seed transporter profiles for Numan pilot transporters (supply foundation)
+            $truckTypes = TruckType::all();
+            $allLocations = Location::all();
+            $transporterSeedMap = [
+                'transporter.express@numanfreight.com' => ['status' => 'approved', 'verification_level' => 'verified', 'completion_score' => 95],
+                'transporter.heavy@numanfreight.com' => ['status' => 'approved', 'verification_level' => 'verified', 'completion_score' => 88],
+                'transporter.pending@numanfreight.com' => ['status' => 'pending', 'verification_level' => 'unverified', 'completion_score' => 45],
+            ];
+            foreach ($transporterSeedMap as $email => $attrs) {
+                $u = User::where('email', $email)->first();
+                if ($u && ! $u->transporterProfile()->exists()) {
+                    $profile = TransporterProfile::create([
+                        'user_id' => $u->id,
+                        'slug' => Str::slug($u->name).'-'.Str::random(4),
+                        'display_name' => $u->name,
+                        'legal_name' => $u->name.' PLC',
+                        'phone' => '+251 91 '.fake()->numerify('### ####'),
+                        'whatsapp' => '+251 91 '.fake()->numerify('### ####'),
+                        'email' => $u->email,
+                        'business_description' => fake()->paragraph(),
+                        'is_company' => true,
+                        'status' => $attrs['status'],
+                        'verification_level' => $attrs['verification_level'],
+                        'completion_score' => $attrs['completion_score'],
+                        'phone_visible' => true,
+                        'whatsapp_visible' => false,
+                        'email_visible' => false,
+                        'primary_location_id' => $allLocations->random()->id,
+                    ]);
+                    if ($truckTypes->isNotEmpty()) {
+                        $profile->truckTypes()->attach($truckTypes->random(min(2, $truckTypes->count()))->pluck('id')->toArray());
+                    }
+                    // Add 1-2 operating routes
+                    for ($r = 0; $r < rand(1, 2); $r++) {
+                        $origin = $allLocations->random();
+                        $dest = $allLocations->where('id', '!=', $origin->id)->random();
+                        TransporterRoute::firstOrCreate([
+                            'transporter_profile_id' => $profile->id,
+                            'origin_location_id' => $origin->id,
+                            'destination_location_id' => $dest->id,
+                        ]);
+                    }
+                }
+            }
+
+            // Also create a few random approved transporter profiles for directory
+            $randomTransporters = $additionalUsers->random(min(5, $additionalUsers->count()));
+            foreach ($randomTransporters as $ru) {
+                if ($ru->transporterProfile()->exists()) {
+                    continue;
+                }
+                $p = TransporterProfile::create([
+                    'user_id' => $ru->id,
+                    'slug' => Str::slug($ru->name).'-'.Str::random(4),
+                    'display_name' => $ru->name,
+                    'legal_name' => fake()->company().' PLC',
+                    'phone' => '+251 91 '.fake()->numerify('### ####'),
+                    'business_description' => fake()->paragraph(),
+                    'is_company' => fake()->boolean(),
+                    'status' => fake()->randomElement(['approved', 'pending']),
+                    'verification_level' => fake()->randomElement(['unverified', 'verified']),
+                    'completion_score' => fake()->numberBetween(30, 95),
+                    'phone_visible' => fake()->boolean(),
+                    'primary_location_id' => $allLocations->random()->id,
+                ]);
+                if ($truckTypes->isNotEmpty()) {
+                    $p->truckTypes()->attach($truckTypes->random(1)->pluck('id')->toArray());
+                }
+            }
 
             // 4. DEMO ACCOUNT: Create multiple workspaces owned by demo user
             $demoWorkspaceNames = [

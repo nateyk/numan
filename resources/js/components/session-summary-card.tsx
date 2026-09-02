@@ -77,7 +77,10 @@ export function SessionSummaryCard() {
                 setLoading(false);
             })
             .catch((err) => {
-                setError(err.response?.data?.message ?? 'Failed to load session summary');
+                setError(
+                    err.response?.data?.message ??
+                        'Failed to load session summary',
+                );
                 setLoading(false);
             });
     }, []);

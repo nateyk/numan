@@ -2,29 +2,221 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccountType;
+use App\Enums\LegalForm;
+use App\Enums\OnboardingStep;
+use App\Models\Location;
 use App\Models\OnboardingStepLog;
+use App\Models\Profile;
 use App\Services\WorkspaceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class OnboardingController extends Controller
 {
     /**
-     * Display the onboarding wizard.
+     * Display the NumanFreight 3-step onboarding wizard (public profile).
      */
     public function index(Request $request): Response|RedirectResponse
     {
-        // If they are already onboarded, don't let them see the wizard again
-        if ($request->user() && $request->user()->onboarded_at) {
+        $user = $request->user();
+
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        // Legacy workspace onboarded check — keep for BC, but also check new public profile
+        if ($user->isProfileOnboarded()) {
             return redirect()->route('dashboard');
         }
 
-        // Log the welcome step view
-        $this->logStep($request->user()->id, 'welcome', 'viewed');
+        // Ensure a profile row exists for every user (idempotent)
+        /** @var Profile $profile */
+        $profile = $user->profile()->firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'onboarding_step' => OnboardingStep::Capabilities->value,
+                'posts_freight' => false,
+                'provides_transport' => false,
+            ]
+        );
 
-        return Inertia::render('onboarding/wizard');
+        // If user hit index without explicit profile step, ensure it has a step
+        if (! $profile->onboarding_step) {
+            $profile->forceFill(['onboarding_step' => OnboardingStep::Capabilities->value])->save();
+        }
+
+        $currentStep = $profile->currentStep();
+
+        $this->logStep($user->id, $currentStep, 'viewed');
+
+        $locations = Location::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'region_name']);
+
+        return Inertia::render('onboarding/index', [
+            'profile' => [
+                'account_type' => $profile->account_type,
+                'display_name' => $profile->display_name,
+                'phone' => $profile->phone,
+                'posts_freight' => (bool) $profile->posts_freight,
+                'provides_transport' => (bool) $profile->provides_transport,
+                'onboarding_step' => $profile->onboarding_step,
+                'primary_location_id' => $profile->primary_location_id,
+                'legal_name' => $profile->legal_name,
+                'legal_form' => $profile->legal_form,
+            ],
+            'currentStep' => $currentStep,
+            'locations' => $locations,
+        ]);
+    }
+
+    /**
+     * Step 1 — capabilities (multi-select, at least one).
+     */
+    public function storeCapabilities(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user && $user->isProfileOnboarded()) {
+            return redirect()->route('dashboard');
+        }
+
+        $validated = $request->validate([
+            'posts_freight' => ['required', 'boolean'],
+            'provides_transport' => ['required', 'boolean'],
+        ]);
+
+        if (! $validated['posts_freight'] && ! $validated['provides_transport']) {
+            return back()->withErrors(['posts_freight' => 'Choose at least one.'])->withInput();
+        }
+
+        /** @var Profile $profile */
+        $profile = $request->user()->profile()->firstOrCreate(['user_id' => $request->user()->id]);
+
+        $profile->forceFill([
+            'posts_freight' => (bool) $validated['posts_freight'],
+            'provides_transport' => (bool) $validated['provides_transport'],
+            'onboarding_step' => OnboardingStep::AccountType->value,
+        ])->save();
+
+        $this->logStep($request->user()->id, OnboardingStep::Capabilities->value, 'completed');
+        $this->logStep($request->user()->id, OnboardingStep::AccountType->value, 'viewed');
+
+        return back()->with('success', 'Preferences saved.');
+    }
+
+    /**
+     * Step 2 — account_type (personal | business, single select).
+     */
+    public function storeAccountType(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user && $user->isProfileOnboarded()) {
+            return redirect()->route('dashboard');
+        }
+
+        $validated = $request->validate([
+            'account_type' => ['required', Rule::in(AccountType::values())],
+        ]);
+
+        /** @var Profile $profile */
+        $profile = $request->user()->profile()->firstOrCreate(['user_id' => $request->user()->id]);
+
+        // Retain capabilities check — enforce step order
+        if (! $profile->hasCapabilities()) {
+            return redirect()->route('onboarding.index')->withErrors(['account_type' => 'Complete capabilities first.']);
+        }
+
+        $profile->forceFill([
+            'account_type' => $validated['account_type'],
+            'onboarding_step' => OnboardingStep::Details->value,
+        ])->save();
+
+        $this->logStep($request->user()->id, OnboardingStep::AccountType->value, 'completed');
+        $this->logStep($request->user()->id, OnboardingStep::Details->value, 'viewed');
+
+        return back()->with('success', 'Account type saved.');
+    }
+
+    /**
+     * Step 3 — details (display_name, phone, primary_location_id, + business fields).
+     */
+    public function storeDetails(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user && $user->isProfileOnboarded()) {
+            return redirect()->route('dashboard');
+        }
+
+        /** @var Profile|null $profile */
+        $profile = $request->user()->profile()->first();
+
+        if (! $profile || ! $profile->hasCapabilities() || ! $profile->account_type) {
+            return redirect()->route('onboarding.index')->withErrors(['display_name' => 'Complete previous steps first.']);
+        }
+
+        $isBusiness = $profile->account_type === AccountType::Business->value;
+
+        $rules = [
+            'display_name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:30', 'regex:/^\+?[0-9\s\-\(\)]+$/'],
+            'primary_location_id' => ['required', 'integer', 'exists:locations,id'],
+        ];
+
+        if ($isBusiness) {
+            $rules['legal_name'] = ['required', 'string', 'max:255'];
+            $rules['legal_form'] = ['required', Rule::in(LegalForm::values())];
+            $rules['legal_form_other'] = ['nullable', 'string', 'max:255', 'required_if:legal_form,Other'];
+        } else {
+            $rules['legal_name'] = ['nullable', 'string', 'max:255'];
+            $rules['legal_form'] = ['nullable', Rule::in(LegalForm::values())];
+            $rules['legal_form_other'] = ['nullable', 'string', 'max:255'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $profile->forceFill([
+            'display_name' => $validated['display_name'],
+            'phone' => $validated['phone'],
+            'primary_location_id' => $validated['primary_location_id'],
+            'legal_name' => $validated['legal_name'] ?? null,
+            'legal_form' => $validated['legal_form'] ?? null,
+            'legal_form_other' => $validated['legal_form_other'] ?? null,
+            'onboarding_step' => OnboardingStep::Completed->value,
+            'onboarding_completed_at' => now(),
+        ])->save();
+
+        $request->user()->completeProfileOnboarding();
+
+        // Ensure user has at least one workspace for dashboard (EnsureWorkspaceAccess requires it)
+        $workspaceService = app(WorkspaceService::class);
+        if ($user->workspaces()->count() === 0) {
+            $workspaceName = $isBusiness
+                ? ($validated['legal_name'] ?? $validated['display_name'])
+                : $validated['display_name'];
+            $workspaceName = trim((string) $workspaceName) !== '' ? trim((string) $workspaceName) : $user->name;
+
+            $workspaceService->create($user, ['name' => $workspaceName], false);
+        }
+
+        // Ensure current workspace is set
+        if (! $user->current_workspace_id) {
+            $firstWorkspace = $user->workspaces()->first();
+            if ($firstWorkspace) {
+                $user->switchWorkspace($firstWorkspace);
+            }
+        }
+
+        $this->logStep($request->user()->id, OnboardingStep::Details->value, 'completed');
+
+        return redirect()->route('dashboard')->with('success', 'Welcome to NumanFreight — your profile is ready.');
     }
 
     /**
@@ -33,7 +225,7 @@ class OnboardingController extends Controller
     public function trackStep(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'step' => ['required', 'string', 'in:welcome,workspace,plan'],
+            'step' => ['required', 'string', 'in:welcome,workspace,plan,capabilities,account_type,details'],
             'action' => ['required', 'string', 'in:viewed,completed'],
         ]);
 
@@ -47,11 +239,17 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Process the final onboarding payload and instantiate the user environment.
+     * Legacy: Process the final onboarding payload and instantiate the user environment.
+     * Kept for BC with old wizard.tsx (workspace flow). New flow uses storeCapabilities etc.
      */
     public function store(Request $request, WorkspaceService $workspaceService): RedirectResponse
     {
-        // Ignore if already onboarded
+        // If already onboarded via new profile flow, shortcut
+        if ($request->user() && $request->user()->isProfileOnboarded()) {
+            return redirect()->route('dashboard');
+        }
+
+        // Ignore if already onboarded via legacy onboarded_at
         if ($request->user() && $request->user()->onboarded_at) {
             return redirect()->route('dashboard');
         }
@@ -72,6 +270,15 @@ class OnboardingController extends Controller
 
         // 2. Mark the account formally onboarded
         $user->completeOnboarding();
+
+        // Also mark public profile as completed if exists
+        $profile = $user->profile()->first();
+        if ($profile) {
+            $profile->forceFill([
+                'onboarding_step' => OnboardingStep::Completed->value,
+                'onboarding_completed_at' => now(),
+            ])->save();
+        }
 
         // 3. Log onboarding completion
         $this->logStep($user->id, 'plan', 'completed');
