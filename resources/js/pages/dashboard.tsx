@@ -46,6 +46,13 @@ export default function Dashboard() {
 
     const quickActions = [
         {
+            title: t('dashboard.create_freight', 'Post Freight'),
+            description: t('dashboard.create_freight_desc', 'Create a new freight post'),
+            icon: Plus,
+            href: '/my-freight',
+            color: 'bg-amber-600',
+        },
+        {
             title: t('dashboard.invite_team_member', 'Invite Team Member'),
             description: t(
                 'dashboard.invite_team_member_desc',
