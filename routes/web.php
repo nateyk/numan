@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityReactionController;
 use App\Http\Controllers\Admin\AdminCargoTypeController;
+use App\Http\Controllers\Admin\AdminFreightController;
 use App\Http\Controllers\Admin\AdminLocationController;
 use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\AdminSearchController;
@@ -44,23 +45,6 @@ use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\ChangelogWidgetController;
 use App\Http\Controllers\ExperienceFeedbackController;
 use App\Http\Controllers\FeedbackController;
-use App\Http\Controllers\InvitationController;
-use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\LocationSearchController;
-use App\Http\Controllers\MemberActivityController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\OnboardingChecklistController;
-use App\Http\Controllers\OnboardingController;
-use App\Http\Controllers\SearchController;
-use App\Http\Controllers\Settings\ConnectedAccountController;
-use App\Http\Controllers\Settings\WorkspaceLogoController;
-use App\Http\Controllers\Settings\WorkspaceSecurityController;
-use App\Http\Controllers\StatusPageController;
-use App\Http\Controllers\StripeWebhookController;
-use App\Http\Controllers\TeamController;
-use App\Http\Controllers\TeamImportController;
-use App\Http\Controllers\TourController;
-use App\Http\Controllers\Admin\AdminFreightController;
 use App\Http\Controllers\Freight\FreightCargoController;
 use App\Http\Controllers\Freight\FreightInterestAcceptanceController;
 use App\Http\Controllers\Freight\FreightInterestController;
@@ -74,6 +58,21 @@ use App\Http\Controllers\Freight\MarketplaceConnectionOutcomeController;
 use App\Http\Controllers\Freight\PublicFreightDiscoveryController;
 use App\Http\Controllers\Freight\RoutePreviewController;
 use App\Http\Controllers\Freight\TransporterMyInterestsController;
+use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\LocationSearchController;
+use App\Http\Controllers\MemberActivityController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OnboardingChecklistController;
+use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Settings\WorkspaceLogoController;
+use App\Http\Controllers\Settings\WorkspaceSecurityController;
+use App\Http\Controllers\StatusPageController;
+use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TeamImportController;
+use App\Http\Controllers\TourController;
 use App\Http\Controllers\TransporterProfileController;
 use App\Http\Controllers\UsageController;
 use App\Http\Controllers\WebhookEndpointController;
@@ -235,10 +234,6 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::get('/settings/workspace-danger-zone', [WorkspaceController::class, 'dangerZone'])->name('workspace.danger-zone');
     Route::delete('/workspaces/leave', [WorkspaceController::class, 'leave'])->name('workspaces.leave');
 
-    // Connected Social Accounts
-    Route::get('/settings/connected-accounts', [ConnectedAccountController::class, 'index'])->name('connected-accounts.index');
-    Route::delete('/settings/connected-accounts/{provider}', [ConnectedAccountController::class, 'destroy'])->name('connected-accounts.destroy');
-
     // Onboarding Checklist
     Route::get('/onboarding-checklist', [OnboardingChecklistController::class, 'index'])->name('onboarding-checklist.index');
     Route::post('/onboarding-checklist/dismiss', [OnboardingChecklistController::class, 'dismiss'])->name('onboarding-checklist.dismiss');
@@ -305,7 +300,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::put('/my-freight/{ulid}/schedule', [FreightScheduleController::class, 'update'])->name('freight.schedule.update');
     Route::get('/my-freight/{ulid}/review', [FreightReviewController::class, 'show'])->name('freight.review.show');
     Route::post('/my-freight/{ulid}/submit', [FreightReviewController::class, 'submit'])->name('freight.submit');
-    Route::post('/freight/routes/preview', [RoutePreviewController::class, 'preview'])->name('freight.routes.preview');
+    Route::match(['get', 'post'], '/freight/routes/preview', [RoutePreviewController::class, 'preview'])->name('freight.routes.preview');
 
     // Freight interests
     Route::post('/my-freight/{ulid}/interests', [FreightInterestController::class, 'store'])->name('freight.interests.store');

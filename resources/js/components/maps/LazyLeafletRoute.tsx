@@ -17,7 +17,11 @@ export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geome
     useEffect(() => {
         if (initialGeometry) return;
         // Fetch OSRM route geometry from backend if not provided
-        fetch(`/freight/routes/preview?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`)
+        fetch('/freight/routes/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' },
+            body: JSON.stringify({ from_lat: fromLat, from_lng: fromLng, to_lat: toLat, to_lng: toLng }),
+        })
             .then(r => (r.ok ? r.json() : null))
             .then(data => {
                 if (data?.geometry) setGeometry(data.geometry);
