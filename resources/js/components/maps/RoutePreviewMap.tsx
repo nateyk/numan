@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { useEffect, useState, Suspense, lazy, ComponentType } from 'react';
 
 interface Props {
     fromLat: number | null;
@@ -9,7 +9,7 @@ interface Props {
     className?: string;
 }
 
-const LazyLeafletRoute = lazy(() => import('./LazyLeafletRoute'));
+const LazyLeafletRoute = lazy<ComponentType<{ fromLat: number; fromLng: number; toLat: number; toLng: number; geometry?: unknown }>>(() => import('./LazyLeafletRoute').then(m => ({ default: (m as any).default || (m as any) })));
 
 export default function RoutePreviewMap({ fromLat, fromLng, toLat, toLng, geometry, className }: Props) {
     const [isClient, setIsClient] = useState(false);

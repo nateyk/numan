@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface Props {
     fromLat: number;
@@ -9,19 +10,36 @@ interface Props {
 }
 
 export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geometry }: Props) {
-    useEffect(() => {
-        // Leaflet + OSRM route integration: load on demand when component mounts
-        // Placeholder for production integration; avoids SSR and bundle bloat
-        console.log('Lazy route', { fromLat, fromLng, toLat, toLng, geometry });
-    }, [fromLat, fromLng, toLat, toLng, geometry]);
+    const center: [number, number] = [
+        (fromLat + toLat) / 2,
+        (fromLng + toLng) / 2,
+    ];
 
     return (
-        <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
-            <div>
-                <p>Route preview</p>
-                <p className="mt-1 text-xs">{fromLat.toFixed(2)},{fromLng.toFixed(2)} → {toLat.toFixed(2)},{toLng.toFixed(2)}</p>
-                {geometry ? <p className="mt-2 text-xs">Geometry loaded.</p> : <p className="mt-2 text-xs">Fetching OSRM route…</p>}
-            </div>
-        </div>
+        <MapContainer
+            center={center}
+            zoom={7}
+            scrollWheelZoom={false}
+            style={{ height: '100%', width: '100%' }}
+        >
+            <TileLayer
+                attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker position={[fromLat, fromLng]}>
+                <Popup>Origin</Popup>
+            </Marker>
+            <Marker position={[toLat, toLng]}>
+                <Popup>Destination</Popup>
+            </Marker>
+            <Polyline
+                positions={[
+                    [fromLat, fromLng],
+                    [toLat, toLng],
+                ]}
+                color="#2563eb"
+                weight={4}
+            />
+        </MapContainer>
     );
 }
