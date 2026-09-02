@@ -34,12 +34,16 @@ class FreightInterestAcceptanceController extends Controller
             return back()->withErrors(['post' => 'Freight post is not active.']);
         }
 
-        $connection = DB::transaction(function () use ($interest, $post, $user) {
+        $wasRecentlyCreated = false;
+
+        $connection = DB::transaction(function () use ($interest, $post, $user, &$wasRecentlyCreated) {
             // Idempotency: if connection exists, return existing without changing status
             $existing = MarketplaceConnection::where('freight_interest_id', $interest->id)->first();
             if ($existing) {
                 return $existing;
             }
+
+            $wasRecentlyCreated = true;
 
             $fromStatus = $interest->status;
 
@@ -76,7 +80,9 @@ class FreightInterestAcceptanceController extends Controller
             return $connection;
         });
 
-        Notification::send([$post->user, $interest->user], new MarketplaceConnectionCreated($connection));
+        if ($wasRecentlyCreated) {
+            Notification::send([$post->user, $interest->user], new MarketplaceConnectionCreated($connection));
+        }
 
         return redirect()->route('connections.show', ['public_id' => $connection->public_id])
             ->with('success', 'Interest accepted. Connection created.');

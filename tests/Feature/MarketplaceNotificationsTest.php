@@ -102,6 +102,38 @@ it('sends notification when connection is created', function () {
     Notification::assertSentTo($transporter, MarketplaceConnectionCreated::class);
 });
 
+it('sends notification when interest is withdrawn', function () {
+    Notification::fake();
+
+    $consignor = createConsignorForNotification();
+    $transporter = createApprovedTransporterForNotification();
+    $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
+    $interest = FreightInterest::factory()->for($post)->for($transporter)->create(['status' => 'submitted']);
+
+    $this->actingAs($transporter)->post("/interests/{$interest->id}/withdraw");
+
+    Notification::assertSentTo($consignor, FreightInterestStatusChanged::class, function ($notification) use ($interest) {
+        return $notification->interest->id === $interest->id
+            && $notification->oldStatus === 'submitted'
+            && $notification->newStatus === 'withdrawn';
+    });
+});
+
+it('does not send duplicate notification on idempotent accept', function () {
+    Notification::fake();
+
+    $consignor = createConsignorForNotification();
+    $transporter = createApprovedTransporterForNotification();
+    $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
+    $interest = FreightInterest::factory()->for($post)->for($transporter)->create(['status' => 'submitted']);
+
+    $this->actingAs($consignor)->post("/interests/{$interest->id}/accept");
+    $this->actingAs($consignor)->post("/interests/{$interest->id}/accept");
+
+    Notification::assertSentTo($consignor, MarketplaceConnectionCreated::class, 1);
+    Notification::assertSentTo($transporter, MarketplaceConnectionCreated::class, 1);
+});
+
 it('sends notification when freight post is moderated', function () {
     Notification::fake();
 
