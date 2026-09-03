@@ -17,6 +17,8 @@ import {
     BarChart3,
     BookOpen,
     LayoutGrid,
+    Package,
+    Search,
     Settings,
     ShieldAlert,
 } from 'lucide-react';
@@ -31,6 +33,16 @@ const getMainNavItems = (
             title: t('navigation.dashboard', 'Dashboard'),
             href: '/dashboard',
             icon: LayoutGrid,
+        },
+        {
+            title: t('navigation.my_freight', 'My Freight'),
+            href: '/my-freight',
+            icon: Package,
+        },
+        {
+            title: t('navigation.discover_freight', 'Discover Freight'),
+            href: '/freight',
+            icon: Search,
         },
         {
             title: t('navigation.usage', 'Usage'),
