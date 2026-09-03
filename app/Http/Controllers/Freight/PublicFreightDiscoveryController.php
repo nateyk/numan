@@ -13,7 +13,7 @@ class PublicFreightDiscoveryController extends Controller
     public function index(Request $request): Response
     {
         $query = FreightPost::query()
-            ->with(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
+            ->with(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
             ->active()
             ->when($request->query('origin'), function ($q, $origin) {
                 $q->where('origin_location_id', $origin);
