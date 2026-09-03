@@ -31,7 +31,7 @@ export default function RoutePreviewMap({ fromLat, fromLng, toLat, toLng, geomet
                     <LazyDefaultEthiopiaMap />
                 </Suspense>
                 <div className="pointer-events-none absolute bottom-2 left-2 right-2 rounded bg-white/90 px-2 py-1 text-center text-xs text-muted-foreground shadow">
-                    Search origin & destination towns (934 major Ethiopian towns) to see Leaflet route • Map shows Addis Ababa, Hawassa, Bahir Dar
+                    Search origin & destination towns (934 major Ethiopian towns) to see Leaflet route
                 </div>
             </div>
         );
