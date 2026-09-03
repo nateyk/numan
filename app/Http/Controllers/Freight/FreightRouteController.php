@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Freight;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreFreightRouteRequest;
-use App\Models\CargoType;
 use App\Models\FreightPost;
 use App\Models\Location;
-use App\Models\TruckType;
 use App\Services\FreightCompletionService;
 use App\Services\RoutePreviewService;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +19,7 @@ class FreightRouteController extends Controller
     public function show(Request $request, string $ulid): Response
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
-        Gate::authorize('update', $post);
+        Gate::authorize('view', $post);
 
         return Inertia::render('freight/route', [
             'post' => $post->load(['originLocation', 'destinationLocation', 'routeSnapshot']),
