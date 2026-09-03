@@ -36,7 +36,7 @@ export default function FreightReview({ post, completionScore }: Props) {
         <AppLayout>
             <Head title="Review & Submit" />
             <FreightWizardShell ulid={post.ulid} currentStep={3} completionScore={completionScore}>
-                <div className="overflow-hidden rounded-lg border">
+                <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                     <div className="grid gap-0 lg:grid-cols-12">
                         <div className="lg:col-span-7">
                             <RoutePreviewMap fromLat={post.origin_exact_lat ? Number(post.origin_exact_lat) : null} fromLng={post.origin_exact_lng ? Number(post.origin_exact_lng) : null} toLat={post.destination_exact_lat ? Number(post.destination_exact_lat) : null} toLng={post.destination_exact_lng ? Number(post.destination_exact_lng) : null} geometry={routeSnapshot?.geometry} className="h-[360px] rounded-none border-0" />

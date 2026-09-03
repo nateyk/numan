@@ -29,7 +29,7 @@ export default function FreightSchedule({ post }: Props) {
             <Head title="Post Details" />
             <FreightWizardShell ulid={post.ulid} currentStep={2}>
                 <form onSubmit={submit}>
-                    <div className="overflow-hidden rounded-lg border">
+                    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                         <div className="grid gap-0 md:grid-cols-2">
                             <div className="space-y-4 p-6">
                                 <div>

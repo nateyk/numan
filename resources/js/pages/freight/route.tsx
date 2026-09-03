@@ -82,7 +82,7 @@ export default function FreightRoute({ post, routePreview }: Props) {
             <Head title="Route & Schedule" />
             <FreightWizardShell ulid={post.ulid} currentStep={0}>
                 <form onSubmit={submit}>
-                    <div className="overflow-hidden rounded-lg border bg-card">
+                    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                         <div className="grid gap-0 lg:grid-cols-12">
                             {/* Left — form */}
                             <div className="space-y-4 p-6 lg:col-span-5">
