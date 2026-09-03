@@ -101,6 +101,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name('freight.discovery');
+Route::get('/freight/{ulid}', [PublicFreightDiscoveryController::class, 'show'])->name('freight.public.show');
 Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
 
 // Magic Link Auth Routes

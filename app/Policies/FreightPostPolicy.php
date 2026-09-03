@@ -13,13 +13,13 @@ class FreightPostPolicy
         return true;
     }
 
-    public function view(User $user, FreightPost $post): bool
+    public function view(?User $user, FreightPost $post): bool
     {
-        if ($user->id === $post->user_id) {
+        if ($user && $user->id === $post->user_id) {
             return true;
         }
 
-        if ($user->is_superadmin) {
+        if ($user && $user->is_superadmin) {
             return true;
         }
 

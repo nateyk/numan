@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Freight;
 
 use App\Http\Controllers\Controller;
+use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,6 +43,33 @@ class PublicFreightDiscoveryController extends Controller
         return Inertia::render('discover/index', [
             'freight' => $posts,
             'filters' => $request->only(['origin', 'destination', 'cargo_type', 'truck_type', 'pickup_from', 'pickup_to']),
+        ]);
+    }
+
+    public function show(string $ulid): Response
+    {
+        $post = FreightPost::where('ulid', $ulid)
+            ->with(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
+            ->firstOrFail();
+
+        Gate::authorize('view', $post);
+
+        // Check if current user has already expressed interest
+        $user = auth()->user();
+        $hasInterest = false;
+        $interestStatus = null;
+        if ($user) {
+            $interest = FreightInterest::where('freight_post_id', $post->id)->where('user_id', $user->id)->first();
+            if ($interest) {
+                $hasInterest = true;
+                $interestStatus = $interest->status;
+            }
+        }
+
+        return Inertia::render('freight/show', [
+            'post' => $post,
+            'hasInterest' => $hasInterest,
+            'interestStatus' => $interestStatus,
         ]);
     }
 }

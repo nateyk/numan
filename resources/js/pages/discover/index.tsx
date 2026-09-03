@@ -222,7 +222,7 @@ export default function DiscoverIndex({ freight, filters, canRegister = true }: 
                                                 </div>
                                                 <div className="flex w-full gap-2">
                                                     <Button asChild className="flex-1 h-8 px-3 text-xs">
-                                                        <Link href={`/my-freight/${f.ulid}`}>View Details</Link>
+                                                        <Link href={`/freight/${f.ulid}`}>View Details</Link>
                                                     </Button>
                                                     <Button
                                                         variant="outline"
