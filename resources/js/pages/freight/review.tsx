@@ -36,64 +36,47 @@ export default function FreightReview({ post, completionScore }: Props) {
         <AppLayout>
             <Head title="Review & Submit" />
             <FreightWizardShell ulid={post.ulid} currentStep={3} completionScore={completionScore}>
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="flex items-center gap-2 text-base"><MapPin className="size-4" /> Route Preview</CardTitle>
-                            <CardDescription>{origin?.name ?? 'Origin'} → {destination?.name ?? 'Destination'} • OSRM routed</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <RoutePreviewMap fromLat={post.origin_exact_lat ? Number(post.origin_exact_lat) : null} fromLng={post.origin_exact_lng ? Number(post.origin_exact_lng) : null} toLat={post.destination_exact_lat ? Number(post.destination_exact_lat) : null} toLng={post.destination_exact_lng ? Number(post.destination_exact_lng) : null} geometry={routeSnapshot?.geometry} className="h-[320px]" />
-                            {routeSnapshot && (
-                                <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Route className="size-4" /> {(routeSnapshot.distance_meters / 1000).toFixed(1)} km • {Math.round(routeSnapshot.duration_seconds / 60)} min</p>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Freight Summary</CardTitle>
-                            <CardDescription>Review before submitting for admin approval</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3 text-sm">
-                            <div className="grid gap-2 sm:grid-cols-2">
-                                <p className="flex items-center gap-2"><MapPin className="size-4 text-muted-foreground" /> {origin?.name ?? 'Origin'} ({origin?.region_name ?? ''}) → {destination?.name ?? 'Destination'} ({destination?.region_name ?? ''})</p>
-                                <p className="flex items-center gap-2"><Calendar className="size-4 text-muted-foreground" /> Pickup: {post.pickup_date ? String(post.pickup_date).slice(0, 10) : '—'}</p>
-                                <p className="flex items-center gap-2"><Package className="size-4 text-muted-foreground" /> Cargo: {cargoType?.name ?? '—'} — {post.cargo_description ?? '—'}</p>
-                                <p className="flex items-center gap-2"><Truck className="size-4 text-muted-foreground" /> Truck: {truckType?.name ?? '—'} × {post.truck_count ?? '—'}</p>
+                <div className="overflow-hidden rounded-lg border">
+                    <div className="grid gap-0 lg:grid-cols-12">
+                        <div className="lg:col-span-7">
+                            <RoutePreviewMap fromLat={post.origin_exact_lat ? Number(post.origin_exact_lat) : null} fromLng={post.origin_exact_lng ? Number(post.origin_exact_lng) : null} toLat={post.destination_exact_lat ? Number(post.destination_exact_lat) : null} toLng={post.destination_exact_lng ? Number(post.destination_exact_lng) : null} geometry={routeSnapshot?.geometry} className="h-[360px] rounded-none border-0" />
+                        </div>
+                        <div className="space-y-4 p-6 lg:col-span-5">
+                            <div>
+                                <h3 className="font-medium">Freight Summary</h3>
+                                <div className="mt-2 space-y-1 text-sm">
+                                    <p>{origin?.name ?? 'Origin'} → {destination?.name ?? 'Destination'}</p>
+                                    <p className="text-muted-foreground">{origin?.region_name ?? ''} → {destination?.region_name ?? ''}</p>
+                                    <p className="mt-2 flex items-center gap-2"><Package className="size-3.5" /> {cargoType?.name ?? '—'} — {post.cargo_description ?? '—'}</p>
+                                    <p className="flex items-center gap-2"><Truck className="size-3.5" /> {truckType?.name ?? '—'} × {post.truck_count ?? '—'}</p>
+                                    <p className="flex items-center gap-2"><Calendar className="size-3.5" /> {post.pickup_date ? String(post.pickup_date).slice(0, 10) : '—'}</p>
+                                    {routeSnapshot && <p className="flex items-center gap-2"><Route className="size-3.5" /> {(routeSnapshot.distance_meters / 1000).toFixed(1)} km • {Math.round(routeSnapshot.duration_seconds / 60)} min</p>}
+                                </div>
                             </div>
-                            <Separator />
-                            <div className="flex flex-wrap gap-2 text-xs">
-                                <Button variant="ghost" size="sm" asChild><Link href={`/my-freight/${post.ulid}/route`}><Edit className="mr-1 size-3" /> Edit Route</Link></Button>
-                                <Button variant="ghost" size="sm" asChild><Link href={`/my-freight/${post.ulid}/cargo`}><Edit className="mr-1 size-3" /> Edit Cargo</Link></Button>
-                                <Button variant="ghost" size="sm" asChild><Link href={`/my-freight/${post.ulid}/schedule`}><Edit className="mr-1 size-3" /> Edit Schedule</Link></Button>
+                            <div className="flex gap-2 text-xs">
+                                <Button variant="ghost" size="sm" asChild><Link href={`/my-freight/${post.ulid}/route`}>Edit Route</Link></Button>
+                                <Button variant="ghost" size="sm" asChild><Link href={`/my-freight/${post.ulid}/cargo`}>Edit Cargo</Link></Button>
+                                <Button variant="ghost" size="sm" asChild><Link href={`/my-freight/${post.ulid}/schedule`}>Edit Schedule</Link></Button>
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between border-t pt-4">
                                 <span className="text-sm font-medium">Completion</span>
-                                <Badge variant="secondary">{completionScore}% complete</Badge>
+                                <Badge variant="secondary">{completionScore}%</Badge>
                             </div>
-                            <div className="mt-2 h-2 w-full rounded-full bg-muted">
-                                <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${completionScore}%` }} />
+                            <div className="h-1.5 w-full rounded-full bg-muted">
+                                <div className="h-1.5 rounded-full bg-primary" style={{ width: `${completionScore}%` }} />
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    <form onSubmit={submit} className="space-y-4">
-                        <div className="flex items-center space-x-2 rounded-md border p-3">
-                            <Checkbox id="confirm" checked={confirmed} onCheckedChange={(v) => setConfirmed(v === true)} />
-                            <Label htmlFor="confirm" className="text-sm font-normal leading-none">I confirm that the freight information is accurate and ready for admin review.</Label>
+                            <form onSubmit={submit} className="space-y-3 border-t pt-4">
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="rounded" />
+                                    I confirm accurate and ready for review.
+                                </label>
+                                <div className="flex gap-2">
+                                    <Button type="submit" disabled={!confirmed || form.processing} className="flex-1">Submit for review</Button>
+                                    <Button type="button" variant="outline" onClick={() => window.history.back()} className="flex-1">Save draft</Button>
+                                </div>
+                            </form>
                         </div>
-                        {form.errors.confirm && <p className="text-xs text-destructive">{form.errors.confirm}</p>}
-                        <div className="flex gap-2">
-                            <Button type="submit" disabled={!confirmed || form.processing} size="lg">Submit for review</Button>
-                            <Button type="button" variant="outline" onClick={() => window.history.back()}>Save draft</Button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </FreightWizardShell>
         </AppLayout>

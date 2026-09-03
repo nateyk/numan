@@ -32,14 +32,10 @@ export default function FreightCargo({ post, cargoTypes, truckTypes }: Props) {
         <AppLayout>
             <Head title="Cargo & Truck" />
             <FreightWizardShell ulid={post.ulid} currentStep={1}>
-                <form onSubmit={submit} className="space-y-6">
-                    <div className="grid gap-6 md:grid-cols-2">
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2 text-base"><Package className="size-4" /> Cargo Details</CardTitle>
-                                <CardDescription>What are you moving? Be precise for better matches.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
+                <form onSubmit={submit}>
+                    <div className="overflow-hidden rounded-lg border">
+                        <div className="grid gap-0 md:grid-cols-2">
+                            <div className="space-y-4 p-6">
                                 <div>
                                     <Label>Cargo Type *</Label>
                                     <Select value={form.data.cargo_type_id} onValueChange={(v) => form.setData('cargo_type_id', v)}>
@@ -55,18 +51,10 @@ export default function FreightCargo({ post, cargoTypes, truckTypes }: Props) {
                                 <div>
                                     <Label>Cargo Description *</Label>
                                     <Textarea value={form.data.cargo_description} onChange={(e) => form.setData('cargo_description', e.target.value)} placeholder="e.g., 20 tons teff in 40kg bags, palletized, fragile" rows={4} className="mt-1" />
-                                    <p className="text-xs text-muted-foreground mt-1">Detailed description helps transporters prepare.</p>
-                                    {form.errors.cargo_description && <p className="text-xs text-destructive">{form.errors.cargo_description}</p>}
+                                    {form.errors.cargo_description && <p className="text-xs text-destructive mt-1">{form.errors.cargo_description}</p>}
                                 </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2 text-base"><Truck className="size-4" /> Truck Requirements</CardTitle>
-                                <CardDescription>Specify truck type and count for this load.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
+                            </div>
+                            <div className="space-y-4 border-t p-6 md:border-l md:border-t-0">
                                 <div>
                                     <Label>Required Truck Type *</Label>
                                     <Select value={form.data.required_truck_type_id} onValueChange={(v) => form.setData('required_truck_type_id', v)}>
@@ -89,11 +77,11 @@ export default function FreightCargo({ post, cargoTypes, truckTypes }: Props) {
                                     </div>
                                     {form.errors.truck_count && <p className="text-xs text-destructive mt-1">{form.errors.truck_count}</p>}
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button type="submit" disabled={form.processing} size="lg">Continue →</Button>
+                                <div className="pt-2">
+                                    <Button type="submit" disabled={form.processing} className="w-full">Continue →</Button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </FreightWizardShell>
