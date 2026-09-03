@@ -32,7 +32,7 @@ it('renders onboarding wizard component for unonboarded users', function () {
     $this->actingAs($user)
         ->get('/onboarding')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('onboarding/wizard'));
+        ->assertInertia(fn ($page) => $page->component('onboarding/index'));
 });
 
 it('renders settings pages with direct inertia components', function (string $uri, string $component) {

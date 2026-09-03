@@ -29,7 +29,7 @@ class OnboardingController extends Controller
         }
 
         // Legacy workspace onboarded check — keep for BC, but also check new public profile
-        if ($user->isProfileOnboarded()) {
+        if ($user->onboarded_at !== null || $user->isProfileOnboarded()) {
             return redirect()->route('dashboard');
         }
 
@@ -82,7 +82,7 @@ class OnboardingController extends Controller
     {
         $user = $request->user();
 
-        if ($user && $user->isProfileOnboarded()) {
+        if ($user && ($user->onboarded_at !== null || $user->isProfileOnboarded())) {
             return redirect()->route('dashboard');
         }
 
@@ -117,7 +117,7 @@ class OnboardingController extends Controller
     {
         $user = $request->user();
 
-        if ($user && $user->isProfileOnboarded()) {
+        if ($user && ($user->onboarded_at !== null || $user->isProfileOnboarded())) {
             return redirect()->route('dashboard');
         }
 
@@ -151,7 +151,7 @@ class OnboardingController extends Controller
     {
         $user = $request->user();
 
-        if ($user && $user->isProfileOnboarded()) {
+        if ($user && ($user->onboarded_at !== null || $user->isProfileOnboarded())) {
             return redirect()->route('dashboard');
         }
 

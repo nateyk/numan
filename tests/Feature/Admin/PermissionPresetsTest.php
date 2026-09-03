@@ -197,6 +197,9 @@ describe('PermissionPreset Model', function () {
             'manage_billing',
             'manage_webhooks',
             'view_activity_logs',
+            'manage_transporters',
+            'view_transporters',
+            'manage_reference_data',
         ]);
     });
 });

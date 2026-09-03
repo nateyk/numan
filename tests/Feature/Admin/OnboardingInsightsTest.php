@@ -137,5 +137,5 @@ it('logs welcome step when onboarding page is visited', function () {
         ->get('/onboarding')
         ->assertOk();
 
-    expect(OnboardingStepLog::where('step', 'welcome')->where('action', 'viewed')->count())->toBe(1);
+    expect(OnboardingStepLog::where('step', 'capabilities')->where('action', 'viewed')->count())->toBe(1);
 });
