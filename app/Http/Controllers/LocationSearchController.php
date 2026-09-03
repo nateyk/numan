@@ -23,9 +23,10 @@ class LocationSearchController extends Controller
         $results = Location::query()
             ->active()
             ->search($term)
+            ->orderByDesc('is_major_town')
             ->orderBy('name')
             ->limit(15)
-            ->get(['id', 'name', 'region_name', 'slug', 'type', 'latitude', 'longitude']);
+            ->get(['id', 'name', 'region_name', 'slug', 'type', 'latitude', 'longitude', 'population', 'elevation', 'wereda', 'zone', 'is_major_town']);
 
         return response()->json(['locations' => $results]);
     }

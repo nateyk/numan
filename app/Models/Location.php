@@ -21,6 +21,11 @@ class Location extends Model
         'latitude',
         'longitude',
         'is_active',
+        'population',
+        'elevation',
+        'wereda',
+        'zone',
+        'is_major_town',
     ];
 
     protected function casts(): array
@@ -29,6 +34,7 @@ class Location extends Model
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'is_active' => 'boolean',
+            'is_major_town' => 'boolean',
         ];
     }
 
@@ -53,8 +59,17 @@ class Location extends Model
 
         return $query->where(function (Builder $q) use ($term): void {
             $q->where('name', 'like', "%{$term}%")
-                ->orWhere('region_name', 'like', "%{$term}%");
+                ->orWhere('region_name', 'like', "%{$term}%")
+                ->orWhere('wereda', 'like', "%{$term}%");
         });
+    }
+
+    /**
+     * @param  Builder<Location>  $query
+     */
+    public function scopeMajorTowns(Builder $query): Builder
+    {
+        return $query->where('is_major_town', true);
     }
 
     public function getDisplayNameAttribute(): string

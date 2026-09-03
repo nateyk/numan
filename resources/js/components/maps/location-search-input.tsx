@@ -12,11 +12,18 @@ interface Location {
     type: string;
     latitude: string | null;
     longitude: string | null;
+    population?: number | null;
+    elevation?: number | null;
+    wereda?: string | null;
+    zone?: string | null;
+    is_major_town?: boolean;
 }
 
 interface LocationSearchInputProps {
     value?: number;
+    initialName?: string;
     onChange?: (id: number) => void;
+    onSelectLocation?: (loc: Location | null) => void;
     placeholder?: string;
     className?: string;
     debounceMs?: number;
@@ -24,12 +31,14 @@ interface LocationSearchInputProps {
 
 export default function LocationSearchInput({
     value,
+    initialName,
     onChange,
+    onSelectLocation,
     placeholder = 'Search locations…',
     className,
     debounceMs = 300,
 }: LocationSearchInputProps) {
-    const [query, setQuery] = useState('');
+    const [query, setQuery] = useState(initialName ?? '');
     const [results, setResults] = useState<Location[]>([]);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -84,6 +93,7 @@ export default function LocationSearchInput({
         setOpen(false);
         setResults([]);
         onChange?.(loc.id);
+        onSelectLocation?.(loc);
     };
 
     const clear = () => {
@@ -91,6 +101,7 @@ export default function LocationSearchInput({
         setResults([]);
         setOpen(false);
         onChange?.(0);
+        onSelectLocation?.(null);
     };
 
     return (
@@ -129,12 +140,22 @@ export default function LocationSearchInput({
                                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
                             >
                                 <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
-                                <div>
-                                    <span className="font-medium">{loc.name}</span>
-                                    <span className="mx-1 text-muted-foreground">·</span>
-                                    <span className="text-muted-foreground">{loc.region_name}</span>
-                                    <span className="mx-1 text-muted-foreground">·</span>
-                                    <span className="text-xs text-muted-foreground capitalize">{loc.type}</span>
+                                <div className="flex-1">
+                                    <div>
+                                        <span className="font-medium">{loc.name}</span>
+                                        <span className="mx-1 text-muted-foreground">·</span>
+                                        <span className="text-muted-foreground">{loc.region_name}</span>
+                                        <span className="mx-1 text-muted-foreground">·</span>
+                                        <span className="text-xs text-muted-foreground capitalize">{loc.type}</span>
+                                        {loc.is_major_town && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">Major Town</span>}
+                                    </div>
+                                    {(loc.population || loc.elevation || loc.wereda) && (
+                                        <div className="mt-0.5 flex gap-2 text-xs text-muted-foreground">
+                                            {loc.population && <span>{loc.population.toLocaleString()} inh.</span>}
+                                            {loc.elevation && <span>{loc.elevation} m</span>}
+                                            {loc.wereda && <span>{loc.wereda}</span>}
+                                        </div>
+                                    )}
                                 </div>
                             </button>
                         ))

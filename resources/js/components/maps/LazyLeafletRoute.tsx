@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState } from 'react';
 
@@ -8,14 +8,42 @@ interface Props {
     toLat: number;
     toLng: number;
     geometry?: { type?: string; coordinates?: number[][] } | null;
+    onMapClick?: (lat: number, lng: number) => void;
+    selectable?: 'origin' | 'destination' | null;
 }
 
-export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geometry: initialGeometry }: Props) {
+function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
+    useMapEvents({
+        click(e) {
+            onClick?.(e.latlng.lat, e.latlng.lng);
+        },
+    });
+    return null;
+}
+
+function FitBounds({ fromLat, fromLng, toLat, toLng }: { fromLat: number; fromLng: number; toLat: number; toLng: number }) {
+    const map = useMap();
+    useEffect(() => {
+        const bounds = [
+            [fromLat, fromLng],
+            [toLat, toLng],
+        ] as [[number, number], [number, number]];
+        map.fitBounds(bounds, { padding: [40, 40] });
+    }, [fromLat, fromLng, toLat, toLng, map]);
+    return null;
+}
+
+export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geometry: initialGeometry, onMapClick }: Props) {
     const [geometry, setGeometry] = useState(initialGeometry ?? null);
     const [loading, setLoading] = useState(!initialGeometry);
 
     useEffect(() => {
-        if (initialGeometry) return;
+        setGeometry(initialGeometry ?? null);
+        if (initialGeometry) {
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
         // Fetch OSRM route geometry from backend if not provided
         fetch('/freight/routes/preview', {
             method: 'POST',
@@ -54,17 +82,19 @@ export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geome
                 attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <Marker position={[fromLat, fromLng]}>
-                <Popup>Origin</Popup>
+            <Marker position={[fromLat, fromLng]} draggable={!!onMapClick}>
+                <Popup>Origin — {fromLat.toFixed(4)}, {fromLng.toFixed(4)}</Popup>
             </Marker>
-            <Marker position={[toLat, toLng]}>
-                <Popup>Destination</Popup>
+            <Marker position={[toLat, toLng]} draggable={!!onMapClick}>
+                <Popup>Destination — {toLat.toFixed(4)}, {toLng.toFixed(4)}</Popup>
             </Marker>
             <Polyline
                 positions={polylinePositions}
                 color="#2563eb"
                 weight={4}
             />
+            <FitBounds fromLat={fromLat} fromLng={fromLng} toLat={toLat} toLng={toLng} />
+            <MapClickHandler onClick={onMapClick} />
         </MapContainer>
     );
 }

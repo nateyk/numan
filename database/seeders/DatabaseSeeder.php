@@ -41,6 +41,7 @@ class DatabaseSeeder extends Seeder
     {
         // Seed Ethiopian reference data first — required for profiles and transporter
         $this->call(LocationSeeder::class);
+        $this->call(EthiopiaMajorTownsSeeder::class);
         $this->call(CargoTypeSeeder::class);
         $this->call(TruckTypeSeeder::class);
 
