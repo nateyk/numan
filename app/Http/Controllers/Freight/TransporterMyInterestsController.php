@@ -17,13 +17,27 @@ class TransporterMyInterestsController extends Controller
 {
     public function index(Request $request): Response
     {
-        $interests = FreightInterest::where('user_id', $request->user()->id)
-            ->with(['freightPost.originLocation', 'freightPost.destinationLocation'])
-            ->latest()
-            ->paginate(12);
+        $sort = $request->query('sort', 'latest');
+
+        $query = FreightInterest::where('user_id', $request->user()->id)
+            ->with(['freightPost.originLocation', 'freightPost.destinationLocation']);
+
+        switch ($sort) {
+            case 'status':
+                $query->orderBy('status');
+                break;
+            case 'oldest':
+                $query->oldest();
+                break;
+            default:
+                $query->latest();
+        }
+
+        $interests = $query->paginate(12)->withQueryString();
 
         return Inertia::render('freight/my-interests', [
             'interests' => $interests,
+            'sort' => $sort,
         ]);
     }
 

@@ -29,6 +29,14 @@ class FreightInterestController extends Controller
             'user_id' => $user->id,
             'status' => FreightInterestStatus::Submitted->value,
             'message' => $request->input('message'),
+            'contact_name' => $request->input('contact_name'),
+            'contact_phone' => $request->input('contact_phone'),
+            'contact_email' => $request->input('contact_email'),
+            'bank_account_name' => $request->input('bank_account_name'),
+            'bank_name' => $request->input('bank_name'),
+            'bank_account_number' => $request->input('bank_account_number'),
+            'bank_iban' => $request->input('bank_iban'),
+            'bank_swift' => $request->input('bank_swift'),
         ]);
 
         $interest->statusHistories()->create([

@@ -2,9 +2,11 @@
 
 use App\Enums\FreightInterestStatus;
 use App\Enums\FreightPostStatus;
+use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
+use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,7 +47,7 @@ function createApprovedTransporter(): User
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
     $workspace->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $workspace->id]);
-    \App\Models\TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
+    TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
     $user->setRelation('transporterProfile', $user->transporterProfile()->first());
 
     return $user->fresh();
@@ -56,9 +58,19 @@ it('transporter expresses interest and consignor shortlists', function () {
     $transporter = createApprovedTransporter();
     $post = FreightPost::factory()->create(['user_id' => $consignor->id, 'status' => FreightPostStatus::Active->value]);
 
-    $this->actingAs($transporter)->post("/my-freight/{$post->ulid}/interests", ['message' => 'I am interested'])->assertRedirect();
+    $this->actingAs($transporter)->post("/my-freight/{$post->ulid}/interests", [
+        'message' => 'I am interested',
+        'contact_name' => 'John Doe',
+        'contact_phone' => '+251911234567',
+        'contact_email' => 'john@example.com',
+        'bank_account_name' => 'John Doe',
+        'bank_name' => 'Commercial Bank of Ethiopia',
+        'bank_account_number' => '1000123456789',
+        'bank_iban' => 'ET123456789012345678901',
+        'bank_swift' => 'CBEETAA',
+    ])->assertRedirect();
 
-    $interest = \App\Models\FreightInterest::first();
+    $interest = FreightInterest::first();
     expect($interest)->not->toBeNull()
         ->and($interest->status)->toBe(FreightInterestStatus::Submitted->value);
 
@@ -70,7 +82,17 @@ it('prevents self-interest', function () {
     $consignor = createConsignor();
     $post = FreightPost::factory()->create(['user_id' => $consignor->id, 'status' => FreightPostStatus::Active->value]);
 
-    $this->actingAs($consignor)->post("/my-freight/{$post->ulid}/interests", ['message' => 'self'])->assertForbidden();
+    $this->actingAs($consignor)->post("/my-freight/{$post->ulid}/interests", [
+        'message' => 'self',
+        'contact_name' => 'John Doe',
+        'contact_phone' => '+251911234567',
+        'contact_email' => 'john@example.com',
+        'bank_account_name' => 'John Doe',
+        'bank_name' => 'Commercial Bank of Ethiopia',
+        'bank_account_number' => '1000123456789',
+        'bank_iban' => 'ET123456789012345678901',
+        'bank_swift' => 'CBEETAA',
+    ])->assertForbidden();
 });
 
 it('allows transporter to withdraw before accept', function () {
@@ -78,8 +100,18 @@ it('allows transporter to withdraw before accept', function () {
     $transporter = createApprovedTransporter();
     $post = FreightPost::factory()->create(['user_id' => $consignor->id, 'status' => FreightPostStatus::Active->value]);
 
-    $this->actingAs($transporter)->post("/my-freight/{$post->ulid}/interests")->assertRedirect();
-    $interest = \App\Models\FreightInterest::first();
+    $this->actingAs($transporter)->post("/my-freight/{$post->ulid}/interests", [
+        'message' => 'I am interested',
+        'contact_name' => 'John Doe',
+        'contact_phone' => '+251911234567',
+        'contact_email' => 'john@example.com',
+        'bank_account_name' => 'John Doe',
+        'bank_name' => 'Commercial Bank of Ethiopia',
+        'bank_account_number' => '1000123456789',
+        'bank_iban' => 'ET123456789012345678901',
+        'bank_swift' => 'CBEETAA',
+    ])->assertRedirect();
+    $interest = FreightInterest::first();
 
     $this->actingAs($transporter)->post("/interests/{$interest->id}/withdraw")->assertRedirect();
     expect($interest->fresh()->status)->toBe(FreightInterestStatus::Withdrawn->value);

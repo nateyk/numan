@@ -8,6 +8,14 @@ interface Interest {
     status: string;
     message: string | null;
     user: { name: string };
+    contact_name: string | null;
+    contact_phone: string | null;
+    contact_email: string | null;
+    bank_account_name: string | null;
+    bank_name: string | null;
+    bank_account_number: string | null;
+    bank_iban: string | null;
+    bank_swift: string | null;
 }
 
 interface Props {
@@ -30,6 +38,19 @@ export default function FreightInterests({ interests, post }: Props) {
                                 <div>
                                     <div className="font-medium">{i.user.name}</div>
                                     <div className="text-sm text-muted-foreground">{i.message ?? '—'}</div>
+                                    {(i.status === 'shortlisted' || i.status === 'selected') && (
+                                        <div className="mt-3 space-y-1 border-t pt-3">
+                                            <div className="text-xs font-medium text-muted-foreground">Contact & Banking Details</div>
+                                            <div className="text-sm">
+                                                <div className="font-medium">{i.contact_name}</div>
+                                                <div className="text-muted-foreground">{i.contact_phone} • {i.contact_email}</div>
+                                                <div className="mt-1 font-medium">{i.bank_account_name}</div>
+                                                <div className="text-muted-foreground">{i.bank_name} • {i.bank_account_number}</div>
+                                                {i.bank_iban && <div className="text-muted-foreground text-xs">IBAN: {i.bank_iban}</div>}
+                                                {i.bank_swift && <div className="text-muted-foreground text-xs">SWIFT: {i.bank_swift}</div>}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Badge>{i.status}</Badge>

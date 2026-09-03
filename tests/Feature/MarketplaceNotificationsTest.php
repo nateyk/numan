@@ -63,7 +63,17 @@ it('sends notification when interest is submitted', function () {
     $transporter = createApprovedTransporterForNotification();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
 
-    $this->actingAs($transporter)->post("/my-freight/{$post->ulid}/interests", ['message' => 'Test']);
+    $this->actingAs($transporter)->post("/my-freight/{$post->ulid}/interests", [
+        'message' => 'Test',
+        'contact_name' => 'John Doe',
+        'contact_phone' => '+251911234567',
+        'contact_email' => 'john@example.com',
+        'bank_account_name' => 'John Doe',
+        'bank_name' => 'Commercial Bank of Ethiopia',
+        'bank_account_number' => '1000123456789',
+        'bank_iban' => 'ET123456789012345678901',
+        'bank_swift' => 'CBEETAA',
+    ]);
 
     Notification::assertSentTo($consignor, FreightInterestSubmitted::class, function ($notification) use ($post, $transporter) {
         return $notification->post->ulid === $post->ulid

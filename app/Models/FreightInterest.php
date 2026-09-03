@@ -21,6 +21,14 @@ class FreightInterest extends Model
         'status',
         'message',
         'accepted_at',
+        'contact_name',
+        'contact_phone',
+        'contact_email',
+        'bank_account_name',
+        'bank_name',
+        'bank_account_number',
+        'bank_iban',
+        'bank_swift',
     ];
 
     protected function casts(): array
