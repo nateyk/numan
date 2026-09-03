@@ -224,8 +224,18 @@ export default function DiscoverIndex({ freight, filters, canRegister = true }: 
                                                     <Button asChild className="flex-1 h-8 px-3 text-xs">
                                                         <Link href={`/my-freight/${f.ulid}`}>View Details</Link>
                                                     </Button>
-                                                    <Button variant="outline" asChild className="flex-1 h-8 px-3 text-xs">
-                                                        <Link href={auth?.user ? `/my-freight/${f.ulid}/interests` : '/login'}>Express Interest</Link>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="flex-1 h-8 px-3 text-xs"
+                                                        onClick={() => {
+                                                            if (!auth?.user) {
+                                                                router.visit('/login');
+                                                                return;
+                                                            }
+                                                            router.post(`/my-freight/${f.ulid}/interests`, { message: '' }, { preserveScroll: true });
+                                                        }}
+                                                    >
+                                                        Express Interest
                                                     </Button>
                                                 </div>
                                             </CardFooter>
