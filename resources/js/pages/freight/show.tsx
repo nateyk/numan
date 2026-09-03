@@ -25,11 +25,12 @@ interface Props {
         origin_exact_lng: string | null;
         destination_exact_lat: string | null;
         destination_exact_lng: string | null;
-        originLocation?: { id: number; name: string; region_name: string; latitude?: string; longitude?: string } | null;
-        destinationLocation?: { id: number; name: string; region_name: string; latitude?: string; longitude?: string } | null;
-        cargoType?: { name: string } | null;
-        truckType?: { name: string } | null;
+        originLocation?: { id: number; name: string; region_name: string } | null;
+        destinationLocation?: { id: number; name: string; region_name: string } | null;
+        origin_location?: { id: number; name: string; region_name: string } | null;
+        destination_location?: { id: number; name: string; region_name: string } | null;
         routeSnapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null;
+        route_snapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null;
         user?: { id: number; name: string; email: string; avatar_url?: string | null } | null;
         created_at?: string | null;
     };
@@ -40,6 +41,13 @@ interface Props {
 
 export default function FreightShow({ post, hasInterest, interestStatus, canRegister = true }: Props) {
     const { auth } = usePage<SharedData>().props;
+
+    // Handle both camelCase and snake_case from backend (Eloquent toArray uses snake_case)
+    const originLocation = (post as unknown as Record<string, unknown>).originLocation as { id: number; name: string; region_name: string } | null | undefined ?? (post as unknown as Record<string, unknown>).origin_location as { id: number; name: string; region_name: string } | null | undefined;
+    const destinationLocation = (post as unknown as Record<string, unknown>).destinationLocation as { id: number; name: string; region_name: string } | null | undefined ?? (post as unknown as Record<string, unknown>).destination_location as { id: number; name: string; region_name: string } | null | undefined;
+    const cargoType = ((post as unknown as Record<string, unknown>).cargoType ?? (post as unknown as Record<string, unknown>).cargo_type) as { name: string } | null | undefined;
+    const truckType = ((post as unknown as Record<string, unknown>).truckType ?? (post as unknown as Record<string, unknown>).truck_type) as { name: string } | null | undefined;
+    const routeSnapshot = ((post as unknown as Record<string, unknown>).routeSnapshot ?? (post as unknown as Record<string, unknown>).route_snapshot) as { distance_meters: number; duration_seconds: number; geometry: unknown } | null | undefined;
 
     const handleExpressInterest = () => {
         if (!auth?.user) {
@@ -53,7 +61,7 @@ export default function FreightShow({ post, hasInterest, interestStatus, canRegi
 
     return (
         <>
-            <Head title={`${post.originLocation?.name ?? 'Freight'} → ${post.destinationLocation?.name ?? ''} — NumanFreight`} />
+            <Head title={`${originLocation?.name ?? 'Freight'} → ${destinationLocation?.name ?? ''} — NumanFreight`} />
             <div className="min-h-screen bg-background text-foreground">
                 <LandingHeader canRegister={canRegister} />
                 <main>
@@ -73,27 +81,27 @@ export default function FreightShow({ post, hasInterest, interestStatus, canRegi
                                 <div className="lg:col-span-7 space-y-4">
                                     <div className="flex items-center gap-2">
                                         <Badge variant={post.status === 'active' ? 'default' : 'secondary'} className="capitalize">{post.status}</Badge>
-                                        {post.cargoType?.name && <Badge variant="outline">{post.cargoType.name}</Badge>}
+                                        {cargoType?.name && <Badge variant="outline">{cargoType.name}</Badge>}
                                         <span className="text-xs text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}</span>
                                     </div>
                                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
                                         <MapPin className="size-7 text-primary" />
-                                        {post.originLocation?.name ?? 'Origin'} <ArrowRight className="size-5 text-muted-foreground" /> {post.destinationLocation?.name ?? 'Destination'}
+                                        {originLocation?.name ?? 'Origin'} <ArrowRight className="size-5 text-muted-foreground" /> {destinationLocation?.name ?? 'Destination'}
                                     </h1>
                                     <p className="text-muted-foreground">
-                                        {post.originLocation?.region_name ?? ''} → {post.destinationLocation?.region_name ?? ''} • {post.truckType?.name ?? 'Any truck'} {post.truck_count ? `×${post.truck_count}` : ''} • {post.cargoType?.name ?? 'General cargo'}
+                                        {originLocation?.region_name ?? ''} → {destinationLocation?.region_name ?? ''} • {truckType?.name ?? 'Any truck'} {post.truck_count ? `×${post.truck_count}` : ''} • {cargoType?.name ?? 'General cargo'}
                                     </p>
                                     <RoutePreviewMap
                                         fromLat={post.origin_exact_lat ? Number(post.origin_exact_lat) : null}
                                         fromLng={post.origin_exact_lng ? Number(post.origin_exact_lng) : null}
                                         toLat={post.destination_exact_lat ? Number(post.destination_exact_lat) : null}
                                         toLng={post.destination_exact_lng ? Number(post.destination_exact_lng) : null}
-                                        geometry={post.routeSnapshot?.geometry}
+                                        geometry={routeSnapshot?.geometry}
                                         className="h-[380px]"
                                     />
-                                    {post.routeSnapshot && (
+                                    {routeSnapshot && (
                                         <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                            <Route className="size-4" /> {(post.routeSnapshot.distance_meters / 1000).toFixed(1)} km • {Math.round(post.routeSnapshot.duration_seconds / 60)} min • OSRM routed
+                                            <Route className="size-4" /> {(routeSnapshot.distance_meters / 1000).toFixed(1)} km • {Math.round(routeSnapshot.duration_seconds / 60)} min • OSRM routed
                                         </p>
                                     )}
                                 </div>
@@ -122,8 +130,8 @@ export default function FreightShow({ post, hasInterest, interestStatus, canRegi
                                             </div>
                                             <Separator />
                                             <div className="space-y-2 text-sm">
-                                                <p className="flex items-center gap-2"><Package className="size-4 text-muted-foreground" /> <span className="font-medium">{post.cargoType?.name ?? 'General Cargo'}</span> — {post.cargo_description ?? 'No description'}</p>
-                                                <p className="flex items-center gap-2"><Truck className="size-4 text-muted-foreground" /> {post.truckType?.name ?? 'Any truck'} {post.truck_count ? `×${post.truck_count}` : ''}</p>
+                                                <p className="flex items-center gap-2"><Package className="size-4 text-muted-foreground" /> <span className="font-medium">{cargoType?.name ?? 'General Cargo'}</span> — {post.cargo_description ?? 'No description'}</p>
+                                                <p className="flex items-center gap-2"><Truck className="size-4 text-muted-foreground" /> {truckType?.name ?? 'Any truck'} {post.truck_count ? `×${post.truck_count}` : ''}</p>
                                                 <p className="flex items-center gap-2"><Calendar className="size-4 text-muted-foreground" /> Pickup: {post.pickup_date ? String(post.pickup_date).slice(0, 10) : 'Flexible'} {post.pickup_time ? String(post.pickup_time).slice(0,5) : ''} {post.pickup_date_flexibility_days ? `±${post.pickup_date_flexibility_days}d` : ''}</p>
                                                 <p className="flex items-center gap-2"><Clock className="size-4 text-muted-foreground" /> Schedule: {post.schedule_type ?? 'One-time'}</p>
                                             </div>
@@ -149,11 +157,11 @@ export default function FreightShow({ post, hasInterest, interestStatus, canRegi
                                     <Card>
                                         <CardHeader className="pb-3"><CardTitle className="text-base">Freight Details</CardTitle></CardHeader>
                                         <CardContent className="space-y-2 text-sm">
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Origin</span><span className="font-medium">{post.originLocation?.name ?? '—'} {post.origin_exact_lat ? `(${Number(post.origin_exact_lat).toFixed(4)}, ${Number(post.origin_exact_lng).toFixed(4)})` : ''}</span></div>
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Destination</span><span className="font-medium">{post.destinationLocation?.name ?? '—'} {post.destination_exact_lat ? `(${Number(post.destination_exact_lat).toFixed(4)}, ${Number(post.destination_exact_lng).toFixed(4)})` : ''}</span></div>
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Origin</span><span className="font-medium">{originLocation?.name ?? '—'} {post.origin_exact_lat ? `(${Number(post.origin_exact_lat).toFixed(4)}, ${Number(post.origin_exact_lng).toFixed(4)})` : ''}</span></div>
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Destination</span><span className="font-medium">{destinationLocation?.name ?? '—'} {post.destination_exact_lat ? `(${Number(post.destination_exact_lat).toFixed(4)}, ${Number(post.destination_exact_lng).toFixed(4)})` : ''}</span></div>
                                             <Separator />
                                             <div className="flex justify-between"><span className="text-muted-foreground">Cargo</span><span>{post.cargo_description ?? '—'}</span></div>
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Truck</span><span>{post.truckType?.name ?? '—'} {post.truck_count ? `×${post.truck_count}` : ''}</span></div>
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Truck</span><span>{truckType?.name ?? '—'} {post.truck_count ? `×${post.truck_count}` : ''}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant="outline" className="capitalize">{post.status}</Badge></div>
                                         </CardContent>
                                     </Card>

@@ -20,9 +20,14 @@ interface Freight {
     truck_count?: number | null;
     originLocation?: { id: number; name: string; region_name: string };
     destinationLocation?: { id: number; name: string; region_name: string };
+    origin_location?: { id: number; name: string; region_name: string };
+    destination_location?: { id: number; name: string; region_name: string };
     cargoType?: { name: string };
     truckType?: { name: string };
+    cargo_type?: { name: string };
+    truck_type?: { name: string };
     routeSnapshot?: { distance_meters: number; duration_seconds: number } | null;
+    route_snapshot?: { distance_meters: number; duration_seconds: number } | null;
     user?: { id: number; name: string; email: string; avatar_url?: string | null };
 }
 
@@ -177,7 +182,13 @@ export default function DiscoverIndex({ freight, filters, canRegister = true }: 
                                 </Card>
                             ) : (
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:gap-6 xl:grid-cols-4">
-                                    {freight.data.map((f) => (
+                                    {freight.data.map((f) => {
+                                        const origin = (f as unknown as Record<string, unknown>).originLocation as Freight['originLocation'] ?? (f as unknown as Record<string, unknown>).origin_location as Freight['originLocation'];
+                                        const destination = (f as unknown as Record<string, unknown>).destinationLocation as Freight['destinationLocation'] ?? (f as unknown as Record<string, unknown>).destination_location as Freight['destinationLocation'];
+                                        const cargoType = (f as unknown as Record<string, unknown>).cargoType as Freight['cargoType'] ?? (f as unknown as Record<string, unknown>).cargo_type as Freight['cargoType'];
+                                        const truckType = (f as unknown as Record<string, unknown>).truckType as Freight['truckType'] ?? (f as unknown as Record<string, unknown>).truck_type as Freight['truckType'];
+                                        const routeSnapshot = (f as unknown as Record<string, unknown>).routeSnapshot as Freight['routeSnapshot'] ?? (f as unknown as Record<string, unknown>).route_snapshot as Freight['routeSnapshot'];
+                                        return (
                                         <Card key={f.ulid} className="flex flex-col gap-4 overflow-hidden rounded-lg py-4 shadow-none transition-shadow duration-300 hover:shadow-md">
                                             {/* Poster header with route map placeholder */}
                                             <CardContent className="flex flex-1 flex-col gap-4 px-4">
@@ -185,12 +196,12 @@ export default function DiscoverIndex({ freight, filters, canRegister = true }: 
                                                     <Route className="size-8 text-muted-foreground" />
                                                     <div className="text-center">
                                                         <p className="font-medium text-sm flex items-center justify-center gap-1">
-                                                            <MapPin className="size-3 text-primary" /> {f.originLocation?.name ?? '—'} <ArrowRight className="size-3 text-muted-foreground" /> {f.destinationLocation?.name ?? '—'}
+                                                            <MapPin className="size-3 text-primary" /> {origin?.name ?? '—'} <ArrowRight className="size-3 text-muted-foreground" /> {destination?.name ?? '—'}
                                                         </p>
-                                                        <p className="text-xs text-muted-foreground">{f.originLocation?.region_name ?? ''} → {f.destinationLocation?.region_name ?? ''}</p>
-                                                        {f.routeSnapshot && (
+                                                        <p className="text-xs text-muted-foreground">{origin?.region_name ?? ''} → {destination?.region_name ?? ''}</p>
+                                                        {routeSnapshot && (
                                                             <p className="mt-1 text-xs font-medium text-primary">
-                                                                {(f.routeSnapshot.distance_meters / 1000).toFixed(0)} km • {Math.round(f.routeSnapshot.duration_seconds / 60)} min
+                                                                {(routeSnapshot.distance_meters / 1000).toFixed(0)} km • {Math.round(routeSnapshot.duration_seconds / 60)} min
                                                             </p>
                                                         )}
                                                     </div>
@@ -198,11 +209,11 @@ export default function DiscoverIndex({ freight, filters, canRegister = true }: 
                                                 <div className="flex flex-1 flex-col">
                                                     <h3 className="mb-1 font-medium text-balance flex items-center gap-2">
                                                         <Package className="size-4 text-muted-foreground" />
-                                                        {f.cargoType?.name ?? 'General Cargo'}
+                                                        {cargoType?.name ?? 'General Cargo'}
                                                     </h3>
                                                     <p className="text-muted-foreground line-clamp-2 text-sm">{f.cargo_description ?? 'No description — contact consignor for details.'}</p>
                                                     <div className="mt-3 flex flex-wrap gap-2">
-                                                        <Badge variant="secondary" className="text-xs"><Truck className="mr-1 size-3" />{f.truckType?.name ?? 'Any truck'} {f.truck_count ? `×${f.truck_count}` : ''}</Badge>
+                                                        <Badge variant="secondary" className="text-xs"><Truck className="mr-1 size-3" />{truckType?.name ?? 'Any truck'} {f.truck_count ? `×${f.truck_count}` : ''}</Badge>
                                                         <Badge variant="secondary" className="text-xs"><Calendar className="mr-1 size-3" />{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'}</Badge>
                                                     </div>
                                                 </div>
@@ -240,7 +251,8 @@ export default function DiscoverIndex({ freight, filters, canRegister = true }: 
                                                 </div>
                                             </CardFooter>
                                         </Card>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                             {freight.links && freight.links.length > 3 && (
