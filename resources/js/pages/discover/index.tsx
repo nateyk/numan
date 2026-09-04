@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Truck, Package, Calendar, MapPin, Route, ArrowRight, Search, SlidersHorizontal, ChevronDown, X } from 'lucide-react';
+import { Truck, Package, Calendar, MapPin, Route, ArrowRight, Search, SlidersHorizontal, ChevronDown, X, Weight, Banknote } from 'lucide-react';
 import { useState } from 'react';
 import LocationSearchInput from '@/components/maps/location-search-input';
 import type { SharedData } from '@/types';
@@ -222,18 +222,18 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                      <span className="ml-auto text-xs text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
                                                 </div>
                                                 <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
-                                                <div className="grid grid-cols-3 gap-3 text-xs">
-                                                    <div className="text-center">
-                                                        <p className="text-muted-foreground uppercase tracking-wide">Weight</p>
-                                                        <p className="font-semibold">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</p>
+                                                <div className="flex divide-x overflow-hidden rounded-lg border bg-muted/30 text-xs">
+                                                    <div className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2.5 text-center">
+                                                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><Weight className="size-3" /> Weight</span>
+                                                        <span className="font-semibold text-sm leading-none">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</span>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-muted-foreground uppercase tracking-wide">Tariff</p>
-                                                        <p className="font-semibold">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</p>
+                                                    <div className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2.5 text-center">
+                                                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><Banknote className="size-3" /> Tariff</span>
+                                                        <span className="font-semibold text-sm leading-none">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</span>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-muted-foreground uppercase tracking-wide">Trucks</p>
-                                                        <p className="font-semibold flex items-center justify-center gap-1"><Truck className="size-3" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</p>
+                                                    <div className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2.5 text-center">
+                                                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><Truck className="size-3" /> Trucks</span>
+                                                        <span className="font-semibold text-sm leading-none">{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</span>
                                                     </div>
                                                 </div>
                                             </div>
