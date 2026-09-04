@@ -215,10 +215,23 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                 </div>
                                             </div>
                                             <div className="px-4 pb-3 space-y-2.5">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="flex size-7 items-center justify-center rounded-md bg-primary/10"><Package className="size-3.5 text-primary" /></span>
-                                                    <span className="text-sm font-semibold">{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
-                                                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'}{(f as unknown as { pickup_time?: string }).pickup_time ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5)}` : ''}</span>
+                                                <div className="overflow-hidden rounded-lg border divide-y">
+                                                    <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><MapPin className="size-3.5" /> Origin</span>
+                                                        <span className="text-sm font-medium">{origin?.name ?? '—'}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><MapPin className="size-3.5" /> Destination</span>
+                                                        <span className="text-sm font-medium">{destination?.name ?? '—'}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><Package className="size-3.5" /> Item</span>
+                                                        <span className="text-sm font-medium">{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><Calendar className="size-3.5" /> Pickup</span>
+                                                        <span className="text-sm font-medium">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'}{(f as unknown as { pickup_time?: string }).pickup_time ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5)}` : ''}</span>
+                                                    </div>
                                                 </div>
                                                 <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{f.cargo_description ?? 'No description'}</p>
                                                 <div className="divide-y overflow-hidden rounded-lg border text-xs">
