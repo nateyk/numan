@@ -3,7 +3,6 @@ import { LandingFooter, LandingHeader } from '@/components/landing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -223,23 +222,19 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                      <span className="ml-auto text-xs text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
                                                 </div>
                                                 <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
-                                                <div className="overflow-hidden rounded-lg border">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                                                <TableHead className="h-7 px-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><span className="inline-flex items-center gap-1"><Weight className="size-3" /> Weight</span></TableHead>
-                                                                <TableHead className="h-7 px-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><span className="inline-flex items-center gap-1"><Banknote className="size-3" /> Tariff</span></TableHead>
-                                                                <TableHead className="h-7 px-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><span className="inline-flex items-center gap-1"><Truck className="size-3" /> Trucks</span></TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            <TableRow className="hover:bg-transparent">
-                                                                <TableCell className="px-2 py-2 text-center text-sm font-semibold">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</TableCell>
-                                                                <TableCell className="px-2 py-2 text-center text-sm font-semibold">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</TableCell>
-                                                                <TableCell className="px-2 py-2 text-center text-sm font-semibold">{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</TableCell>
-                                                            </TableRow>
-                                                        </TableBody>
-                                                    </Table>
+                                                <div className="flex divide-x overflow-hidden rounded-lg border bg-muted/30 text-xs">
+                                                    <div className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2.5 text-center">
+                                                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><Weight className="size-3" /> Weight</span>
+                                                        <span className="font-semibold text-sm leading-none">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</span>
+                                                    </div>
+                                                    <div className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2.5 text-center">
+                                                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><Banknote className="size-3" /> Tariff</span>
+                                                        <span className="font-semibold text-sm leading-none">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</span>
+                                                    </div>
+                                                    <div className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2.5 text-center">
+                                                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><Truck className="size-3" /> Trucks</span>
+                                                        <span className="font-semibold text-sm leading-none">{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2 p-4 pt-0">
