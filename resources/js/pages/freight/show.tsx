@@ -1,13 +1,18 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { LandingFooter, LandingHeader } from '@/components/landing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Truck, Package, Calendar, MapPin, Route, Clock, User, ShieldCheck, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Truck, Package, Calendar, MapPin, Route, Clock, User, ShieldCheck, ArrowLeft, ArrowRight, Users, Eye } from 'lucide-react';
 import RoutePreviewMap from '@/components/maps/RoutePreviewMap';
 import type { SharedData } from '@/types';
+import { useState } from 'react';
 
 interface Props {
     post: {
@@ -36,11 +41,13 @@ interface Props {
     };
     hasInterest?: boolean;
     interestStatus?: string | null;
+    interestsCount?: number | null;
     canRegister?: boolean;
 }
 
-export default function FreightShow({ post, hasInterest, interestStatus, canRegister = true }: Props) {
+export default function FreightShow({ post, hasInterest, interestStatus, interestsCount, canRegister = true }: Props) {
     const { auth } = usePage<SharedData>().props;
+    const [interestOpen, setInterestOpen] = useState(false);
 
     // Handle both camelCase and snake_case from backend (Eloquent toArray uses snake_case)
     const originLocation = (post as unknown as Record<string, unknown>).originLocation as { id: number; name: string; region_name: string } | null | undefined ?? (post as unknown as Record<string, unknown>).origin_location as { id: number; name: string; region_name: string } | null | undefined;
@@ -49,15 +56,38 @@ export default function FreightShow({ post, hasInterest, interestStatus, canRegi
     const truckType = ((post as unknown as Record<string, unknown>).truckType ?? (post as unknown as Record<string, unknown>).truck_type) as { name: string } | null | undefined;
     const routeSnapshot = ((post as unknown as Record<string, unknown>).routeSnapshot ?? (post as unknown as Record<string, unknown>).route_snapshot) as { distance_meters: number; duration_seconds: number; geometry: unknown } | null | undefined;
 
+    const isOwnPost = auth?.user?.id === post.user?.id;
+
+    const { data: interestData, setData: setInterestData, post: postInterest, processing: interestProcessing, errors: interestErrors, reset: resetInterest } = useForm({
+        message: '',
+        contact_name: auth?.user?.name ?? '',
+        contact_phone: '',
+        contact_email: auth?.user?.email ?? '',
+        bank_account_name: auth?.user?.name ?? '',
+        bank_name: '',
+        bank_account_number: '',
+        bank_iban: '',
+        bank_swift: '',
+    });
+
     const handleExpressInterest = () => {
         if (!auth?.user) {
             router.visit('/login');
             return;
         }
-        router.post(`/my-freight/${post.ulid}/interests`, { message: '' }, { preserveScroll: true });
+        setInterestOpen(true);
     };
 
-    const isOwnPost = auth?.user?.id === post.user?.id;
+    const submitInterest = (e: React.FormEvent) => {
+        e.preventDefault();
+        postInterest(`/my-freight/${post.ulid}/interests`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setInterestOpen(false);
+                resetInterest();
+            },
+        });
+    };
 
     return (
         <>
@@ -137,15 +167,97 @@ export default function FreightShow({ post, hasInterest, interestStatus, canRegi
                                             </div>
                                             <div className="pt-2 flex flex-col gap-2">
                                                 {isOwnPost ? (
-                                                    <Button variant="outline" asChild>
-                                                        <Link href={`/my-freight/${post.ulid}`}>Manage Your Post</Link>
-                                                    </Button>
+                                                    <>
+                                                        <Card className="bg-muted/30">
+                                                            <CardContent className="p-3 flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Users className="size-4 text-muted-foreground" />
+                                                                    <span className="text-sm font-medium">{interestsCount ?? 0} interested transporter{interestsCount === 1 ? '' : 's'}</span>
+                                                                </div>
+                                                                <Button size="sm" asChild>
+                                                                    <Link href={`/my-freight/${post.ulid}/interests`}><Eye className="mr-1 size-3" /> View Interests</Link>
+                                                                </Button>
+                                                            </CardContent>
+                                                        </Card>
+                                                        <Button variant="outline" asChild>
+                                                            <Link href={`/my-freight/${post.ulid}`}>Manage Your Post</Link>
+                                                        </Button>
+                                                    </>
                                                 ) : hasInterest ? (
-                                                    <Badge variant="secondary" className="justify-center py-2">Interest {interestStatus ?? 'submitted'} — awaiting consignor</Badge>
+                                                    <>
+                                                        <Badge variant="secondary" className="justify-center py-2">Interest {interestStatus ?? 'submitted'} — awaiting consignor</Badge>
+                                                        <Button variant="outline" asChild>
+                                                            <Link href="/my-interests"><Users className="mr-1 size-4" /> My Interests</Link>
+                                                        </Button>
+                                                    </>
                                                 ) : (
-                                                    <Button onClick={handleExpressInterest} className="w-full" size="lg">
-                                                        Express Interest
-                                                    </Button>
+                                                    <Dialog open={interestOpen} onOpenChange={setInterestOpen}>
+                                                        <Button onClick={handleExpressInterest} className="w-full" size="lg">
+                                                            Express Interest
+                                                        </Button>
+                                                        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                                                            <DialogHeader>
+                                                                <DialogTitle>Express Interest — {originLocation?.name ?? 'Freight'} → {destinationLocation?.name ?? ''}</DialogTitle>
+                                                                <DialogDescription>Provide your contact and banking details for the consignor to shortlist you. Verified consignor will see your info.</DialogDescription>
+                                                            </DialogHeader>
+                                                            <form onSubmit={submitInterest} className="space-y-4">
+                                                                <div>
+                                                                    <Label>Message (optional)</Label>
+                                                                    <Textarea value={interestData.message} onChange={(e) => setInterestData('message', e.target.value)} placeholder="Why are you interested? e.g., Available truck, experience on this route" rows={2} />
+                                                                </div>
+                                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                                    <div>
+                                                                        <Label>Contact Name *</Label>
+                                                                        <Input value={interestData.contact_name} onChange={(e) => setInterestData('contact_name', e.target.value)} placeholder="Your full name" />
+                                                                        {interestErrors.contact_name && <p className="text-xs text-destructive">{interestErrors.contact_name}</p>}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label>Phone *</Label>
+                                                                        <Input value={interestData.contact_phone} onChange={(e) => setInterestData('contact_phone', e.target.value)} placeholder="+251..." />
+                                                                        {interestErrors.contact_phone && <p className="text-xs text-destructive">{interestErrors.contact_phone}</p>}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <Label>Email *</Label>
+                                                                    <Input type="email" value={interestData.contact_email} onChange={(e) => setInterestData('contact_email', e.target.value)} placeholder="you@example.com" />
+                                                                    {interestErrors.contact_email && <p className="text-xs text-destructive">{interestErrors.contact_email}</p>}
+                                                                </div>
+                                                                <Separator />
+                                                                <p className="text-sm font-medium">Banking for Payment</p>
+                                                                <div>
+                                                                    <Label>Bank Account Name *</Label>
+                                                                    <Input value={interestData.bank_account_name} onChange={(e) => setInterestData('bank_account_name', e.target.value)} placeholder="Account holder name" />
+                                                                    {interestErrors.bank_account_name && <p className="text-xs text-destructive">{interestErrors.bank_account_name}</p>}
+                                                                </div>
+                                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                                    <div>
+                                                                        <Label>Bank Name *</Label>
+                                                                        <Input value={interestData.bank_name} onChange={(e) => setInterestData('bank_name', e.target.value)} placeholder="Commercial Bank of Ethiopia" />
+                                                                        {interestErrors.bank_name && <p className="text-xs text-destructive">{interestErrors.bank_name}</p>}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label>Account Number *</Label>
+                                                                        <Input value={interestData.bank_account_number} onChange={(e) => setInterestData('bank_account_number', e.target.value)} placeholder="1000..." />
+                                                                        {interestErrors.bank_account_number && <p className="text-xs text-destructive">{interestErrors.bank_account_number}</p>}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                                    <div>
+                                                                        <Label>IBAN</Label>
+                                                                        <Input value={interestData.bank_iban} onChange={(e) => setInterestData('bank_iban', e.target.value)} placeholder="ET..." />
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label>SWIFT</Label>
+                                                                        <Input value={interestData.bank_swift} onChange={(e) => setInterestData('bank_swift', e.target.value)} placeholder="CBEETAA" />
+                                                                    </div>
+                                                                </div>
+                                                                <DialogFooter>
+                                                                    <Button type="button" variant="outline" onClick={() => setInterestOpen(false)}>Cancel</Button>
+                                                                    <Button type="submit" disabled={interestProcessing}>Submit Interest</Button>
+                                                                </DialogFooter>
+                                                            </form>
+                                                        </DialogContent>
+                                                    </Dialog>
                                                 )}
                                                 <Button variant="ghost" asChild>
                                                     <Link href="/freight">Browse More Freight</Link>

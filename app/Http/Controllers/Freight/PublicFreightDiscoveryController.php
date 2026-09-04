@@ -58,11 +58,16 @@ class PublicFreightDiscoveryController extends Controller
         $user = auth()->user();
         $hasInterest = false;
         $interestStatus = null;
+        $interestsCount = 0;
         if ($user) {
             $interest = FreightInterest::where('freight_post_id', $post->id)->where('user_id', $user->id)->first();
             if ($interest) {
                 $hasInterest = true;
                 $interestStatus = $interest->status;
+            }
+            // For owner, provide interests count
+            if ($user->id === $post->user_id) {
+                $interestsCount = FreightInterest::where('freight_post_id', $post->id)->count();
             }
         }
 
@@ -70,6 +75,7 @@ class PublicFreightDiscoveryController extends Controller
             'post' => $post,
             'hasInterest' => $hasInterest,
             'interestStatus' => $interestStatus,
+            'interestsCount' => $interestsCount,
         ]);
     }
 }
