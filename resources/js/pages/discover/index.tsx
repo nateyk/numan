@@ -217,14 +217,6 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                             <div className="px-4 pb-3 space-y-2.5">
                                                 <div className="overflow-hidden rounded-lg border divide-y">
                                                     <div className="flex items-center justify-between px-3 py-2 text-xs">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><MapPin className="size-3.5" /> Origin</span>
-                                                        <span className="text-sm font-medium">{origin?.name ?? '—'}</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between px-3 py-2 text-xs">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><MapPin className="size-3.5" /> Destination</span>
-                                                        <span className="text-sm font-medium">{destination?.name ?? '—'}</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between px-3 py-2 text-xs">
                                                         <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><Package className="size-3.5" /> Item</span>
                                                         <span className="text-sm font-medium">{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
                                                     </div>
