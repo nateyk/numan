@@ -72,6 +72,6 @@ class FreightInterestController extends Controller
         // Notify consignor
         Notification::send($post->user, new FreightInterestSubmitted($interest, $post->load('user')));
 
-        return back()->with('success', 'Interest expressed.');
+        return redirect()->route('freight.public.show', ['ulid' => $post->ulid])->with('success', 'Interest expressed.');
     }
 }
