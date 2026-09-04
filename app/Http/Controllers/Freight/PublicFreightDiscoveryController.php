@@ -40,9 +40,25 @@ class PublicFreightDiscoveryController extends Controller
 
         $posts = $query->paginate(12)->withQueryString();
 
+        // For current user, map freight_post_id => interest {id, status} to show on cards
+        $userInterestMap = [];
+        $user = auth()->user();
+        if ($user) {
+            $ids = $posts->getCollection()->pluck('id')->toArray();
+            if (! empty($ids)) {
+                $userInterests = FreightInterest::where('user_id', $user->id)
+                    ->whereIn('freight_post_id', $ids)
+                    ->get(['id', 'freight_post_id', 'status']);
+                foreach ($userInterests as $interest) {
+                    $userInterestMap[$interest->freight_post_id] = ['id' => $interest->id, 'status' => $interest->status];
+                }
+            }
+        }
+
         return Inertia::render('discover/index', [
             'freight' => $posts,
             'filters' => $request->only(['origin', 'destination', 'cargo_type', 'truck_type', 'pickup_from', 'pickup_to']),
+            'userInterestMap' => $userInterestMap,
         ]);
     }
 

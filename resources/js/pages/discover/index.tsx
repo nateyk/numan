@@ -12,6 +12,7 @@ import LocationSearchInput from '@/components/maps/location-search-input';
 import type { SharedData } from '@/types';
 
 interface Freight {
+    id: number;
     ulid: string;
     status: string;
     cargo_description: string | null;
@@ -35,6 +36,7 @@ interface Props {
     freight: { data: Freight[]; links: Array<{ url: string | null; label: string; active: boolean }>; total: number; from: number | null; to: number | null };
     filters: Record<string, string>;
     canRegister?: boolean;
+    userInterestMap?: Record<number, { id: number; status: string }>;
 }
 
 const sortOptions = [
@@ -44,7 +46,7 @@ const sortOptions = [
     { id: 'pickup_asc', label: 'Pickup: Earliest' },
 ];
 
-export default function DiscoverIndex({ freight, filters, canRegister = true }: Props) {
+export default function DiscoverIndex({ freight, filters, canRegister = true, userInterestMap = {} }: Props) {
     const { auth } = usePage<SharedData>().props;
     const [searchQuery, setSearchQuery] = useState('');
     const [origin, setOrigin] = useState(filters.origin ?? '');
@@ -235,19 +237,41 @@ export default function DiscoverIndex({ freight, filters, canRegister = true }: 
                                                     <Button asChild className="flex-1 h-8 px-3 text-xs">
                                                         <Link href={`/freight/${f.ulid}`}>View Details</Link>
                                                     </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="flex-1 h-8 px-3 text-xs"
-                                                        onClick={() => {
-                                                            if (!auth?.user) {
-                                                                router.visit('/login');
-                                                                return;
-                                                            }
-                                                            router.post(`/my-freight/${f.ulid}/interests`, { message: '' }, { preserveScroll: true });
-                                                        }}
-                                                    >
-                                                        Express Interest
-                                                    </Button>
+                                                    {(() => {
+                                                        const isOwn = auth?.user?.id && f.user?.id === auth.user.id;
+                                                        if (isOwn) {
+                                                            return <Badge variant="secondary" className="flex-1 justify-center py-1.5 text-xs">Your Post</Badge>;
+                                                        }
+                                                        const interest = userInterestMap?.[f.id];
+                                                        if (interest) {
+                                                            const isClosed = interest.status === 'rejected' || interest.status === 'withdrawn';
+                                                            return (
+                                                                <>
+                                                                    <Badge variant={isClosed ? 'destructive' : 'secondary'} className="flex-1 justify-center py-1.5 text-xs capitalize">{interest.status}</Badge>
+                                                                    {!isClosed && (
+                                                                        <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => router.post(`/interests/${interest.id}/withdraw`, {}, { preserveScroll: true })}>
+                                                                            Leave
+                                                                        </Button>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <Button
+                                                                variant="outline"
+                                                                className="flex-1 h-8 px-3 text-xs"
+                                                                onClick={() => {
+                                                                    if (!auth?.user) {
+                                                                        router.visit('/login');
+                                                                        return;
+                                                                    }
+                                                                    router.post(`/my-freight/${f.ulid}/interests`, { message: '', contact_name: auth.user.name ?? '', contact_phone: '', contact_email: auth.user.email ?? '' }, { preserveScroll: true });
+                                                                }}
+                                                            >
+                                                                Express Interest
+                                                            </Button>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </CardFooter>
                                         </Card>
