@@ -21,51 +21,30 @@ export default function FreightWizardShell({ ulid, currentStep, completionScore 
 
     return (
         <div className="flex h-full flex-1 flex-col gap-4 p-4">
-            <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold tracking-tight">Create Freight Post</h1>
-                <p className="text-muted-foreground">Step {currentStep + 1} of {STEPS.length} — {STEPS[currentStep]?.label} • {STEPS[currentStep]?.desc}</p>
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {Math.round(progress)}% <Progress value={progress} className="h-1.5 w-20" />
+                </span>
             </div>
 
-            <div className="border-b pb-4">
-                <div className="flex items-center justify-between gap-2 overflow-x-auto">
-                    {STEPS.map((step, idx) => {
-                        const isCompleted = idx < currentStep;
-                        const isCurrent = idx === currentStep;
-                        return (
-                            <div key={step.label} className="flex flex-1 items-center gap-2">
-                                <Link
-                                    href={step.href(ulid)}
-                                    className="flex flex-1 items-center gap-3 rounded-lg border p-2 text-left transition-colors hover:bg-muted/50"
-                                    style={{
-                                        borderColor: isCurrent ? 'hsl(var(--primary))' : undefined,
-                                        backgroundColor: isCurrent ? 'hsl(var(--primary) / 0.06)' : isCompleted ? 'hsl(var(--muted))' : undefined,
-                                    }}
-                                >
-                                    <span
-                                        className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors ${isCompleted ? 'border-primary bg-primary text-primary-foreground' : isCurrent ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-muted-foreground/20 bg-background text-muted-foreground'}`}
-                                    >
-                                        {isCompleted ? <Check className="size-4" /> : idx + 1}
-                                    </span>
-                                    <span className="hidden min-w-0 flex-1 sm:block">
-                                        <span className={`block text-sm font-medium leading-none ${isCurrent ? 'text-foreground' : isCompleted ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{step.label}</span>
-                                        <span className="hidden text-xs text-muted-foreground lg:block">{step.desc}</span>
-                                    </span>
-                                    <span className="sm:hidden text-sm font-medium">{idx + 1}</span>
-                                </Link>
-                                {idx < STEPS.length - 1 && (
-                                    <span className={`hidden h-0.5 w-full max-w-8 shrink-0 rounded-full sm:block ${idx < currentStep ? 'bg-primary' : 'bg-border'}`} />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Step {currentStep + 1} of {STEPS.length}</span>
-                    <span className="flex items-center gap-2">
-                        {Math.round(progress)}% complete
-                        <Progress value={progress} className="h-1.5 w-24" />
-                    </span>
-                </div>
+            <div className="flex items-center gap-2 overflow-x-auto border-b pb-4">
+                {STEPS.map((step, idx) => {
+                    const isCompleted = idx < currentStep;
+                    const isCurrent = idx === currentStep;
+                    return (
+                        <div key={step.label} className="flex items-center gap-2">
+                            <Link
+                                href={step.href(ulid)}
+                                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap ${isCurrent ? 'bg-primary text-primary-foreground' : isCompleted ? 'bg-muted text-muted-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+                            >
+                                {isCompleted ? <Check className="size-3.5" /> : <span className="flex size-3.5 items-center justify-center rounded-full border text-xs">{idx + 1}</span>}
+                                {step.label}
+                            </Link>
+                            {idx < STEPS.length - 1 && <span className="text-muted-foreground">→</span>}
+                        </div>
+                    );
+                })}
             </div>
 
             <div>{children}</div>
