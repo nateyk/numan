@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\FreightPostStatus;
+use App\Services\FreightCompletionService;
+use Carbon\Carbon;
 use Database\Factories\FreightPostFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -102,6 +104,11 @@ class FreightPost extends Model
         return $this->hasMany(FreightPostModerationLog::class);
     }
 
+    public function interests(): HasMany
+    {
+        return $this->hasMany(FreightInterest::class);
+    }
+
     /**
      * @param  Builder<FreightPost>  $query
      */
@@ -132,7 +139,7 @@ class FreightPost extends Model
             return false;
         }
 
-        $pickup = $this->pickup_date instanceof \Carbon\Carbon ? $this->pickup_date : \Carbon\Carbon::parse($this->pickup_date);
+        $pickup = $this->pickup_date instanceof Carbon ? $this->pickup_date : Carbon::parse($this->pickup_date);
         $flex = (int) ($this->pickup_date_flexibility_days ?? 0);
         $expiresAt = $pickup->copy()->addDays($flex)->endOfDay();
 
@@ -175,6 +182,6 @@ class FreightPost extends Model
 
     public function completionScore(): int
     {
-        return app(\App\Services\FreightCompletionService::class)->score($this);
+        return app(FreightCompletionService::class)->score($this);
     }
 }

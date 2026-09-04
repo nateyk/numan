@@ -304,6 +304,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::match(['get', 'post'], '/freight/routes/preview', [RoutePreviewController::class, 'preview'])->name('freight.routes.preview');
 
     // Freight interests
+    Route::get('/my-freight/{ulid}/interests', [FreightInterestController::class, 'index'])->name('freight.interests.index');
     Route::post('/my-freight/{ulid}/interests', [FreightInterestController::class, 'store'])->name('freight.interests.store');
     Route::post('/interests/{interest}/withdraw', [TransporterMyInterestsController::class, 'withdraw'])->name('freight.interests.withdraw');
     Route::post('/interests/{interest}/shortlist', [FreightInterestStatusController::class, 'shortlist'])->name('freight.interests.shortlist');

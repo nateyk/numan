@@ -24,6 +24,7 @@ class FreightPostController extends Controller
         $query = FreightPost::query()
             ->ownedBy($request->user())
             ->with(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
+            ->withCount('interests')
             ->latest();
 
         if ($status !== 'all' && in_array($status, FreightPostStatus::values(), true)) {

@@ -10,10 +10,34 @@ use App\Models\FreightPost;
 use App\Notifications\FreightInterestSubmitted;
 use App\Policies\FreightInterestPolicy;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class FreightInterestController extends Controller
 {
+    public function index(string $ulid): Response
+    {
+        $post = FreightPost::where('ulid', $ulid)->firstOrFail();
+        Gate::authorize('view', $post);
+
+        // Only owner or superadmin can view interests for this freight
+        if (auth()->user()->id !== $post->user_id && ! auth()->user()->is_superadmin) {
+            abort(403);
+        }
+
+        $interests = FreightInterest::where('freight_post_id', $post->id)
+            ->with(['user'])
+            ->latest()
+            ->paginate(12);
+
+        return Inertia::render('freight/interests', [
+            'post' => $post,
+            'interests' => $interests,
+        ]);
+    }
+
     public function store(StoreFreightInterestRequest $request, string $ulid): RedirectResponse
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();

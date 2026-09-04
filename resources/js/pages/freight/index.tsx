@@ -26,6 +26,7 @@ interface Freight {
     truck_type?: { name: string } | null;
     pickup_date: string | null;
     completion_score: number;
+    interests_count?: number | null;
 }
 
 interface Props {
@@ -218,7 +219,7 @@ export default function FreightIndex({ posts, filters, counts }: Props) {
                                                                     {isDraft && <DropdownMenuItem asChild><Link href={`/my-freight/${p.ulid}/route`} className="cursor-pointer"><Pencil className="mr-2 size-4" /> Edit Route</Link></DropdownMenuItem>}
                                                                     {isDraft && <DropdownMenuItem asChild><Link href={`/my-freight/${p.ulid}/cargo`} className="cursor-pointer"><Package className="mr-2 size-4" /> Edit Cargo</Link></DropdownMenuItem>}
                                                                     {isDraft && <DropdownMenuItem asChild><Link href={`/my-freight/${p.ulid}/review`} className="cursor-pointer"><ExternalLink className="mr-2 size-4" /> Review & Submit</Link></DropdownMenuItem>}
-                                                                    {!isDraft && <DropdownMenuItem asChild><Link href={`/my-freight/${p.ulid}/route`} className="cursor-pointer"><Users className="mr-2 size-4" /> Interests</Link></DropdownMenuItem>}
+                                                                    {!isDraft && <DropdownMenuItem asChild><Link href={`/my-freight/${p.ulid}/interests`} className="cursor-pointer"><Users className="mr-2 size-4" /> Interests ({p.interests_count ?? ''})</Link></DropdownMenuItem>}
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem className="cursor-pointer text-destructive"><Trash2 className="mr-2 size-4" /> Delete (draft)</DropdownMenuItem>
                                                                 </DropdownMenuContent>
