@@ -225,7 +225,6 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                         <span className="text-sm font-medium">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'}{(f as unknown as { pickup_time?: string }).pickup_time ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5)}` : ''}</span>
                                                     </div>
                                                 </div>
-                                                <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{f.cargo_description ?? 'No description'}</p>
                                                 <div className="divide-y overflow-hidden rounded-lg border text-xs">
                                                     <div className="flex items-center justify-between px-3 py-2">
                                                         <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><Weight className="size-3.5" /> Weight</span>
