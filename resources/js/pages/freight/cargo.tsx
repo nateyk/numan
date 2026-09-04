@@ -10,7 +10,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Package, Truck } from 'lucide-react';
 
 interface Props {
-    post: { ulid: string; cargo_type_id: number | null; cargo_description: string | null; required_truck_type_id: number | null; truck_count: number | null };
+    post: {
+        ulid: string;
+        cargo_type_id: number | null;
+        cargo_description: string | null;
+        item_name: string | null;
+        actual_weight: string | null;
+        weight_unit: string | null;
+        tariff_amount: string | null;
+        tariff_currency: string | null;
+        insurance_required: boolean | null;
+        insurance_value: string | null;
+        depreciation_rate: string | null;
+        required_truck_type_id: number | null;
+        truck_count: number | null;
+    };
     cargoTypes: Array<{ id: number; name: string; slug: string }>;
     truckTypes: Array<{ id: number; name: string; slug: string }>;
 }
@@ -19,6 +33,14 @@ export default function FreightCargo({ post, cargoTypes, truckTypes }: Props) {
     const form = useForm({
         cargo_type_id: post.cargo_type_id ? String(post.cargo_type_id) : '',
         cargo_description: post.cargo_description ?? '',
+        item_name: post.item_name ?? '',
+        actual_weight: post.actual_weight ? String(post.actual_weight) : '',
+        weight_unit: post.weight_unit ?? 'ton',
+        tariff_amount: post.tariff_amount ? String(post.tariff_amount) : '',
+        tariff_currency: post.tariff_currency ?? 'ETB',
+        insurance_required: !!post.insurance_required,
+        insurance_value: post.insurance_value ? String(post.insurance_value) : '',
+        depreciation_rate: post.depreciation_rate ? String(post.depreciation_rate) : '',
         required_truck_type_id: post.required_truck_type_id ? String(post.required_truck_type_id) : '',
         truck_count: post.truck_count ?? 1,
     });
@@ -32,7 +54,7 @@ export default function FreightCargo({ post, cargoTypes, truckTypes }: Props) {
         <AppLayout>
             <Head title="Cargo & Truck" />
             <FreightWizardShell ulid={post.ulid} currentStep={1}>
-                <form onSubmit={submit}>
+                <form onSubmit={submit} className="space-y-4">
                     <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                         <div className="grid gap-0 md:grid-cols-2">
                             <div className="space-y-4 p-6">
@@ -50,11 +72,50 @@ export default function FreightCargo({ post, cargoTypes, truckTypes }: Props) {
                                 </div>
                                 <div>
                                     <Label>Cargo Description *</Label>
-                                    <Textarea value={form.data.cargo_description} onChange={(e) => form.setData('cargo_description', e.target.value)} placeholder="e.g., 20 tons teff in 40kg bags, palletized, fragile" rows={4} className="mt-1" />
+                                    <Textarea value={form.data.cargo_description} onChange={(e) => form.setData('cargo_description', e.target.value)} placeholder="e.g., 20 tons teff in 40kg bags, palletized, fragile" rows={3} className="mt-1" />
                                     {form.errors.cargo_description && <p className="text-xs text-destructive mt-1">{form.errors.cargo_description}</p>}
+                                </div>
+                                <div>
+                                    <Label>Item to be Loaded</Label>
+                                    <Input value={form.data.item_name} onChange={(e) => form.setData('item_name', e.target.value)} placeholder="e.g., Teff, Cement, Steel" className="mt-1" />
+                                    {form.errors.item_name && <p className="text-xs text-destructive mt-1">{form.errors.item_name}</p>}
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="col-span-2">
+                                        <Label>Actual Weight</Label>
+                                        <Input type="number" step="0.01" value={form.data.actual_weight} onChange={(e) => form.setData('actual_weight', e.target.value)} placeholder="e.g., 20" className="mt-1" />
+                                        {form.errors.actual_weight && <p className="text-xs text-destructive mt-1">{form.errors.actual_weight}</p>}
+                                    </div>
+                                    <div>
+                                        <Label>Unit</Label>
+                                        <Select value={form.data.weight_unit} onValueChange={(v) => form.setData('weight_unit', v)}>
+                                            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ton">Ton</SelectItem>
+                                                <SelectItem value="quintal">Quintal</SelectItem>
+                                                <SelectItem value="kg">Kg</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
                             <div className="space-y-4 border-t p-6 md:border-l md:border-t-0">
+                                <div>
+                                    <Label>Tariff / Rate</Label>
+                                    <div className="mt-1 grid grid-cols-3 gap-2">
+                                        <div className="col-span-2">
+                                            <Input type="number" step="0.01" value={form.data.tariff_amount} onChange={(e) => form.setData('tariff_amount', e.target.value)} placeholder="e.g., 15000" />
+                                            {form.errors.tariff_amount && <p className="text-xs text-destructive mt-1">{form.errors.tariff_amount}</p>}
+                                        </div>
+                                        <Select value={form.data.tariff_currency} onValueChange={(v) => form.setData('tariff_currency', v)}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ETB">ETB</SelectItem>
+                                                <SelectItem value="USD">USD</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
                                 <div>
                                     <Label>Required Truck Type *</Label>
                                     <Select value={form.data.required_truck_type_id} onValueChange={(v) => form.setData('required_truck_type_id', v)}>
@@ -77,10 +138,10 @@ export default function FreightCargo({ post, cargoTypes, truckTypes }: Props) {
                                     </div>
                                     {form.errors.truck_count && <p className="text-xs text-destructive mt-1">{form.errors.truck_count}</p>}
                                 </div>
-                                <div className="pt-2">
-                                    <Button type="submit" disabled={form.processing} className="w-full">Continue →</Button>
-                                </div>
                             </div>
+                        </div>
+                        <div className="border-t bg-muted/10 p-4 flex justify-end">
+                            <Button type="submit" disabled={form.processing}>Continue →</Button>
                         </div>
                     </div>
                 </form>

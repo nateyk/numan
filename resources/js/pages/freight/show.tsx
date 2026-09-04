@@ -19,6 +19,14 @@ interface Props {
         ulid: string;
         status: string;
         cargo_description: string | null;
+        item_name?: string | null;
+        actual_weight?: string | null;
+        weight_unit?: string | null;
+        tariff_amount?: string | null;
+        tariff_currency?: string | null;
+        insurance_required?: boolean | null;
+        insurance_value?: string | null;
+        depreciation_rate?: string | null;
         cargo_type?: { name: string } | null;
         truck_type?: { name: string } | null;
         truck_count?: number | null;
@@ -243,7 +251,11 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                                             <div className="flex justify-between"><span className="text-muted-foreground">Origin</span><span className="font-medium">{originLocation?.name ?? '—'} {post.origin_exact_lat ? `(${Number(post.origin_exact_lat).toFixed(4)}, ${Number(post.origin_exact_lng).toFixed(4)})` : ''}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Destination</span><span className="font-medium">{destinationLocation?.name ?? '—'} {post.destination_exact_lat ? `(${Number(post.destination_exact_lat).toFixed(4)}, ${Number(post.destination_exact_lng).toFixed(4)})` : ''}</span></div>
                                             <Separator />
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Cargo</span><span>{post.cargo_description ?? '—'}</span></div>
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Item</span><span className="font-medium">{(post as unknown as { item_name?: string }).item_name ?? '—'}</span></div>
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Weight</span><span>{post.actual_weight ? `${post.actual_weight} ${post.weight_unit ?? 'ton'}` : '—'}</span></div>
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Tariff</span><span>{post.tariff_amount ? `${post.tariff_amount} ${post.tariff_currency ?? 'ETB'}` : '—'}</span></div>
+                                            <Separator />
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Cargo</span><span className="truncate max-w-[160px]">{post.cargo_description ?? '—'}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Truck</span><span>{truckType?.name ?? '—'} {post.truck_count ? `×${post.truck_count}` : ''}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant="outline" className="capitalize">{post.status}</Badge></div>
                                         </CardContent>

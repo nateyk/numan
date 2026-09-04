@@ -34,6 +34,14 @@ class FreightPost extends Model
         'destination_point_confirmed_at',
         'cargo_type_id',
         'cargo_description',
+        'item_name',
+        'actual_weight',
+        'weight_unit',
+        'tariff_amount',
+        'tariff_currency',
+        'insurance_required',
+        'insurance_value',
+        'depreciation_rate',
         'required_truck_type_id',
         'truck_count',
         'schedule_type',
@@ -57,6 +65,11 @@ class FreightPost extends Model
             'truck_count' => 'integer',
             'pickup_date_flexibility_days' => 'integer',
             'completion_score' => 'integer',
+            'actual_weight' => 'decimal:2',
+            'tariff_amount' => 'decimal:2',
+            'insurance_required' => 'boolean',
+            'insurance_value' => 'decimal:2',
+            'depreciation_rate' => 'decimal:2',
         ];
     }
 

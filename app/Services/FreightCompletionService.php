@@ -23,9 +23,13 @@ class FreightCompletionService
             $score += 10;
         }
 
-        // Cargo 20% — cargo_type or description
-        if (! empty($post->cargo_type_id) || ! empty($post->cargo_description)) {
+        // Cargo & Load 20% — cargo_type/description 10 + item/weight/tariff 10
+        $hasCargo = ! empty($post->cargo_type_id) || ! empty($post->cargo_description);
+        $hasLoad = ! empty($post->item_name) || ! empty($post->actual_weight) || ! empty($post->tariff_amount);
+        if ($hasCargo && $hasLoad) {
             $score += 20;
+        } elseif ($hasCargo || $hasLoad) {
+            $score += 10;
         }
 
         // Truck 20% — truck type 10 + count 10
