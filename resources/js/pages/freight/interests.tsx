@@ -40,14 +40,10 @@ export default function FreightInterests({ interests, post }: Props) {
                                     <div className="text-sm text-muted-foreground">{i.message ?? '—'}</div>
                                     {(i.status === 'shortlisted' || i.status === 'selected') && (
                                         <div className="mt-3 space-y-1 border-t pt-3">
-                                            <div className="text-xs font-medium text-muted-foreground">Contact & Banking Details</div>
+                                            <div className="text-xs font-medium text-muted-foreground">Contact Details</div>
                                             <div className="text-sm">
                                                 <div className="font-medium">{i.contact_name}</div>
                                                 <div className="text-muted-foreground">{i.contact_phone} • {i.contact_email}</div>
-                                                <div className="mt-1 font-medium">{i.bank_account_name}</div>
-                                                <div className="text-muted-foreground">{i.bank_name} • {i.bank_account_number}</div>
-                                                {i.bank_iban && <div className="text-muted-foreground text-xs">IBAN: {i.bank_iban}</div>}
-                                                {i.bank_swift && <div className="text-muted-foreground text-xs">SWIFT: {i.bank_swift}</div>}
                                             </div>
                                         </div>
                                     )}

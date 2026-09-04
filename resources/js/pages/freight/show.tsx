@@ -63,11 +63,6 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
         contact_name: auth?.user?.name ?? '',
         contact_phone: '',
         contact_email: auth?.user?.email ?? '',
-        bank_account_name: auth?.user?.name ?? '',
-        bank_name: '',
-        bank_account_number: '',
-        bank_iban: '',
-        bank_swift: '',
     });
 
     const handleExpressInterest = () => {
@@ -198,58 +193,34 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                                                         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                                                             <DialogHeader>
                                                                 <DialogTitle>Express Interest — {originLocation?.name ?? 'Freight'} → {destinationLocation?.name ?? ''}</DialogTitle>
-                                                                <DialogDescription>Provide your contact and banking details for the consignor to shortlist you. Verified consignor will see your info.</DialogDescription>
+                                                                <DialogDescription>Provide your contact details for the consignor to contact you.</DialogDescription>
                                                             </DialogHeader>
                                                             <form onSubmit={submitInterest} className="space-y-4">
                                                                 <div>
                                                                     <Label>Message (optional)</Label>
                                                                     <Textarea value={interestData.message} onChange={(e) => setInterestData('message', e.target.value)} placeholder="Why are you interested? e.g., Available truck, experience on this route" rows={2} />
                                                                 </div>
-                                                                <div className="grid gap-3 sm:grid-cols-2">
-                                                                    <div>
-                                                                        <Label>Contact Name *</Label>
-                                                                        <Input value={interestData.contact_name} onChange={(e) => setInterestData('contact_name', e.target.value)} placeholder="Your full name" />
-                                                                        {interestErrors.contact_name && <p className="text-xs text-destructive">{interestErrors.contact_name}</p>}
-                                                                    </div>
-                                                                    <div>
-                                                                        <Label>Phone *</Label>
-                                                                        <Input value={interestData.contact_phone} onChange={(e) => setInterestData('contact_phone', e.target.value)} placeholder="+251..." />
-                                                                        {interestErrors.contact_phone && <p className="text-xs text-destructive">{interestErrors.contact_phone}</p>}
-                                                                    </div>
+                                                                <div>
+                                                                    <Label>Contact Name *</Label>
+                                                                    <Input value={interestData.contact_name} onChange={(e) => setInterestData('contact_name', e.target.value)} placeholder="Your full name" />
+                                                                    {interestErrors.contact_name && <p className="text-xs text-destructive">{interestErrors.contact_name}</p>}
+                                                                </div>
+                                                                <div>
+                                                                    <Label>Phone *</Label>
+                                                                    <Input
+                                                                        id="phone"
+                                                                        value={interestData.contact_phone}
+                                                                        onChange={(e) => setInterestData('contact_phone', e.target.value)}
+                                                                        placeholder="+251 91 123 4567"
+                                                                        inputMode="tel"
+                                                                        autoComplete="tel"
+                                                                    />
+                                                                    {interestErrors.contact_phone && <p className="text-xs text-destructive">{interestErrors.contact_phone}</p>}
                                                                 </div>
                                                                 <div>
                                                                     <Label>Email *</Label>
                                                                     <Input type="email" value={interestData.contact_email} onChange={(e) => setInterestData('contact_email', e.target.value)} placeholder="you@example.com" />
                                                                     {interestErrors.contact_email && <p className="text-xs text-destructive">{interestErrors.contact_email}</p>}
-                                                                </div>
-                                                                <Separator />
-                                                                <p className="text-sm font-medium">Banking for Payment</p>
-                                                                <div>
-                                                                    <Label>Bank Account Name *</Label>
-                                                                    <Input value={interestData.bank_account_name} onChange={(e) => setInterestData('bank_account_name', e.target.value)} placeholder="Account holder name" />
-                                                                    {interestErrors.bank_account_name && <p className="text-xs text-destructive">{interestErrors.bank_account_name}</p>}
-                                                                </div>
-                                                                <div className="grid gap-3 sm:grid-cols-2">
-                                                                    <div>
-                                                                        <Label>Bank Name *</Label>
-                                                                        <Input value={interestData.bank_name} onChange={(e) => setInterestData('bank_name', e.target.value)} placeholder="Commercial Bank of Ethiopia" />
-                                                                        {interestErrors.bank_name && <p className="text-xs text-destructive">{interestErrors.bank_name}</p>}
-                                                                    </div>
-                                                                    <div>
-                                                                        <Label>Account Number *</Label>
-                                                                        <Input value={interestData.bank_account_number} onChange={(e) => setInterestData('bank_account_number', e.target.value)} placeholder="1000..." />
-                                                                        {interestErrors.bank_account_number && <p className="text-xs text-destructive">{interestErrors.bank_account_number}</p>}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="grid gap-3 sm:grid-cols-2">
-                                                                    <div>
-                                                                        <Label>IBAN</Label>
-                                                                        <Input value={interestData.bank_iban} onChange={(e) => setInterestData('bank_iban', e.target.value)} placeholder="ET..." />
-                                                                    </div>
-                                                                    <div>
-                                                                        <Label>SWIFT</Label>
-                                                                        <Input value={interestData.bank_swift} onChange={(e) => setInterestData('bank_swift', e.target.value)} placeholder="CBEETAA" />
-                                                                    </div>
                                                                 </div>
                                                                 <DialogFooter>
                                                                     <Button type="button" variant="outline" onClick={() => setInterestOpen(false)}>Cancel</Button>

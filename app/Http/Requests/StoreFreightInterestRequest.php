@@ -21,9 +21,9 @@ class StoreFreightInterestRequest extends FormRequest
             'contact_name' => ['required', 'string', 'max:255'],
             'contact_phone' => ['required', 'string', 'max:50'],
             'contact_email' => ['required', 'email', 'max:255'],
-            'bank_account_name' => ['required', 'string', 'max:255'],
-            'bank_name' => ['required', 'string', 'max:255'],
-            'bank_account_number' => ['required', 'string', 'max:50'],
+            'bank_account_name' => ['nullable', 'string', 'max:255'],
+            'bank_name' => ['nullable', 'string', 'max:255'],
+            'bank_account_number' => ['nullable', 'string', 'max:50'],
             'bank_iban' => ['nullable', 'string', 'max:50'],
             'bank_swift' => ['nullable', 'string', 'max:50'],
         ];
