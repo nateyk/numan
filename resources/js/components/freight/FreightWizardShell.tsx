@@ -10,9 +10,9 @@ interface Props {
 }
 
 const STEPS = [
-    { label: 'Route & Schedule', href: (ulid: string) => `/my-freight/${ulid}/route`, desc: 'Origin, destination & pickup date' },
+    { label: 'Route & Schedule', href: (ulid: string) => `/my-freight/${ulid}/route`, desc: 'Origin & destination' },
     { label: 'Cargo & Truck', href: (ulid: string) => `/my-freight/${ulid}/cargo`, desc: 'Cargo type, description & truck' },
-    { label: 'Post Details', href: (ulid: string) => `/my-freight/${ulid}/schedule`, desc: 'Schedule type & flexibility' },
+    { label: 'Post Details', href: (ulid: string) => `/my-freight/${ulid}/schedule`, desc: 'Pickup date, time & schedule' },
     { label: 'Review & Submit', href: (ulid: string) => `/my-freight/${ulid}/review`, desc: 'Review & submit for approval' },
 ];
 

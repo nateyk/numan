@@ -36,7 +36,6 @@ export default function FreightRoute({ post, routePreview }: Props) {
         destination_exact_lng: post.destination_exact_lng ?? '',
         origin_point_confirmed_at: post.origin_point_confirmed_at ?? '',
         destination_point_confirmed_at: post.destination_point_confirmed_at ?? '',
-        pickup_date: post.pickup_date ? String(post.pickup_date).slice(0, 10) : '',
     });
 
     const handleOriginSelect = (loc: { id: number; name: string; region_name: string; latitude: string | null; longitude: string | null } | null) => {
@@ -84,13 +83,8 @@ export default function FreightRoute({ post, routePreview }: Props) {
                 <form onSubmit={submit}>
                     <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                         <div className="grid gap-0 lg:grid-cols-12">
-                            {/* Left — form */}
+                            {/* Left — form — Route only (pickup date moved to Post Details step) */}
                             <div className="space-y-4 p-6 lg:col-span-5">
-                                <div>
-                                    <Label>Pickup Date</Label>
-                                    <Input type="date" value={form.data.pickup_date} onChange={(e) => form.setData('pickup_date', e.target.value)} className="mt-1" />
-                                    {form.errors.pickup_date && <p className="text-xs text-destructive mt-1">{form.errors.pickup_date}</p>}
-                                </div>
                                 <div>
                                     <Label>Pickup Town *</Label>
                                     <LocationSearchInput
