@@ -4,19 +4,16 @@ namespace App\Notifications;
 
 use App\Models\MarketplaceConnection;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class MarketplaceConnectionCreated extends Notification implements ShouldQueue
+class MarketplaceConnectionCreated extends Notification
 {
     use Queueable;
 
     public function __construct(
         public MarketplaceConnection $marketplaceConnection,
-    ) {
-        $this->afterCommit();
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {

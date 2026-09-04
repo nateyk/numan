@@ -5,20 +5,17 @@ namespace App\Notifications;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class FreightInterestSubmitted extends Notification implements ShouldQueue
+class FreightInterestSubmitted extends Notification
 {
     use Queueable;
 
     public function __construct(
         public FreightInterest $interest,
         public FreightPost $post,
-    ) {
-        $this->afterCommit();
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -64,7 +61,7 @@ class FreightInterestSubmitted extends Notification implements ShouldQueue
             'freight_post_ulid' => $this->post->ulid,
             'interest_id' => $this->interest->id,
             'transporter_name' => $this->interest->user->name,
-            'message' => $this->interest->message,
+            'transporter_message' => $this->interest->message,
             'title' => 'New Interest Received',
             'message' => 'A transporter has expressed interest in your freight post.',
         ];

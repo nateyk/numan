@@ -5,11 +5,10 @@ namespace App\Notifications;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class FreightInterestStatusChanged extends Notification implements ShouldQueue
+class FreightInterestStatusChanged extends Notification
 {
     use Queueable;
 
@@ -18,9 +17,7 @@ class FreightInterestStatusChanged extends Notification implements ShouldQueue
         public FreightPost $post,
         public string $oldStatus,
         public string $newStatus,
-    ) {
-        $this->afterCommit();
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {

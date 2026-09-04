@@ -4,20 +4,17 @@ namespace App\Notifications;
 
 use App\Models\FreightPost;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class FreightPostModerated extends Notification implements ShouldQueue
+class FreightPostModerated extends Notification
 {
     use Queueable;
 
     public function __construct(
         public FreightPost $post,
         public string $action,
-    ) {
-        $this->afterCommit();
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
