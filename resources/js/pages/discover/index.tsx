@@ -215,27 +215,25 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                     </Badge>
                                                 </div>
                                             </div>
-                                            <div className="px-4 pb-3">
-                                                <div className="rounded-md border bg-muted/20 p-3 space-y-2">
-                                                    <div className="flex items-center gap-2 text-sm font-medium">
-                                                        <Package className="size-4 text-primary" />
-                                                        <span>{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
-                                                        <span className="ml-auto text-xs font-normal text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
+                                            <div className="px-4 pb-3 space-y-2">
+                                                <div className="flex items-center gap-2 text-sm font-medium">
+                                                    <Package className="size-4 text-primary" />
+                                                    <span>{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
+                                                     <span className="ml-auto text-xs text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
+                                                </div>
+                                                <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
+                                                <div className="grid grid-cols-3 gap-3 text-xs">
+                                                    <div className="text-center">
+                                                        <p className="text-muted-foreground uppercase tracking-wide">Weight</p>
+                                                        <p className="font-semibold">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</p>
                                                     </div>
-                                                    <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
-                                                    <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
-                                                        <div className="rounded bg-background border px-2 py-1.5 text-center">
-                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Weight</p>
-                                                            <p className="font-semibold">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</p>
-                                                        </div>
-                                                        <div className="rounded bg-background border px-2 py-1.5 text-center">
-                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Tariff</p>
-                                                            <p className="font-semibold">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</p>
-                                                        </div>
-                                                        <div className="rounded bg-background border px-2 py-1.5 text-center">
-                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Trucks</p>
-                                                            <p className="font-semibold flex items-center justify-center gap-1"><Truck className="size-3" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</p>
-                                                        </div>
+                                                    <div className="text-center">
+                                                        <p className="text-muted-foreground uppercase tracking-wide">Tariff</p>
+                                                        <p className="font-semibold">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-muted-foreground uppercase tracking-wide">Trucks</p>
+                                                        <p className="font-semibold flex items-center justify-center gap-1"><Truck className="size-3" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</p>
                                                     </div>
                                                 </div>
                                             </div>
