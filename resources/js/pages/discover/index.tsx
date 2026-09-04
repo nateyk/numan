@@ -198,30 +198,42 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                         const isOwn = auth?.user?.id && f.user?.id === auth.user.id;
                                         const interest = userInterestMap?.[f.id];
                                         return (
-                                        <Card key={f.ulid} className="overflow-hidden border bg-card hover:shadow-md transition-shadow">
-                                            <div className="p-4">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div>
-                                                        <div className="flex items-center gap-1.5 text-sm font-semibold">
-                                                            <span className="flex size-5 items-center justify-center rounded bg-primary/10"><MapPin className="size-3 text-primary" /></span>
+                                        <Card key={f.ulid} className="overflow-hidden border bg-card">
+                                            <div className="p-4 pb-3">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2 text-[15px] font-bold tracking-tight">
+                                                            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10"><MapPin className="size-3.5 text-primary" /></span>
                                                             <span className="truncate">{origin?.name ?? '—'}</span>
-                                                            <ArrowRight className="size-3 text-muted-foreground" />
+                                                            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/50" />
                                                             <span className="truncate">{destination?.name ?? '—'}</span>
                                                         </div>
-                                                        <p className="mt-1 text-xs text-muted-foreground">{origin?.region_name ?? ''} • {destination?.region_name ?? ''} {routeSnapshot ? `• ${(routeSnapshot.distance_meters / 1000).toFixed(0)} km • ${Math.round(routeSnapshot.duration_seconds / 60)} min` : ''}</p>
+                                                        <p className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                                                            <span>{origin?.region_name ?? ''}</span>
+                                                            <span className="size-1 rounded-full bg-border" />
+                                                            <span>{destination?.region_name ?? ''}</span>
+                                                            {routeSnapshot && (
+                                                                <>
+                                                                    <span className="size-1 rounded-full bg-border" />
+                                                                    <span>{(routeSnapshot.distance_meters / 1000).toFixed(0)} km</span>
+                                                                    <span className="size-1 rounded-full bg-border" />
+                                                                    <span>{Math.round(routeSnapshot.duration_seconds / 60)} min</span>
+                                                                </>
+                                                            )}
+                                                        </p>
                                                     </div>
-                                                    <Badge variant={interest ? (interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary') : isOwn ? 'outline' : 'default'} className="capitalize text-xs shrink-0">
+                                                    <Badge variant={interest ? (interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary') : isOwn ? 'outline' : 'default'} className="capitalize text-[11px] shrink-0 rounded-full px-2.5">
                                                         {interest ? interest.status : isOwn ? 'Your Post' : 'Active'}
                                                     </Badge>
                                                 </div>
                                             </div>
-                                            <div className="px-4 pb-3 space-y-2">
-                                                <div className="flex items-center gap-2 text-sm font-medium">
-                                                    <Package className="size-4 text-primary" />
-                                                    <span>{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
-                                                     <span className="ml-auto text-xs text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
+                                            <div className="px-4 pb-3 space-y-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="flex size-7 items-center justify-center rounded-md bg-primary/10"><Package className="size-3.5 text-primary" /></span>
+                                                    <span className="text-sm font-semibold">{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
+                                                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'}{(f as unknown as { pickup_time?: string }).pickup_time ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5)}` : ''}</span>
                                                 </div>
-                                                <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
+                                                <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{f.cargo_description ?? 'No description'}</p>
                                                 <div className="divide-y overflow-hidden rounded-lg border text-xs">
                                                     <div className="flex items-center justify-between px-3 py-2">
                                                         <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><Weight className="size-3.5" /> Weight</span>
