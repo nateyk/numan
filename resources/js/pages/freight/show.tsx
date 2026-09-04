@@ -107,31 +107,35 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                         </Button>
                     </div>
 
-                    {/* Hero — Route + Map */}
+                    {/* Header — route meta */}
                     <section className="py-6">
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                            <div className="grid gap-6 lg:grid-cols-12">
-                                <div className="lg:col-span-7 space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant={post.status === 'active' ? 'default' : 'secondary'} className="capitalize">{post.status}</Badge>
-                                        {cargoType?.name && <Badge variant="outline">{cargoType.name}</Badge>}
-                                        <span className="text-xs text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}</span>
+                            <div className="space-y-1 mb-6">
+                                <div className="flex items-center gap-2">
+                                    <Badge variant={post.status === 'active' ? 'default' : 'secondary'} className="capitalize">{post.status}</Badge>
+                                    {cargoType?.name && <Badge variant="outline">{cargoType.name}</Badge>}
+                                    <span className="text-xs text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}</span>
+                                </div>
+                                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                                    <MapPin className="size-7 text-primary" />
+                                    {originLocation?.name ?? 'Origin'} <ArrowRight className="size-5 text-muted-foreground" /> {destinationLocation?.name ?? 'Destination'}
+                                </h1>
+                                <p className="text-muted-foreground">
+                                    {originLocation?.region_name ?? ''} → {destinationLocation?.region_name ?? ''} • {truckType?.name ?? 'Any truck'} {post.truck_count ? `×${post.truck_count}` : ''} • {cargoType?.name ?? 'General cargo'}
+                                </p>
+                            </div>
+                            <div className="grid gap-6 lg:grid-cols-12 items-start">
+                                <div className="lg:col-span-7 space-y-3">
+                                    <div className="overflow-hidden rounded-lg border bg-card">
+                                        <RoutePreviewMap
+                                            fromLat={post.origin_exact_lat ? Number(post.origin_exact_lat) : null}
+                                            fromLng={post.origin_exact_lng ? Number(post.origin_exact_lng) : null}
+                                            toLat={post.destination_exact_lat ? Number(post.destination_exact_lat) : null}
+                                            toLng={post.destination_exact_lng ? Number(post.destination_exact_lng) : null}
+                                            geometry={routeSnapshot?.geometry}
+                                            className="h-[420px] !rounded-none !border-0"
+                                        />
                                     </div>
-                                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                                        <MapPin className="size-7 text-primary" />
-                                        {originLocation?.name ?? 'Origin'} <ArrowRight className="size-5 text-muted-foreground" /> {destinationLocation?.name ?? 'Destination'}
-                                    </h1>
-                                    <p className="text-muted-foreground">
-                                        {originLocation?.region_name ?? ''} → {destinationLocation?.region_name ?? ''} • {truckType?.name ?? 'Any truck'} {post.truck_count ? `×${post.truck_count}` : ''} • {cargoType?.name ?? 'General cargo'}
-                                    </p>
-                                    <RoutePreviewMap
-                                        fromLat={post.origin_exact_lat ? Number(post.origin_exact_lat) : null}
-                                        fromLng={post.origin_exact_lng ? Number(post.origin_exact_lng) : null}
-                                        toLat={post.destination_exact_lat ? Number(post.destination_exact_lat) : null}
-                                        toLng={post.destination_exact_lng ? Number(post.destination_exact_lng) : null}
-                                        geometry={routeSnapshot?.geometry}
-                                        className="h-[380px]"
-                                    />
                                     {routeSnapshot && (
                                         <p className="text-sm text-muted-foreground flex items-center gap-2">
                                             <Route className="size-4" /> {(routeSnapshot.distance_meters / 1000).toFixed(1)} km • {Math.round(routeSnapshot.duration_seconds / 60)} min • OSRM routed
