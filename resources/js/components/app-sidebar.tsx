@@ -16,6 +16,7 @@ import { usePage } from '@inertiajs/react';
 import {
     BarChart3,
     BookOpen,
+    Heart,
     LayoutGrid,
     Package,
     Search,
@@ -43,6 +44,11 @@ const getMainNavItems = (
             title: t('navigation.discover_freight', 'Discover Freight'),
             href: '/freight',
             icon: Search,
+        },
+        {
+            title: t('navigation.my_interests', 'My Interests'),
+            href: '/my-interests',
+            icon: Heart,
         },
         {
             title: t('navigation.usage', 'Usage'),
