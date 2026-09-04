@@ -27,6 +27,8 @@ interface LocationSearchInputProps {
     placeholder?: string;
     className?: string;
     debounceMs?: number;
+    id?: string;
+    ariaLabel?: string;
 }
 
 export default function LocationSearchInput({
@@ -37,6 +39,8 @@ export default function LocationSearchInput({
     placeholder = 'Search locations…',
     className,
     debounceMs = 300,
+    id,
+    ariaLabel,
 }: LocationSearchInputProps) {
     const [query, setQuery] = useState(initialName ?? '');
     const [results, setResults] = useState<Location[]>([]);
@@ -109,24 +113,30 @@ export default function LocationSearchInput({
             <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                    id={id}
                     value={query}
                     onChange={(e) => search(e.target.value)}
                     onFocus={() => query.length >= 2 && setOpen(true)}
                     placeholder={placeholder}
                     className="pl-9 pr-9"
+                    aria-label={ariaLabel ?? placeholder}
+                    aria-expanded={open}
+                    aria-haspopup="listbox"
+                    role="combobox"
                 />
                 {query && (
                     <button
                         type="button"
                         onClick={clear}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={`Clear ${ariaLabel ?? placeholder}`}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring rounded"
                     >
-                        <X className="size-4" />
+                        <X className="size-4" aria-hidden="true" />
                     </button>
                 )}
             </div>
             {open && (results.length > 0 || loading) && (
-                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+                <div role="listbox" aria-label={ariaLabel ?? 'Location results'} className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
                     {loading ? (
                         <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                             Searching…
@@ -136,8 +146,10 @@ export default function LocationSearchInput({
                             <button
                                 key={loc.id}
                                 type="button"
+                                role="option"
+                                aria-selected={false}
                                 onClick={() => selectLocation(loc)}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent focus:outline-none"
                             >
                                 <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
                                 <div className="flex-1">
