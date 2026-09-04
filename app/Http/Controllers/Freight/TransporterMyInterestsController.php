@@ -20,7 +20,7 @@ class TransporterMyInterestsController extends Controller
         $sort = $request->query('sort', 'latest');
 
         $query = FreightInterest::where('user_id', $request->user()->id)
-            ->with(['freightPost.originLocation', 'freightPost.destinationLocation']);
+            ->with(['freightPost.user', 'freightPost.originLocation', 'freightPost.destinationLocation', 'freightPost.cargoType', 'freightPost.truckType']);
 
         switch ($sort) {
             case 'status':
@@ -35,9 +35,17 @@ class TransporterMyInterestsController extends Controller
 
         $interests = $query->paginate(12)->withQueryString();
 
+        $counts = [
+            'all' => FreightInterest::where('user_id', $request->user()->id)->count(),
+            'submitted' => FreightInterest::where('user_id', $request->user()->id)->where('status', 'submitted')->count(),
+            'shortlisted' => FreightInterest::where('user_id', $request->user()->id)->where('status', 'shortlisted')->count(),
+            'selected' => FreightInterest::where('user_id', $request->user()->id)->where('status', 'selected')->count(),
+        ];
+
         return Inertia::render('freight/my-interests', [
             'interests' => $interests,
             'sort' => $sort,
+            'counts' => $counts,
         ]);
     }
 

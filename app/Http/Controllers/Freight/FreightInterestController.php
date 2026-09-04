@@ -19,7 +19,7 @@ class FreightInterestController extends Controller
 {
     public function index(string $ulid): Response
     {
-        $post = FreightPost::where('ulid', $ulid)->firstOrFail();
+        $post = FreightPost::where('ulid', $ulid)->with(['originLocation', 'destinationLocation'])->firstOrFail();
         Gate::authorize('view', $post);
 
         // Only owner or superadmin can view interests for this freight
