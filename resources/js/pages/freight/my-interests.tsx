@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface Interest {
     id: number;
     status: string;
-    freightPost: { ulid: string; originLocation?: { name: string }; destinationLocation?: { name: string } };
+    freightPost?: { ulid: string; originLocation?: { name: string }; destinationLocation?: { name: string } };
+    freight_post?: { ulid: string; origin_location?: { name: string }; destination_location?: { name: string } };
 }
 
 interface Props {
@@ -37,18 +38,23 @@ export default function MyInterests({ interests, sort }: Props) {
                     <p className="text-sm text-muted-foreground">You have not expressed interest in any freight yet.</p>
                 ) : (
                     <div className="space-y-2">
-                        {interests.data.map((i) => (
-                            <div key={i.id} className="flex items-center justify-between rounded-md border p-3">
-                                <div>
-                                    <div className="font-medium">{i.freightPost.originLocation?.name ?? '—'} → {i.freightPost.destinationLocation?.name ?? '—'}</div>
-                                    <div className="text-sm text-muted-foreground">{i.freightPost.ulid}</div>
+                        {interests.data.map((i) => {
+                            const fp = (i as unknown as Record<string, unknown>).freightPost as Interest['freightPost'] ?? (i as unknown as Record<string, unknown>).freight_post as unknown as Interest['freightPost'];
+                            const origin = (fp as unknown as Record<string, unknown>)?.originLocation as { name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.origin_location as { name: string } | undefined;
+                            const destination = (fp as unknown as Record<string, unknown>)?.destinationLocation as { name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.destination_location as { name: string } | undefined;
+                            return (
+                                <div key={i.id} className="flex items-center justify-between rounded-md border p-3">
+                                    <div>
+                                        <div className="font-medium">{origin?.name ?? '—'} → {destination?.name ?? '—'}</div>
+                                        <div className="text-sm text-muted-foreground">{fp?.ulid ?? '—'}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Badge>{i.status}</Badge>
+                                        <Button size="sm" variant="outline" onClick={() => router.post(`/interests/${i.id}/withdraw`)}>Withdraw</Button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Badge>{i.status}</Badge>
-                                    <Button size="sm" variant="outline" onClick={() => router.post(`/interests/${i.id}/withdraw`)}>Withdraw</Button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
