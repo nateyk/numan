@@ -183,97 +183,73 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                     </CardContent>
                                 </Card>
                             ) : (
-                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:gap-6 xl:grid-cols-4">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                     {freight.data.map((f) => {
                                         const origin = (f as unknown as Record<string, unknown>).originLocation as Freight['originLocation'] ?? (f as unknown as Record<string, unknown>).origin_location as Freight['originLocation'];
                                         const destination = (f as unknown as Record<string, unknown>).destinationLocation as Freight['destinationLocation'] ?? (f as unknown as Record<string, unknown>).destination_location as Freight['destinationLocation'];
                                         const cargoType = (f as unknown as Record<string, unknown>).cargoType as Freight['cargoType'] ?? (f as unknown as Record<string, unknown>).cargo_type as Freight['cargoType'];
                                         const truckType = (f as unknown as Record<string, unknown>).truckType as Freight['truckType'] ?? (f as unknown as Record<string, unknown>).truck_type as Freight['truckType'];
                                         const routeSnapshot = (f as unknown as Record<string, unknown>).routeSnapshot as Freight['routeSnapshot'] ?? (f as unknown as Record<string, unknown>).route_snapshot as Freight['routeSnapshot'];
+                                        const isOwn = auth?.user?.id && f.user?.id === auth.user.id;
+                                        const interest = userInterestMap?.[f.id];
                                         return (
-                                        <Card key={f.ulid} className="flex flex-col gap-4 overflow-hidden rounded-lg py-4 shadow-none transition-shadow duration-300 hover:shadow-md">
-                                            {/* Poster header with route map placeholder */}
-                                            <CardContent className="flex flex-1 flex-col gap-4 px-4">
-                                                <div className="aspect-[4/3] overflow-hidden rounded-md bg-muted flex flex-col items-center justify-center gap-2 border">
-                                                    <Route className="size-8 text-muted-foreground" />
-                                                    <div className="text-center">
-                                                        <p className="font-medium text-sm flex items-center justify-center gap-1">
-                                                            <MapPin className="size-3 text-primary" /> {origin?.name ?? '—'} <ArrowRight className="size-3 text-muted-foreground" /> {destination?.name ?? '—'}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">{origin?.region_name ?? ''} → {destination?.region_name ?? ''}</p>
-                                                        {routeSnapshot && (
-                                                            <p className="mt-1 text-xs font-medium text-primary">
-                                                                {(routeSnapshot.distance_meters / 1000).toFixed(0)} km • {Math.round(routeSnapshot.duration_seconds / 60)} min
-                                                            </p>
-                                                        )}
+                                        <Card key={f.ulid} className="flex flex-col overflow-hidden hover:shadow-md transition-shadow">
+                                            <CardContent className="p-4 space-y-3">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-center gap-1.5 font-medium text-sm">
+                                                        <MapPin className="size-4 text-primary" />
+                                                        <span>{origin?.name ?? '—'}</span>
+                                                        <ArrowRight className="size-3 text-muted-foreground" />
+                                                        <span>{destination?.name ?? '—'}</span>
                                                     </div>
+                                                    {interest ? (
+                                                        <Badge variant={interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary'} className="capitalize text-xs">{interest.status}</Badge>
+                                                    ) : isOwn ? (
+                                                        <Badge variant="outline" className="text-xs">Your Post</Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-xs">Active</Badge>
+                                                    )}
                                                 </div>
-                                                <div className="flex flex-1 flex-col">
-                                                    <h3 className="mb-1 font-medium text-balance flex items-center gap-2">
-                                                        <Package className="size-4 text-muted-foreground" />
-                                                        {cargoType?.name ?? 'General Cargo'}
-                                                    </h3>
-                                                    <p className="text-muted-foreground line-clamp-2 text-sm">{f.cargo_description ?? 'No description — contact consignor for details.'}</p>
-                                                    <div className="mt-3 flex flex-wrap gap-2">
-                                                        <Badge variant="secondary" className="text-xs"><Truck className="mr-1 size-3" />{truckType?.name ?? 'Any truck'} {f.truck_count ? `×${f.truck_count}` : ''}</Badge>
-                                                        <Badge variant="secondary" className="text-xs"><Calendar className="mr-1 size-3" />{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'}</Badge>
+                                                <p className="text-xs text-muted-foreground">{origin?.region_name ?? ''} → {destination?.region_name ?? ''} {routeSnapshot ? `• ${(routeSnapshot.distance_meters / 1000).toFixed(0)} km` : ''}</p>
+                                                <div>
+                                                    <p className="font-medium text-sm flex items-center gap-1.5"><Package className="size-4 text-muted-foreground" />{cargoType?.name ?? 'General Cargo'}</p>
+                                                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{f.cargo_description ?? 'No description'}</p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    <Badge variant="secondary" className="text-xs gap-1"><Truck className="size-3" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</Badge>
+                                                    <Badge variant="secondary" className="text-xs gap-1"><Calendar className="size-3" />{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'}</Badge>
+                                                </div>
+                                                <div className="flex items-center gap-2 border-t pt-3">
+                                                    <Avatar className="size-7">
+                                                        <AvatarImage src={f.user?.avatar_url ?? undefined} />
+                                                        <AvatarFallback className="text-xs">{f.user?.name?.slice(0,2).toUpperCase() ?? '—'}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-xs font-medium leading-none">{f.user?.name ?? 'Unknown'}</p>
+                                                        <p className="truncate text-xs text-muted-foreground">{f.user?.email ?? ''}</p>
                                                     </div>
                                                 </div>
                                             </CardContent>
-                                            <CardFooter className="px-4 pt-0 bg-transparent border-t-0 flex flex-col gap-3">
-                                                {/* Consignor poster card */}
-                                                <div className="flex w-full items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
-                                                    <Avatar className="size-8">
-                                                        <AvatarImage src={f.user?.avatar_url ?? undefined} />
-                                                        <AvatarFallback>{f.user?.name?.slice(0,2).toUpperCase() ?? '—'}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-sm font-medium leading-none">{f.user?.name ?? 'Unknown consignor'}</p>
-                                                        <p className="truncate text-xs text-muted-foreground">Verified consignor • {f.user?.email ?? ''}</p>
+                                            <div className="px-4 pb-4">
+                                                {isOwn ? (
+                                                    <Button asChild variant="outline" className="w-full h-8 text-xs"><Link href={`/freight/${f.ulid}`}>View Details</Link></Button>
+                                                ) : interest ? (
+                                                    <div className="flex gap-2">
+                                                        <Button asChild className="flex-1 h-8 text-xs"><Link href={`/freight/${f.ulid}`}>View Details</Link></Button>
+                                                        {interest.status !== 'rejected' && interest.status !== 'withdrawn' && (
+                                                            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => router.post(`/interests/${interest.id}/withdraw`, {}, { preserveScroll: true })}>Leave</Button>
+                                                        )}
                                                     </div>
-                                                    <Badge variant="outline" className="text-[10px]">Poster</Badge>
-                                                </div>
-                                                <div className="flex w-full gap-2">
-                                                    <Button asChild className="flex-1 h-8 px-3 text-xs">
-                                                        <Link href={`/freight/${f.ulid}`}>View Details</Link>
-                                                    </Button>
-                                                    {(() => {
-                                                        const isOwn = auth?.user?.id && f.user?.id === auth.user.id;
-                                                        if (isOwn) {
-                                                            return <Badge variant="secondary" className="flex-1 justify-center py-1.5 text-xs">Your Post</Badge>;
-                                                        }
-                                                        const interest = userInterestMap?.[f.id];
-                                                        if (interest) {
-                                                            const isClosed = interest.status === 'rejected' || interest.status === 'withdrawn';
-                                                            return (
-                                                                <>
-                                                                    <Badge variant={isClosed ? 'destructive' : 'secondary'} className="flex-1 justify-center py-1.5 text-xs capitalize">{interest.status}</Badge>
-                                                                    {!isClosed && (
-                                                                        <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => router.post(`/interests/${interest.id}/withdraw`, {}, { preserveScroll: true })}>
-                                                                            Leave
-                                                                        </Button>
-                                                                    )}
-                                                                </>
-                                                            );
-                                                        }
-                                                        return (
-                                                            <Button
-                                                                variant="outline"
-                                                                className="flex-1 h-8 px-3 text-xs"
-                                                                onClick={() => {
-                                                                    if (!auth?.user) {
-                                                                        router.visit('/login');
-                                                                        return;
-                                                                    }
-                                                                    router.post(`/my-freight/${f.ulid}/interests`, { message: '', contact_name: auth.user.name ?? '', contact_phone: '', contact_email: auth.user.email ?? '' }, { preserveScroll: true });
-                                                                }}
-                                                            >
-                                                                Express Interest
-                                                            </Button>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </CardFooter>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <Button asChild className="flex-1 h-8 text-xs"><Link href={`/freight/${f.ulid}`}>View Details</Link></Button>
+                                                        <Button variant="outline" className="flex-1 h-8 text-xs" onClick={() => {
+                                                            if (!auth?.user) { router.visit('/login'); return; }
+                                                            router.post(`/my-freight/${f.ulid}/interests`, { message: '', contact_name: auth.user.name ?? '', contact_phone: '', contact_email: auth.user.email ?? '' }, { preserveScroll: true });
+                                                        }}>Express Interest</Button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </Card>
                                         );
                                     })}
