@@ -199,28 +199,45 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                         const interest = userInterestMap?.[f.id];
                                         return (
                                         <Card key={f.ulid} className="overflow-hidden border bg-card hover:shadow-md transition-shadow">
-                                            <div className="p-4 space-y-3">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-1.5 text-sm font-semibold">
-                                                        <MapPin className="size-3.5 text-primary" />
-                                                        <span className="truncate">{origin?.name ?? '—'}</span>
-                                                        <ArrowRight className="size-3 text-muted-foreground" />
-                                                        <span className="truncate">{destination?.name ?? '—'}</span>
+                                            <div className="p-4">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                                            <span className="flex size-5 items-center justify-center rounded bg-primary/10"><MapPin className="size-3 text-primary" /></span>
+                                                            <span className="truncate">{origin?.name ?? '—'}</span>
+                                                            <ArrowRight className="size-3 text-muted-foreground" />
+                                                            <span className="truncate">{destination?.name ?? '—'}</span>
+                                                        </div>
+                                                        <p className="mt-1 text-xs text-muted-foreground">{origin?.region_name ?? ''} • {destination?.region_name ?? ''} {routeSnapshot ? `• ${(routeSnapshot.distance_meters / 1000).toFixed(0)} km • ${Math.round(routeSnapshot.duration_seconds / 60)} min` : ''}</p>
                                                     </div>
-                                                    <Badge variant={interest ? (interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary') : isOwn ? 'outline' : 'secondary'} className="capitalize text-xs shrink-0">
+                                                    <Badge variant={interest ? (interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary') : isOwn ? 'outline' : 'default'} className="capitalize text-xs shrink-0">
                                                         {interest ? interest.status : isOwn ? 'Your Post' : 'Active'}
                                                     </Badge>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">{origin?.region_name ?? ''} — {destination?.region_name ?? ''} {routeSnapshot ? `• ${(routeSnapshot.distance_meters / 1000).toFixed(0)} km` : ''}</p>
-
-                                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                                    <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1.5 font-medium"><Package className="size-3 text-muted-foreground" />{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General'}</span>
-                                                    <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1.5 font-medium"><Truck className="size-3 text-muted-foreground" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</span>
-                                                    <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1.5"><Calendar className="size-3 text-muted-foreground" />{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
-                                                    <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1.5"><Route className="size-3 text-muted-foreground" />{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : 'Weight —'} {(f as unknown as { tariff_amount?: string }).tariff_amount ? `• ${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : ''}</span>
+                                            </div>
+                                            <div className="px-4 pb-3">
+                                                <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+                                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                                        <Package className="size-4 text-primary" />
+                                                        <span>{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
+                                                        <span className="ml-auto text-xs font-normal text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
+                                                    </div>
+                                                    <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
+                                                    <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+                                                        <div className="rounded bg-background border px-2 py-1.5 text-center">
+                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Weight</p>
+                                                            <p className="font-semibold">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</p>
+                                                        </div>
+                                                        <div className="rounded bg-background border px-2 py-1.5 text-center">
+                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Tariff</p>
+                                                            <p className="font-semibold">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</p>
+                                                        </div>
+                                                        <div className="rounded bg-background border px-2 py-1.5 text-center">
+                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Trucks</p>
+                                                            <p className="font-semibold flex items-center justify-center gap-1"><Truck className="size-3" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-
-                                                <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
                                             </div>
                                             <div className="flex gap-2 p-4 pt-0">
                                                 <Button asChild className="flex-1 h-8 text-xs"><Link href={`/freight/${f.ulid}`}>View Details</Link></Button>
