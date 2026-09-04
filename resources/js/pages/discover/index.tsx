@@ -198,61 +198,64 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                         const isOwn = auth?.user?.id && f.user?.id === auth.user.id;
                                         const interest = userInterestMap?.[f.id];
                                         return (
-                                        <Card key={f.ulid} className="overflow-hidden border bg-card hover:shadow-md transition-shadow">
-                                            <div className="p-4">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div>
-                                                        <div className="flex items-center gap-1.5 text-sm font-semibold">
-                                                            <span className="flex size-5 items-center justify-center rounded bg-primary/10"><MapPin className="size-3 text-primary" /></span>
-                                                            <span className="truncate">{origin?.name ?? '—'}</span>
-                                                            <ArrowRight className="size-3 text-muted-foreground" />
-                                                            <span className="truncate">{destination?.name ?? '—'}</span>
+                                         <div key={f.ulid} className="group relative overflow-hidden rounded-xl border bg-card shadow-sm hover:shadow-lg transition-all duration-200">
+                                            <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
+                                            <div className="p-5 pl-6">
+                                                <div className="flex items-center justify-between gap-3 mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10"><MapPin className="size-4 text-primary" /></span>
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5 text-base font-bold tracking-tight">
+                                                                <span className="truncate max-w-[100px]">{origin?.name ?? '—'}</span>
+                                                                <ArrowRight className="size-3.5 text-primary" />
+                                                                <span className="truncate max-w-[100px]">{destination?.name ?? '—'}</span>
+                                                            </div>
+                                                            <p className="text-[11px] text-muted-foreground">{origin?.region_name ?? ''} → {destination?.region_name ?? ''} {routeSnapshot ? `• ${(routeSnapshot.distance_meters / 1000).toFixed(0)} km • ${Math.round(routeSnapshot.duration_seconds / 60)} min` : ''}</p>
                                                         </div>
-                                                        <p className="mt-1 text-xs text-muted-foreground">{origin?.region_name ?? ''} • {destination?.region_name ?? ''} {routeSnapshot ? `• ${(routeSnapshot.distance_meters / 1000).toFixed(0)} km • ${Math.round(routeSnapshot.duration_seconds / 60)} min` : ''}</p>
                                                     </div>
-                                                    <Badge variant={interest ? (interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary') : isOwn ? 'outline' : 'default'} className="capitalize text-xs shrink-0">
+                                                    <Badge variant={interest ? (interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary') : isOwn ? 'outline' : 'default'} className="capitalize text-[11px] shrink-0 rounded-full px-2.5 py-0.5">
                                                         {interest ? interest.status : isOwn ? 'Your Post' : 'Active'}
                                                     </Badge>
                                                 </div>
-                                            </div>
-                                            <div className="px-4 pb-3 space-y-2">
-                                                <div className="flex items-center gap-2 text-sm font-medium">
-                                                    <Package className="size-4 text-primary" />
-                                                    <span>{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
-                                                     <span className="ml-auto text-xs text-muted-foreground">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-xs font-medium text-primary">
+                                                        <Package className="size-3" />
+                                                        {(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}
+                                                    </span>
+                                                    <span className="text-[11px] text-muted-foreground ml-auto">{f.pickup_date ? String(f.pickup_date).slice(0,10) : 'Flexible'} {(f as unknown as { pickup_time?: string }).pickup_time ? String((f as unknown as { pickup_time?: string }).pickup_time).slice(0,5) : ''}</span>
                                                 </div>
-                                                <p className="line-clamp-2 text-sm text-muted-foreground leading-relaxed">{f.cargo_description ?? 'No description'}</p>
-                                                <div className="grid grid-cols-3 gap-3 text-xs">
-                                                    <div className="text-center">
-                                                        <p className="text-muted-foreground uppercase tracking-wide">Weight</p>
-                                                        <p className="font-semibold">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</p>
+                                                <p className="line-clamp-2 text-sm text-muted-foreground/80 leading-relaxed mb-3">{f.cargo_description ?? 'No description'}</p>
+                                                <div className="flex items-center divide-x rounded-lg border bg-muted/30 text-xs">
+                                                    <div className="flex-1 px-3 py-2 text-center">
+                                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Weight</p>
+                                                        <p className="font-bold text-sm">{(f as unknown as { actual_weight?: string }).actual_weight ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}` : '—'}</p>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-muted-foreground uppercase tracking-wide">Tariff</p>
-                                                        <p className="font-semibold">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</p>
+                                                    <div className="flex-1 px-3 py-2 text-center">
+                                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Tariff</p>
+                                                        <p className="font-bold text-sm">{(f as unknown as { tariff_amount?: string }).tariff_amount ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}` : '—'}</p>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-muted-foreground uppercase tracking-wide">Trucks</p>
-                                                        <p className="font-semibold flex items-center justify-center gap-1"><Truck className="size-3" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</p>
+                                                    <div className="flex-1 px-3 py-2 text-center">
+                                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Trucks</p>
+                                                        <p className="font-bold text-sm flex items-center justify-center gap-1"><Truck className="size-3" />{truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}</p>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2 p-4 pt-0">
-                                                <Button asChild className="flex-1 h-8 text-xs"><Link href={`/freight/${f.ulid}`}>View Details</Link></Button>
+                                            <div className="flex gap-2 p-4 pt-0 pl-6">
+                                                <Button asChild className="flex-1 h-9 text-xs rounded-lg"><Link href={`/freight/${f.ulid}`}>View Details</Link></Button>
                                                 {isOwn ? (
-                                                    <Badge variant="secondary" className="flex-1 justify-center py-1.5 text-xs">Your Post</Badge>
+                                                    <Badge variant="secondary" className="flex-1 justify-center py-2 text-xs rounded-lg">Your Post</Badge>
                                                 ) : interest ? (
-                                                    <Button variant="outline" className="flex-1 h-8 text-xs capitalize" onClick={() => interest.status !== 'rejected' && interest.status !== 'withdrawn' && router.post(`/interests/${interest.id}/withdraw`, {}, { preserveScroll: true })} disabled={interest.status === 'rejected' || interest.status === 'withdrawn'}>
+                                                    <Button variant="outline" className="flex-1 h-9 text-xs capitalize rounded-lg" onClick={() => interest.status !== 'rejected' && interest.status !== 'withdrawn' && router.post(`/interests/${interest.id}/withdraw`, {}, { preserveScroll: true })} disabled={interest.status === 'rejected' || interest.status === 'withdrawn'}>
                                                         {interest.status === 'rejected' || interest.status === 'withdrawn' ? interest.status : 'Leave'}
                                                     </Button>
                                                 ) : (
-                                                    <Button variant="secondary" className="flex-1 h-8 text-xs" onClick={() => {
+                                                    <Button variant="secondary" className="flex-1 h-9 text-xs rounded-lg" onClick={() => {
                                                         if (!auth?.user) { router.visit('/login'); return; }
                                                         router.post(`/my-freight/${f.ulid}/interests`, { message: '', contact_name: auth.user.name ?? '', contact_phone: '', contact_email: auth.user.email ?? '' }, { preserveScroll: true });
                                                     }}>Express Interest</Button>
                                                 )}
                                             </div>
-                                        </Card>
+                                        </div>
                                         );
                                     })}
                                 </div>
