@@ -208,19 +208,6 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                             <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/50" />
                                                             <span className="truncate">{destination?.name ?? '—'}</span>
                                                         </div>
-                                                        <p className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                                                            <span>{origin?.region_name ?? ''}</span>
-                                                            <span className="size-1 rounded-full bg-border" />
-                                                            <span>{destination?.region_name ?? ''}</span>
-                                                            {routeSnapshot && (
-                                                                <>
-                                                                    <span className="size-1 rounded-full bg-border" />
-                                                                    <span>{(routeSnapshot.distance_meters / 1000).toFixed(0)} km</span>
-                                                                    <span className="size-1 rounded-full bg-border" />
-                                                                    <span>{Math.round(routeSnapshot.duration_seconds / 60)} min</span>
-                                                                </>
-                                                            )}
-                                                        </p>
                                                     </div>
                                                     <Badge variant={interest ? (interest.status === 'rejected' || interest.status === 'withdrawn' ? 'destructive' : 'secondary') : isOwn ? 'outline' : 'default'} className="capitalize text-[11px] shrink-0 rounded-full px-2.5">
                                                         {interest ? interest.status : isOwn ? 'Your Post' : 'Active'}
