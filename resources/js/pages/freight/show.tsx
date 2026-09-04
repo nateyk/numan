@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -251,16 +252,31 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
 
                                     <Card>
                                         <CardHeader className="pb-3"><CardTitle className="text-base">Freight Details</CardTitle></CardHeader>
-                                        <CardContent className="space-y-2 text-sm">
+                                        <CardContent className="space-y-3 text-sm">
                                             <div className="flex justify-between"><span className="text-muted-foreground">Origin</span><span className="font-medium">{originLocation?.name ?? '—'} {post.origin_exact_lat ? `(${Number(post.origin_exact_lat).toFixed(4)}, ${Number(post.origin_exact_lng).toFixed(4)})` : ''}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Destination</span><span className="font-medium">{destinationLocation?.name ?? '—'} {post.destination_exact_lat ? `(${Number(post.destination_exact_lat).toFixed(4)}, ${Number(post.destination_exact_lng).toFixed(4)})` : ''}</span></div>
                                             <Separator />
                                             <div className="flex justify-between"><span className="text-muted-foreground">Item</span><span className="font-medium">{(post as unknown as { item_name?: string }).item_name ?? '—'}</span></div>
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Weight</span><span>{post.actual_weight ? `${post.actual_weight} ${post.weight_unit ?? 'ton'}` : '—'}</span></div>
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Tariff</span><span>{post.tariff_amount ? `${post.tariff_amount} ${post.tariff_currency ?? 'ETB'}` : '—'}</span></div>
+                                            <div className="overflow-hidden rounded-lg border">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                                            <TableHead className="h-8 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Weight</TableHead>
+                                                            <TableHead className="h-8 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Tariff</TableHead>
+                                                            <TableHead className="h-8 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Truck</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        <TableRow className="hover:bg-transparent">
+                                                            <TableCell className="px-3 py-2.5 font-medium">{post.actual_weight ? `${post.actual_weight} ${post.weight_unit ?? 'ton'}` : '—'}</TableCell>
+                                                            <TableCell className="px-3 py-2.5 font-medium">{post.tariff_amount ? `${post.tariff_amount} ${post.tariff_currency ?? 'ETB'}` : '—'}</TableCell>
+                                                            <TableCell className="px-3 py-2.5 font-medium">{truckType?.name ?? '—'} {post.truck_count ? `×${post.truck_count}` : ''}</TableCell>
+                                                        </TableRow>
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
                                             <Separator />
                                             <div className="flex justify-between"><span className="text-muted-foreground">Cargo</span><span className="truncate max-w-[160px]">{post.cargo_description ?? '—'}</span></div>
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Truck</span><span>{truckType?.name ?? '—'} {post.truck_count ? `×${post.truck_count}` : ''}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant="outline" className="capitalize">{post.status}</Badge></div>
                                         </CardContent>
                                     </Card>
