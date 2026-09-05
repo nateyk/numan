@@ -1,15 +1,15 @@
 import { useTranslations } from '@/hooks/use-translations';
 import {
+    BadgeCheck,
     Building2,
     CreditCard,
-    Globe,
-    LayoutDashboard,
-    Lock,
-    Megaphone,
-    Moon,
-    Palette,
-    ScrollText,
-    ToggleLeft,
+    MapPinned,
+    PackagePlus,
+    Route,
+    Search,
+    ShieldCheck,
+    Star,
+    Truck,
     Users,
     Zap,
 } from 'lucide-react';
@@ -19,136 +19,133 @@ export function LandingFeatures() {
 
     const features = [
         {
-            icon: Lock,
+            icon: PackagePlus,
             title: t(
                 'landing.features.items.auth.title',
-                'Authentication & 2FA',
+                'Instant Load Posting',
             ),
             description: t(
                 'landing.features.items.auth.description',
-                'Complete auth system with login, register, password reset, email verification, and two-factor authentication.',
+                'Post loads in seconds — origin, destination, tonnage, truck type, and ETB rate. From Addis to Djibouti, Dire Dawa, Mojo & nationwide.',
             ),
             color: 'text-blue-500',
             bgColor: 'bg-blue-500/10',
         },
         {
-            icon: Building2,
+            icon: Search,
             title: t(
                 'landing.features.items.workspaces.title',
-                'Multi-tenant Workspaces',
+                'Smart Discovery & Matching',
             ),
             description: t(
                 'landing.features.items.workspaces.description',
-                'Built-in workspace management allowing users to create and switch between multiple organizations.',
+                'Carriers discover loads by route, truck type, and ETB payout. Shippers get matched with verified nearby trucks instantly.',
             ),
             color: 'text-purple-500',
             bgColor: 'bg-purple-500/10',
         },
         {
-            icon: Users,
-            title: t('landing.features.items.team.title', 'Team Management'),
-            description: t(
-                'landing.features.items.team.description',
-                'Invite team members, assign roles (owner, admin, member), and manage permissions with ease.',
-            ),
-            color: 'text-green-500',
-            bgColor: 'bg-green-500/10',
-        },
-        {
             icon: CreditCard,
-            title: t('landing.features.items.billing.title', 'Stripe Billing'),
+            title: t('landing.features.items.billing.title', 'Chapa ETB Payments'),
             description: t(
                 'landing.features.items.billing.description',
-                'Full Stripe integration with subscriptions, invoices, billing portal, and multiple pricing tiers.',
+                'Secure payments in Ethiopian Birr via Chapa — cards, mobile money, and bank transfer. Transparent fees, instant confirmations.',
             ),
             color: 'text-orange-500',
             bgColor: 'bg-orange-500/10',
         },
         {
-            icon: LayoutDashboard,
-            title: t('landing.features.items.admin.title', 'Super Admin Panel'),
+            icon: MapPinned,
+            title: t('landing.features.items.admin.title', 'Live Tracking'),
             description: t(
                 'landing.features.items.admin.description',
-                'Global dashboard to monitor workspaces, impersonate users, and oversee the entire SaaS platform.',
+                'Track shipments from pickup to delivery with status updates, ETB milestone releases, and proof-of-delivery — Addis–Djibouti corridor and beyond.',
             ),
             color: 'text-rose-500',
             bgColor: 'bg-rose-500/10',
         },
         {
-            icon: ToggleLeft,
-            title: t('landing.features.items.flags.title', 'Feature Flags'),
+            icon: ShieldCheck,
+            title: t('landing.features.items.flags.title', 'Verification & KYC'),
             description: t(
                 'landing.features.items.flags.description',
-                'Native Laravel Pennant integration to roll out features globally or target specific workspaces.',
+                'KYC-verified carriers, truck plates, and driver documents. BadgeCheck system so shippers book with confidence.',
             ),
             color: 'text-amber-500',
             bgColor: 'bg-amber-500/10',
         },
         {
-            icon: ScrollText,
-            title: t('landing.features.items.audit.title', 'Audit Logging'),
+            icon: BadgeCheck,
+            title: t('landing.features.items.audit.title', 'Trusted Reviews'),
             description: t(
                 'landing.features.items.audit.description',
-                'Comprehensive activity tracking of system changes, property diffs, and administrative actions.',
+                'Ratings and reviews after every trip in ETB. Build reputation for on-time delivery and cargo care across Ethiopia.',
             ),
             color: 'text-teal-500',
             bgColor: 'bg-teal-500/10',
         },
         {
-            icon: Megaphone,
+            icon: Route,
             title: t(
                 'landing.features.items.announcements.title',
-                'Global Announcements',
+                'Corridor & Nationwide Coverage',
             ),
             description: t(
                 'landing.features.items.announcements.description',
-                'Schedule and broadcast custom, highly visible alert banners to all authenticated users.',
+                'Optimized for Addis–Djibouti, with coverage to Dire Dawa, Mojo Dry Port, Kombolcha, Hawassa, Bahir Dar and all major corridors.',
             ),
             color: 'text-indigo-500',
             bgColor: 'bg-indigo-500/10',
         },
         {
-            icon: Globe,
-            title: t(
-                'landing.features.items.i18n.title',
-                'Internationalization',
-            ),
+            icon: Zap,
+            title: t('landing.features.items.i18n.title', 'Bidding & Offers'),
             description: t(
                 'landing.features.items.i18n.description',
-                'Multi-language support with RTL layouts. Easily add new languages and translations.',
+                'Carriers bid in ETB, shippers compare offers and lock in the best rate — fast, competitive, and transparent via Chapa.',
             ),
             color: 'text-cyan-500',
             bgColor: 'bg-cyan-500/10',
         },
         {
-            icon: Moon,
-            title: t('landing.features.items.dark_mode.title', 'Dark Mode'),
+            icon: Building2,
+            title: t('landing.features.items.dark_mode.title', 'Fleet Workspaces'),
             description: t(
                 'landing.features.items.dark_mode.description',
-                'Beautiful light and dark themes with system preference detection and manual toggle.',
+                'Manage fleets, drivers, and trucks under one workspace. Assign roles, track loads, and centralize ETB payouts.',
             ),
             color: 'text-slate-500 dark:text-slate-400',
             bgColor: 'bg-slate-500/10 dark:bg-slate-400/10',
         },
         {
-            icon: Zap,
-            title: t('landing.features.items.stack.title', 'Modern Stack'),
+            icon: Users,
+            title: t('landing.features.items.stack.title', 'Roles & Permissions'),
             description: t(
                 'landing.features.items.stack.description',
-                'Laravel 12, Inertia.js v2, React 19, and Tailwind CSS v4 for a blazing-fast developer experience.',
+                'Owner, admin, and member roles for shippers and transporters. Control who posts loads, accepts bids, and releases ETB.',
             ),
             color: 'text-yellow-500',
             bgColor: 'bg-yellow-500/10',
         },
         {
-            icon: Palette,
-            title: t('landing.features.items.ui.title', 'Beautiful UI'),
+            icon: Star,
+            title: t('landing.features.items.ui.title', 'Ethiopia-First Experience'),
             description: t(
                 'landing.features.items.ui.description',
-                'Pre-built components with shadcn/ui design system. Fully customizable and accessible.',
+                'Built for Ethiopia — ETB by default, Amharic-ready, lightweight for low-bandwidth, and support for local corridors.',
             ),
             color: 'text-pink-500',
             bgColor: 'bg-pink-500/10',
+        },
+        {
+            icon: Truck,
+            title: t('landing.features.items.team.title', 'Carrier Network'),
+            description: t(
+                'landing.features.items.team.description',
+                'Grow your business as a carrier. Find consistent loads, get paid fast in ETB via Chapa, and keep your trucks moving.',
+            ),
+            color: 'text-green-500',
+            bgColor: 'bg-green-500/10',
         },
     ];
 
@@ -163,13 +160,13 @@ export function LandingFeatures() {
                             'Everything You Need to',
                         )}{' '}
                         <span className="text-primary">
-                            {t('landing.features.title.part2', 'Ship Faster')}
+                            {t('landing.features.title.part2', 'Move Freight')}
                         </span>
                     </h2>
                     <p className="mt-4 text-lg text-muted-foreground">
                         {t(
                             'landing.features.description',
-                            'Stop wasting weeks on boilerplate. Everything you need is included and ready to use. Focus on building what makes your product unique.',
+                            'From posting a load in Addis to securing a truck to Djibouti, every tool for shippers and carriers — with ETB payments via Chapa and KYC verification built in.',
                         )}
                     </p>
                 </div>

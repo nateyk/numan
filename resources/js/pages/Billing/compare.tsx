@@ -45,9 +45,9 @@ export default function ComparePlans({
     userRole,
 }: ComparePageProps) {
     const { t } = useTranslations();
-    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
-        'monthly',
-    );
+    const [billingPeriod, setBillingPeriod] = useState<
+        'weekly' | 'monthly' | 'yearly'
+    >('monthly');
     const [processing, setProcessing] = useState<string | null>(null);
     const { addToast } = useToast();
     const isOwner = userRole === 'owner' || userRole === 'admin';
@@ -96,6 +96,12 @@ export default function ComparePlans({
 
     const comparisonMatrix = buildComparisonMatrix();
 
+    const getWeeklyPrice = (plan: Plan): number =>
+        plan.price.weekly ??
+        plan.price_weekly_etb ??
+        plan.price_etb?.weekly ??
+        0;
+
     const handleSubscribe = async (planId: string) => {
         if (!isOwner) return;
 
@@ -139,39 +145,48 @@ export default function ComparePlans({
                 fullWidth
             >
                 <div className="space-y-8">
-                    {/* Billing Period Toggle */}
-                    <div className="flex justify-center">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-muted p-1">
-                            <Button
-                                variant={
-                                    billingPeriod === 'monthly'
-                                        ? 'default'
-                                        : 'ghost'
-                                }
-                                size="sm"
-                                onClick={() => setBillingPeriod('monthly')}
-                                className="rounded-full px-6"
-                            >
-                                Monthly
-                            </Button>
-                            <Button
-                                variant={
-                                    billingPeriod === 'yearly'
-                                        ? 'default'
-                                        : 'ghost'
-                                }
-                                size="sm"
-                                onClick={() => setBillingPeriod('yearly')}
-                                className="rounded-full px-6"
-                            >
-                                Yearly
-                                <Badge
-                                    variant="secondary"
-                                    className="ml-2 text-[10px]"
+                    {/* Billing Period Toggle — weekly/monthly/yearly */}
+                    <div className="flex items-center justify-center">
+                        <div className="inline-flex items-center gap-1 rounded-lg border bg-muted p-1">
+                            {(
+                                [
+                                    'weekly',
+                                    'monthly',
+                                    'yearly',
+                                ] as const
+                            ).map((period) => (
+                                <Button
+                                    key={period}
+                                    variant={
+                                        billingPeriod === period
+                                            ? 'default'
+                                            : 'ghost'
+                                    }
+                                    size="sm"
+                                    className="h-7 px-4 text-xs capitalize"
+                                    onClick={() => setBillingPeriod(period)}
+                                    aria-pressed={billingPeriod === period}
                                 >
-                                    Save 20%
-                                </Badge>
-                            </Button>
+                                    {period === 'weekly'
+                                        ? 'Weekly'
+                                        : period === 'monthly'
+                                          ? 'Monthly'
+                                          : 'Yearly'}
+                                    {period === 'yearly' && (
+                                        <Badge
+                                            variant="secondary"
+                                            className="ml-1 border-none bg-primary/10 px-1 py-0 text-[10px] font-bold text-primary"
+                                        >
+                                            Save 20%
+                                        </Badge>
+                                    )}
+                                    {period === 'weekly' && (
+                                        <span className="ml-1 text-[10px]">
+                                            7d
+                                        </span>
+                                    )}
+                                </Button>
+                            ))}
                         </div>
                     </div>
 
@@ -203,16 +218,25 @@ export default function ComparePlans({
                                                         <div className="text-2xl font-bold text-primary">
                                                             $
                                                             {billingPeriod ===
-                                                            'yearly'
-                                                                ? (
-                                                                      plan.price
-                                                                          .yearly /
-                                                                      12
-                                                                  ).toFixed(0)
-                                                                : plan.price
-                                                                      .monthly}
+                                                            'weekly'
+                                                                ? getWeeklyPrice(
+                                                                      plan,
+                                                                  )
+                                                                : billingPeriod ===
+                                                                    'yearly'
+                                                                  ? (
+                                                                        plan
+                                                                            .price
+                                                                            .yearly /
+                                                                        12
+                                                                    ).toFixed(0)
+                                                                  : plan.price
+                                                                        .monthly}
                                                             <span className="text-sm font-normal text-muted-foreground">
-                                                                /mo
+                                                                {billingPeriod ===
+                                                                'weekly'
+                                                                    ? '/wk'
+                                                                    : '/mo'}
                                                             </span>
                                                         </div>
                                                         {billingPeriod ===
@@ -228,6 +252,15 @@ export default function ComparePlans({
                                                                     }
                                                                     /year billed
                                                                     annually
+                                                                </div>
+                                                            )}
+                                                        {billingPeriod ===
+                                                            'weekly' &&
+                                                            getWeeklyPrice(
+                                                                plan,
+                                                            ) > 0 && (
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    ${getWeeklyPrice(plan)}/week
                                                                 </div>
                                                             )}
                                                     </div>

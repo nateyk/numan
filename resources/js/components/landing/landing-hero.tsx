@@ -1,10 +1,16 @@
-import { Github } from '@/components/brand-icons';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/hooks/use-translations';
 import { register } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { ArrowRight, CheckCircle, Sparkles, Users, Zap } from 'lucide-react';
+import {
+    ArrowRight,
+    CheckCircle,
+    CreditCard,
+    MapPinned,
+    ShieldCheck,
+    Truck,
+} from 'lucide-react';
 
 export function LandingHero() {
     const { auth } = usePage<SharedData>().props;
@@ -12,29 +18,29 @@ export function LandingHero() {
 
     const stats = [
         {
-            icon: Users,
-            value: '1,000+',
-            label: t('landing.hero.stats.developers', 'Developers'),
+            icon: Truck,
+            value: '5,000+',
+            label: t('landing.hero.stats.developers', 'Loads Posted'),
         },
         {
-            icon: Zap,
-            value: '50+',
-            label: t('landing.hero.stats.features', 'Features'),
+            icon: ShieldCheck,
+            value: '2,000+',
+            label: t('landing.hero.stats.features', 'Verified Carriers'),
         },
         {
-            icon: Github,
-            value: '100%',
-            label: t('landing.hero.stats.opensource', 'Open Source'),
+            icon: CreditCard,
+            value: 'ETB',
+            label: t('landing.hero.stats.opensource', 'Via Chapa'),
         },
     ];
 
     const features = [
-        t('landing.hero.features.auth', 'Authentication & 2FA'),
-        t('landing.hero.features.team', 'Team Management'),
-        t('landing.hero.features.billing', 'Stripe Billing'),
-        t('landing.hero.features.admin', 'Super Admin Panel'),
-        t('landing.hero.features.flags', 'Feature Flags'),
-        t('landing.hero.features.audit', 'Audit Logging'),
+        t('landing.hero.features.auth', 'Post Loads in Seconds'),
+        t('landing.hero.features.team', 'Discover Verified Trucks'),
+        t('landing.hero.features.billing', 'ETB Payments via Chapa'),
+        t('landing.hero.features.admin', 'Real-time Tracking'),
+        t('landing.hero.features.flags', 'KYC Verification'),
+        t('landing.hero.features.audit', 'Addis–Djibouti & Nationwide'),
     ];
 
     return (
@@ -47,22 +53,25 @@ export function LandingHero() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-3xl text-center">
                     <div className="mb-6 inline-flex items-center gap-2 rounded-sm border border-accent/40 bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wider text-foreground uppercase">
-                        <Sparkles className="h-3.5 w-3.5 text-accent-foreground" />
+                        <MapPinned className="h-3.5 w-3.5 text-accent-foreground" />
                         <span>
                             {t(
                                 'landing.hero.badge',
-                                'The Ultimate Laravel SaaS Starter',
+                                "Ethiopia's Freight Marketplace • ETB via Chapa",
                             )}
                         </span>
                     </div>
 
-                    {/* Headline — clean, data-forward */}
+                    {/* Headline — freight-forward */}
                     <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
                         <span className="block">
-                            {t('landing.hero.title.part1', 'Build Your SaaS')}
+                            {t(
+                                'landing.hero.title.part1',
+                                "Ethiopia's Freight",
+                            )}
                         </span>
                         <span className="block text-primary">
-                            {t('landing.hero.title.part2', '10x Faster')}
+                            {t('landing.hero.title.part2', 'Marketplace')}
                         </span>
                     </h1>
 
@@ -70,12 +79,12 @@ export function LandingHero() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
                         {t(
                             'landing.hero.description',
-                            'Production-ready Laravel SaaS starter kit with authentication, billing, teams, and everything you need. Launch your SaaS 10x faster.',
+                            'Post loads, discover verified carriers, and move freight from Addis Ababa to Djibouti and nationwide. Secure payments in ETB via Chapa, live tracking, and KYC-verified transporters.',
                         )}{' '}
                         <span className="font-semibold text-foreground">
                             {t(
                                 'landing.hero.description_highlight',
-                                '100% Open Source.',
+                                'Pay in ETB via Chapa.',
                             )}
                         </span>
                     </p>
@@ -90,7 +99,7 @@ export function LandingHero() {
                             <Link href={auth.user ? '/dashboard' : register()}>
                                 {t(
                                     'landing.hero.cta.get_started',
-                                    'Get Started Free',
+                                    'Post a Load Free',
                                 )}
                                 <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
@@ -101,14 +110,13 @@ export function LandingHero() {
                             asChild
                             className="h-11 px-7 text-sm"
                         >
-                            <a
-                                href="https://github.com/xco-agency/laravel-saas-starter"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                <Github className="mr-2 h-4 w-4" />
-                                {t('landing.hero.cta.github', 'View on GitHub')}
-                            </a>
+                            <Link href={auth.user ? '/dashboard' : register()}>
+                                <Truck className="mr-2 h-4 w-4" />
+                                {t(
+                                    'landing.hero.cta.github',
+                                    'Find Trucks',
+                                )}
+                            </Link>
                         </Button>
                     </div>
 
@@ -139,7 +147,7 @@ export function LandingHero() {
                     ))}
                 </div>
 
-                {/* Hero preview card — clean dark product UI mock */}
+                {/* Hero preview card — freight board mock */}
                 <div className="relative mx-auto mt-12 max-w-5xl">
                     <div className="overflow-hidden rounded-lg border bg-foreground shadow-xl">
                         {/* Window chrome bar */}
@@ -148,49 +156,49 @@ export function LandingHero() {
                             <span className="h-3 w-3 rounded-full bg-yellow-500/70" />
                             <span className="h-3 w-3 rounded-full bg-green-500/70" />
                             <div className="ml-4 flex-1 rounded bg-white/10 px-3 py-1 text-xs text-white/40">
-                                app.yoursaas.com/dashboard
+                                app.numanfreight.et/board • ETB • Chapa Secured
                             </div>
                         </div>
                         <div className="flex h-64 items-center justify-center p-8 sm:h-80">
                             <div className="text-center">
                                 <div className="mb-4 flex justify-center">
                                     <div className="flex h-14 w-14 items-center justify-center rounded-md bg-primary/20">
-                                        <Sparkles className="h-7 w-7 text-primary" />
+                                        <Truck className="h-7 w-7 text-primary" />
                                     </div>
                                 </div>
                                 <p className="text-base font-semibold text-white">
                                     {t(
                                         'landing.hero.preview.title',
-                                        'Production-Ready Dashboard',
+                                        'Live Freight Board',
                                     )}
                                 </p>
                                 <p className="mt-2 text-sm text-white/50">
                                     {t(
                                         'landing.hero.preview.description',
-                                        'Beautiful UI with dark mode, workspaces, and team management',
+                                        'Post loads, get bids, and track shipments across Ethiopia — all in ETB via Chapa',
                                     )}
                                 </p>
                                 <div className="mt-5 flex flex-wrap justify-center gap-2">
                                     {[
                                         t(
                                             'landing.hero.preview.tags.multi_tenant',
-                                            'Multi-tenant',
+                                            'Post Load',
                                         ),
                                         t(
                                             'landing.hero.preview.tags.stripe_billing',
-                                            'Stripe Billing',
+                                            'Chapa ETB',
                                         ),
                                         t(
                                             'landing.hero.preview.tags.admin_panel',
-                                            'Super Admin',
+                                            'Live Tracking',
                                         ),
                                         t(
                                             'landing.hero.preview.tags.team_roles',
-                                            'Team Roles',
+                                            'Verified Trucks',
                                         ),
                                         t(
                                             'landing.hero.preview.tags.feature_flags',
-                                            'Pennant Flags',
+                                            'KYC Verified',
                                         ),
                                     ].map((tag) => (
                                         <span

@@ -9,6 +9,10 @@ use App\Models\FeatureFlag;
 use App\Models\Feedback;
 use App\Models\Location;
 use App\Models\LoginActivity;
+use App\Models\MarketplacePaymentReceipt;
+use App\Models\MarketplacePaymentTransaction;
+use App\Models\MarketplacePlan;
+use App\Models\MarketplaceSubscription;
 use App\Models\NotificationDeliveryLog;
 use App\Models\OnboardingStepLog;
 use App\Models\PermissionPreset;
@@ -580,6 +584,58 @@ class DatabaseSeeder extends Seeder
             ]);
 
             $this->call(MarketplacePlanSeeder::class);
+
+            // Demo weekly marketplace subscription for first demo workspace (7-day, ETB 349)
+            $weeklyPlan = MarketplacePlan::where('slug', 'weekly')->first();
+            $demoWeeklyWorkspace = $demoWorkspaces->first();
+
+            if ($weeklyPlan && $demoWeeklyWorkspace) {
+                $existingWeeklySubscription = MarketplaceSubscription::where('workspace_id', $demoWeeklyWorkspace->id)
+                    ->where('plan_id', $weeklyPlan->id)
+                    ->where('status', 'active')
+                    ->where('billing_interval', 'weekly')
+                    ->first();
+
+                if (! $existingWeeklySubscription) {
+                    $weeklySubscription = MarketplaceSubscription::create([
+                        'workspace_id' => $demoWeeklyWorkspace->id,
+                        'plan_id' => $weeklyPlan->id,
+                        'user_id' => $demo->id,
+                        'status' => 'active',
+                        'billing_interval' => 'weekly',
+                        'current_period_start' => now(),
+                        'current_period_ends_at' => now()->addDays(7),
+                        'provider' => 'chapa',
+                        'chapa_tx_ref' => 'DEMO-WEEKLY-'.$demoWeeklyWorkspace->id.'-'.Str::upper(Str::random(6)),
+                        'quantity' => 1,
+                    ]);
+
+                    $weeklyTransaction = MarketplacePaymentTransaction::create([
+                        'workspace_id' => $demoWeeklyWorkspace->id,
+                        'plan_id' => $weeklyPlan->id,
+                        'user_id' => $demo->id,
+                        'tx_ref' => 'DEMO-TX-'.$demoWeeklyWorkspace->id.'-'.Str::upper(Str::random(8)),
+                        'chapa_ref' => 'DEMO-CHAPA-'.Str::upper(Str::random(8)),
+                        'amount_etb' => $weeklyPlan->price_weekly_etb ?: 349,
+                        'currency' => 'ETB',
+                        'status' => 'verified',
+                        'mode' => 'test',
+                        'verified_at' => now(),
+                        'idempotency_key' => (string) Str::ulid(),
+                        'provider_response' => ['demo' => true, 'note' => 'Seeded weekly demo subscription'],
+                    ]);
+
+                    MarketplacePaymentReceipt::create([
+                        'transaction_id' => $weeklyTransaction->id,
+                        'subscription_id' => $weeklySubscription->id,
+                        'workspace_id' => $demoWeeklyWorkspace->id,
+                        'amount_etb' => $weeklyTransaction->amount_etb,
+                        'currency' => 'ETB',
+                        'invoice_number' => 'NF-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
+                        'issued_at' => now(),
+                    ]);
+                }
+            }
 
             // Seed feature flags
             FeatureFlag::create([

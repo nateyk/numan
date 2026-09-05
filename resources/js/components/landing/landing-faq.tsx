@@ -10,61 +10,61 @@ export function LandingFaq() {
         {
             question: t(
                 'landing.faq.items.what_is.question',
-                'What is Laravel SAAS Starter?',
+                'What is NumanFreight?',
             ),
             answer: t(
                 'landing.faq.items.what_is.answer',
-                'Laravel SAAS Starter is a production-ready Laravel SaaS starter kit that includes authentication, multi-tenant workspaces, team management, Stripe billing, and more. It helps you launch your SaaS product 10x faster by providing all the essential features out of the box. Built by XCO Agency.',
+                "NumanFreight is Ethiopia's freight marketplace connecting shippers with verified carriers. Post loads, discover trucks, track shipments, and pay securely in ETB via Chapa — optimized for the Addis–Djibouti corridor and nationwide routes.",
             ),
         },
         {
             question: t(
                 'landing.faq.items.tech_stack.question',
-                'What tech stack does Laravel SAAS Starter use?',
+                'How do Chapa ETB payments work?',
             ),
             answer: t(
                 'landing.faq.items.tech_stack.answer',
-                'Laravel SAAS Starter is built with Laravel 12, Inertia.js v2, React 19, and Tailwind CSS v4. It uses Laravel Fortify for authentication, Laravel Cashier for Stripe billing, and shadcn/ui-inspired components for the UI.',
+                'All payments are in Ethiopian Birr (ETB) via Chapa — supporting cards, mobile money, and bank transfers. Funds are held securely and released on proof-of-delivery or agreed milestones. Transparent fees, instant confirmations, and receipts in ETB.',
             ),
         },
         {
             question: t(
                 'landing.faq.items.multiple_projects.question',
-                'Can I use Laravel SAAS Starter for multiple projects?',
+                'How do you verify carriers?',
             ),
             answer: t(
                 'landing.faq.items.multiple_projects.answer',
-                'Yes! Laravel SAAS Starter is open source and free to use for unlimited personal and commercial projects. There are no per-project fees or royalties.',
+                'Every carrier completes KYC — ID, driver license, truck plate, and ownership documents are verified. Verified carriers get a badge, ratings, and priority in discovery so shippers book with confidence.',
             ),
         },
         {
             question: t(
                 'landing.faq.items.production_ready.question',
-                'Is Laravel SAAS Starter suitable for production?',
+                'Which routes do you cover?',
             ),
             answer: t(
                 'landing.faq.items.production_ready.answer',
-                'Absolutely. Laravel SAAS Starter is built with production in mind, following Laravel best practices, security guidelines, and performance optimizations. Many successful SaaS products are already running on Laravel SAAS Starter.',
+                'We are optimized for Addis Ababa–Djibouti, including Mojo Dry Port and Dire Dawa, with growing coverage to Kombolcha, Hawassa, Bahir Dar, Mekelle, and all major Ethiopian corridors. Post any domestic load — our network is nationwide.',
             ),
         },
         {
             question: t(
                 'landing.faq.items.customization.question',
-                'How do I customize the design?',
+                'How does tracking work?',
             ),
             answer: t(
                 'landing.faq.items.customization.answer',
-                'Laravel SAAS Starter uses Tailwind CSS v4 with a well-organized theme system. You can easily customize colors, fonts, and spacing through the CSS variables. All components are built with shadcn/ui patterns, making them easy to modify.',
+                'Once a load is assigned, shippers get live status updates — accepted, loaded, in-transit, delivered — with ETB milestone tracking and proof-of-delivery upload. No extra hardware needed; updates work even on low bandwidth.',
             ),
         },
         {
             question: t(
                 'landing.faq.items.support.question',
-                'Do you offer support?',
+                'What are the fees?',
             ),
             answer: t(
                 'landing.faq.items.support.answer',
-                'Yes! We provide community support through GitHub Discussions and Issues. You can ask questions, report bugs, or request features. The community is very active and helpful.',
+                'Posting loads is free. A small transparent service fee applies on completed shipments and is shown upfront in ETB before you confirm. No hidden subscriptions — carriers get competitive ETB bids and fast Chapa payouts.',
             ),
         },
         {
@@ -74,7 +74,7 @@ export function LandingFaq() {
             ),
             answer: t(
                 'landing.faq.items.getting_started.answer',
-                "Getting started is easy! Clone the repository, follow the installation instructions in the README, and you'll have a fully functional SaaS application running in minutes. No complex setup required.",
+                'Create an account, choose shipper or carrier, and you’re ready. Shippers post a load in under a minute; carriers browse the board and bid in ETB. KYC takes minutes and payouts run via Chapa in ETB.',
             ),
         },
     ];
@@ -93,7 +93,7 @@ export function LandingFaq() {
                     <p className="mt-4 text-lg text-muted-foreground">
                         {t(
                             'landing.faq.description',
-                            "Everything you need to know about Laravel SAAS Starter. Can't find the answer you're looking for? Contact our support team.",
+                            'Everything you need to know about moving freight with NumanFreight in Ethiopia. Chapa payments, verification, tracking, and more.',
                         )}
                     </p>
                 </div>

@@ -3,7 +3,7 @@ import { useTranslations } from '@/hooks/use-translations';
 import { register } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, MapPinned } from 'lucide-react';
 
 export function LandingCta() {
     const { auth } = usePage<SharedData>().props;
@@ -15,21 +15,24 @@ export function LandingCta() {
                 <div className="relative overflow-hidden rounded-lg bg-foreground p-8 sm:p-12 lg:p-16">
                     <div className="mx-auto max-w-3xl text-center">
                         <div className="mb-5 inline-flex items-center gap-2 rounded-sm bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider text-white/80 uppercase">
-                            <Sparkles className="h-3.5 w-3.5" />
-                            {t('landing.cta.badge', '100% Free & Open Source')}
+                            <MapPinned className="h-3.5 w-3.5" />
+                            {t(
+                                'landing.cta.badge',
+                                'Built for Ethiopia • ETB via Chapa',
+                            )}
                         </div>
 
                         <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
                             {t(
                                 'landing.cta.title',
-                                'Ready to Launch Your SaaS?',
+                                'Ready to Move Freight Across Ethiopia?',
                             )}
                         </h2>
 
                         <p className="mt-4 text-lg text-white/60 sm:text-xl">
                             {t(
                                 'landing.cta.description',
-                                'Join thousands of developers who are building and shipping faster with Laravel SAAS Starter. No credit card required. No subscriptions. Just clone and start building.',
+                                'Join shippers and carriers moving goods on the Addis–Djibouti corridor and nationwide. Post a load or find a truck in minutes — secure ETB payments via Chapa, KYC-verified carriers, and live tracking.',
                             )}
                         </p>
 
@@ -44,7 +47,7 @@ export function LandingCta() {
                                 >
                                     {t(
                                         'landing.cta.get_started',
-                                        'Get Started Free',
+                                        'Post a Load Free',
                                     )}
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Link>
@@ -55,13 +58,11 @@ export function LandingCta() {
                                 asChild
                                 className="h-11 border-white/20 bg-transparent px-7 text-sm text-white hover:bg-white/10 hover:text-white"
                             >
-                                <a
-                                    href="https://github.com/xco-agency/laravel-saas-starter"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <Link
+                                    href={auth.user ? '/dashboard' : register()}
                                 >
-                                    {t('landing.cta.github', 'View on GitHub')}
-                                </a>
+                                    {t('landing.cta.github', 'Browse Loads')}
+                                </Link>
                             </Button>
                         </div>
                     </div>

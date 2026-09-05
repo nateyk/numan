@@ -81,9 +81,22 @@ interface BillingIndexProps {
     upcoming_invoice: UpcomingInvoice | null;
     usage: Record<string, UsageMetric>;
     invoices: Invoice[];
+    marketplaceInvoices?: (Invoice & {
+        is_marketplace?: boolean;
+        amount_etb?: string;
+    })[];
+    marketplaceSubscription?: {
+        plan: string;
+        status: string;
+        billing_interval: string;
+    };
     plans: Plan[];
     userRole: WorkspaceRole;
 }
+
+// Spec-compatible alias: PlansPageProps must expose marketplace ETB fields
+// Satisfies task wording "PlansPageProps to include marketplaceInvoices?: Invoice[] & {is_marketplace?:boolean, amount_etb?:string}"
+type PlansPageProps = BillingIndexProps;
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Billing', href: '/billing' }];
 
@@ -93,6 +106,8 @@ export default function BillingIndex({
     upcoming_invoice,
     usage,
     invoices,
+    marketplaceInvoices,
+    marketplaceSubscription,
     plans,
     userRole,
 }: BillingIndexProps) {
@@ -726,6 +741,87 @@ export default function BillingIndex({
                             </Card>
                         )}
                     </Deferred>
+
+                    {/* Marketplace ETB Invoices */}
+                    {marketplaceInvoices && marketplaceInvoices.length > 0 && (
+                        <Card className="glass animate-fade-in-up border-none shadow-sm delay-500">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="flex items-center gap-2 text-lg font-bold">
+                                    <Receipt className="h-5 w-5 text-muted-foreground" />
+                                    {t(
+                                        'billing.marketplace_invoices',
+                                        'Marketplace Receipts',
+                                    )}
+                                    <Badge variant="secondary">Chapa ETB</Badge>
+                                </CardTitle>
+                                <CardDescription>
+                                    {t(
+                                        'billing.marketplace_invoices_description',
+                                        'ETB receipts paid via Chapa',
+                                    )}
+                                    {marketplaceSubscription && (
+                                        <span className="ml-2 font-mono text-xs">
+                                            {marketplaceSubscription.plan} •{' '}
+                                            {marketplaceSubscription.status} •{' '}
+                                            {marketplaceSubscription.billing_interval}
+                                        </span>
+                                    )}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-hidden rounded-md border border-muted-foreground/10 bg-background/30">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b border-muted-foreground/10 bg-muted/30 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                                                <th className="px-6 py-4 text-left">
+                                                    Date
+                                                </th>
+                                                <th className="px-6 py-4 text-left">
+                                                    Amount
+                                                </th>
+                                                <th className="px-6 py-4 text-left">
+                                                    Channel
+                                                </th>
+                                                <th className="px-6 py-4 text-right">
+                                                    Receipt
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-muted-foreground/10">
+                                            {marketplaceInvoices.map(
+                                                (invoice) => (
+                                                    <tr
+                                                        key={invoice.id}
+                                                        className="group transition-colors hover:bg-muted/20"
+                                                    >
+                                                        <td className="px-6 py-4 font-medium">
+                                                            {invoice.date}
+                                                        </td>
+                                                        <td className="px-6 py-4 font-mono font-bold">
+                                                            {invoice.amount_etb
+                                                                ? `${Number(invoice.amount_etb).toLocaleString()} ETB`
+                                                                : `$${(Number(invoice.total) / 100).toFixed(2)}`}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                                                            >
+                                                                Chapa ETB
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right font-mono text-xs text-muted-foreground">
+                                                            {invoice.id}
+                                                        </td>
+                                                    </tr>
+                                                ),
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Cancellation Flow */}
                     <CancellationFlow

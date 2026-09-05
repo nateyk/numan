@@ -79,9 +79,16 @@ export interface Plan {
     name: string;
     description: string;
     price: {
+        weekly: number;
         monthly: number;
         yearly: number;
     };
+    price_etb?: {
+        weekly: number;
+        monthly: number;
+        yearly: number;
+    };
+    price_weekly_etb?: number;
     features: string[];
     limits: {
         workspaces: number;
