@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Marketplace\ChapaCallbackController;
+use App\Models\MarketplacePaymentReceipt;
+use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
+use App\Services\ChapaService;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,6 +34,43 @@ class BillingController extends Controller
         $marketplaceEntitlement = app(MarketplaceEntitlementService::class);
         $marketplaceSub = $workspace->activeMarketplaceSubscription();
         $marketplacePlans = $this->getMarketplacePlansForDisplay();
+
+        // Auto-verify pending Chapa tx for DDEV (webhook not reachable locally)
+        if (Schema::hasTable('marketplace_payment_transactions')) {
+            $pendingTxs = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->whereIn('status', ['pending', 'initialized'])->where('created_at', '>', now()->subDays(2))->get();
+            foreach ($pendingTxs as $pendingTx) {
+                try {
+                    $chapa = app(ChapaService::class);
+                    $verified = $chapa->verifyTransaction($pendingTx->tx_ref);
+                    $vd = $verified['data'] ?? $verified;
+                    if (($verified['status'] ?? null) === 'success' && in_array($vd['status'] ?? null, ['success', 'paid'])) {
+                        $expected = (string) $pendingTx->amount_etb;
+                        $got = (string) ($vd['amount'] ?? '');
+                        $cur = $vd['currency'] ?? 'ETB';
+                        if ($cur === 'ETB' && ($got === '' || $got === $expected || (float) $got === (float) $expected)) {
+                            $cb = new ChapaCallbackController($chapa);
+                            $ref = new \ReflectionMethod($cb, 'fulfill');
+                            $ref->setAccessible(true);
+                            $ref->invoke($cb, $pendingTx, $verified);
+                            $marketplaceSub = $workspace->fresh()->activeMarketplaceSubscription();
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::info('Billing auto-verify failed', ['tx' => $pendingTx->tx_ref, 'error' => $e->getMessage()]);
+                }
+            }
+        }
+
+        $marketplaceInvoices = Schema::hasTable('marketplace_payment_receipts')
+            ? MarketplacePaymentReceipt::where('workspace_id', $workspace->id)->latest()->take(10)->get()->map(fn ($r) => [
+                'id' => $r->invoice_number,
+                'date' => $r->issued_at ? $r->issued_at->format('F j, Y') : $r->created_at->format('F j, Y'),
+                'total' => (int) ((float) $r->amount_etb * 100),
+                'pdf_url' => null,
+                'is_marketplace' => true,
+                'amount_etb' => $r->amount_etb,
+            ])->values()
+            : collect();
 
         return Inertia::render('Billing/index', [
             'workspace' => [
@@ -88,6 +130,7 @@ class BillingController extends Controller
                     'pdf_url' => route('billing.invoice.download', $invoice->id),
                 ])->values();
             }),
+            'marketplaceInvoices' => $marketplaceInvoices,
             'plans' => $this->getPlansForDisplay(),
             'marketplacePlans' => $marketplacePlans,
             'userRole' => $workspace->getUserRole($user),

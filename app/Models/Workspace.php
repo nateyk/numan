@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
@@ -422,6 +423,20 @@ class Workspace extends Model
             return $this->resolvedPlan = ['name' => $this->plan_override, 'key' => strtolower($this->plan_override)];
         }
 
+        // Chapa marketplace subscription takes precedence over Stripe
+        if (Schema::hasTable('marketplace_subscriptions')) {
+            $mpSub = $this->marketplaceSubscriptions()->whereIn('status', ['active', 'trialing'])->where(function ($q) {
+                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+            })->latest()->first();
+            if ($mpSub && $mpSub->plan) {
+                return $this->resolvedPlan = ['name' => $mpSub->plan->name, 'key' => $mpSub->plan->slug];
+            }
+            if ($mpSub) {
+                // fallback if plan relation missing
+                return $this->resolvedPlan = ['name' => ucfirst($mpSub->plan_id ?? 'Pro'), 'key' => 'pro'];
+            }
+        }
+
         if ($this->subscribed('default')) {
             $subscription = $this->subscription('default');
             $priceId = $subscription->stripe_price;
@@ -448,10 +463,19 @@ class Workspace extends Model
     }
 
     /**
-     * Get the billing period (monthly/yearly) for the workspace.
+     * Get the billing period (weekly/monthly/yearly) for the workspace.
      */
     public function getBillingPeriodAttribute(): ?string
     {
+        if (Schema::hasTable('marketplace_subscriptions')) {
+            $mpSub = $this->marketplaceSubscriptions()->whereIn('status', ['active', 'trialing'])->where(function ($q) {
+                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+            })->latest()->first();
+            if ($mpSub && $mpSub->billing_interval) {
+                return $mpSub->billing_interval;
+            }
+        }
+
         if (! $this->subscribed('default')) {
             return null;
         }
@@ -477,6 +501,10 @@ class Workspace extends Model
      */
     public function onFreePlan(): bool
     {
+        if (Schema::hasTable('marketplace_subscriptions') && $this->activeMarketplaceSubscription()) {
+            return false;
+        }
+
         return ! $this->subscribed('default');
     }
 
@@ -485,6 +513,10 @@ class Workspace extends Model
      */
     public function onProPlan(): bool
     {
+        if ($this->activeMarketplaceSubscription()) {
+            return $this->plan_name === 'Pro';
+        }
+
         return $this->subscribed('default') && $this->plan_name === 'Pro';
     }
 
@@ -493,6 +525,10 @@ class Workspace extends Model
      */
     public function onBusinessPlan(): bool
     {
+        if ($this->activeMarketplaceSubscription()) {
+            return $this->plan_name === 'Business';
+        }
+
         return $this->subscribed('default') && $this->plan_name === 'Business';
     }
 

@@ -62,6 +62,8 @@ class CheckoutController extends Controller
             'idempotency_key' => (string) Str::ulid(),
         ]);
 
+        $callback = route('chapa.callback', ['tx_ref' => $txRef]);
+
         $payload = [
             'amount' => $amountStr,
             'currency' => 'ETB',
@@ -69,8 +71,8 @@ class CheckoutController extends Controller
             'first_name' => explode(' ', $user->name)[0] ?? $user->name,
             'last_name' => trim(Str::after($user->name, explode(' ', $user->name)[0] ?? '')) ?: 'User',
             'tx_ref' => $txRef,
-            'callback_url' => route('chapa.callback', ['tx_ref' => $txRef]),
-            'return_url' => route('billing.index'),
+            'callback_url' => $callback,
+            'return_url' => $callback,
             'customization' => [
                 'title' => Str::limit($plan->name, 16, ''),
                 'description' => Str::limit($plan->description ?? 'NumanFreight plan', 50, ''),
