@@ -35,11 +35,12 @@ class CheckoutController extends Controller
 
         // Free plan — no payment needed, just assign
         if ((float) $amount === 0.0) {
-            $planLimits = $plan->limits ?? [];
-            // Downgrade to free: cancel active chapa subs? For now just update plan_override? Use marketplace subscription canceled
             MarketplaceSubscription::where('workspace_id', $workspace->id)->whereIn('status', ['active', 'trialing'])->update(['status' => 'canceled', 'ends_at' => now()]);
 
-            // Create free subscription? Not needed, free is absence of sub
+            if ($request->wantsJson() || $request->header('X-Inertia')) {
+                return response()->json(['success' => true, 'message' => 'Switched to Free plan.']);
+            }
+
             return back()->with('success', 'Switched to Free plan.');
         }
 
@@ -62,13 +63,13 @@ class CheckoutController extends Controller
             'currency' => 'ETB',
             'email' => $user->email,
             'first_name' => explode(' ', $user->name)[0] ?? $user->name,
-            'last_name' => trim(str_after($user->name, explode(' ', $user->name)[0] ?? '')) ?: 'User',
+            'last_name' => trim(Str::after($user->name, explode(' ', $user->name)[0] ?? '')) ?: 'User',
             'tx_ref' => $txRef,
             'callback_url' => route('chapa.callback', ['tx_ref' => $txRef]),
             'return_url' => route('billing.index'),
             'customization' => [
-                'title' => $plan->name.' — NumanFreight',
-                'description' => $plan->description ?? 'NumanFreight marketplace plan',
+                'title' => Str::limit($plan->name, 16, ''),
+                'description' => Str::limit($plan->description ?? 'NumanFreight plan', 50, ''),
             ],
             'meta' => [
                 'plan_slug' => $plan->slug,
