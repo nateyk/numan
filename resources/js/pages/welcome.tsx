@@ -13,8 +13,20 @@ import { Head } from '@inertiajs/react';
 
 export default function Welcome({
     canRegister = true,
+    marketplacePlans = [],
 }: {
     canRegister?: boolean;
+    marketplacePlans?: Array<{
+        slug: string;
+        name: string;
+        description: string | null;
+        price_weekly_etb: number;
+        price_monthly_etb: number;
+        price_yearly_etb: number;
+        is_popular: boolean;
+        features: string[];
+        limits: Record<string, number>;
+    }>;
 }) {
     const { t } = useTranslations();
 
@@ -82,7 +94,7 @@ export default function Welcome({
                 <main>
                     <LandingHero />
                     <LandingFeatures />
-                    <LandingPricing />
+                    <LandingPricing plans={marketplacePlans} />
                     <LandingTestimonials />
                     <LandingFaq />
                     <LandingCta />

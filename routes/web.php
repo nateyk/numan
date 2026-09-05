@@ -94,14 +94,49 @@ use App\Http\Controllers\WorkspaceRetentionController;
 use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceTrashController;
 use App\Http\Middleware\RequireAdminTwoFactor;
+use App\Models\MarketplacePlan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
+    $marketplacePlans = [];
+    if (Schema::hasTable('marketplace_plans')) {
+        $dbPlans = MarketplacePlan::active()->ordered()->get();
+        if ($dbPlans->isNotEmpty()) {
+            $marketplacePlans = $dbPlans->map(fn ($p) => [
+                'slug' => $p->slug,
+                'name' => $p->name,
+                'description' => $p->description,
+                'price_weekly_etb' => (float) ($p->price_weekly_etb ?? 0),
+                'price_monthly_etb' => (float) $p->price_monthly_etb,
+                'price_yearly_etb' => (float) $p->price_yearly_etb,
+                'is_popular' => (bool) $p->is_popular,
+                'features' => $p->features ?? [],
+                'limits' => $p->limits ?? [],
+            ])->values()->all();
+        }
+    }
+    if (empty($marketplacePlans)) {
+        $cfg = config('marketplace.plans', []);
+        $marketplacePlans = collect($cfg)->map(fn ($plan, $slug) => [
+            'slug' => $slug,
+            'name' => $plan['name'],
+            'description' => $plan['description'] ?? null,
+            'price_weekly_etb' => (float) ($plan['price_weekly_etb'] ?? 0),
+            'price_monthly_etb' => (float) ($plan['price_monthly_etb'] ?? $plan['price']['monthly'] ?? 0),
+            'price_yearly_etb' => (float) ($plan['price_yearly_etb'] ?? $plan['price']['yearly'] ?? 0),
+            'is_popular' => (bool) ($plan['popular'] ?? false),
+            'features' => $plan['features'] ?? [],
+            'limits' => $plan['limits'] ?? [],
+        ])->values()->all();
+    }
+
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
+        'marketplacePlans' => $marketplacePlans,
     ]);
 })->name('home');
 
