@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\FreightPostStatus;
 use App\Models\FreightPost;
 use App\Models\User;
+use App\Services\MarketplaceEntitlementService;
 
 class FreightPostPolicy
 {
@@ -42,7 +43,20 @@ class FreightPostPolicy
             return false;
         }
 
-        return (bool) $profile->posts_freight;
+        if (! (bool) $profile->posts_freight) {
+            return false;
+        }
+
+        // Marketplace entitlement: check workspace plan limits (if workspace exists)
+        $workspace = $user->currentWorkspace;
+        if ($workspace) {
+            $entitlement = app(MarketplaceEntitlementService::class);
+            if (! $entitlement->canCreateFreightPost($workspace) || ! $entitlement->canCreateMonthlyPost($workspace)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function update(User $user, FreightPost $post): bool

@@ -311,10 +311,20 @@ const adminNavGroups = [
              },
          ],
      },
-     {
-         title: 'System & Security',
-         icon: ShieldCheck,
-         storageKey: 'system',
+    {
+        title: 'Marketplace',
+        icon: DollarSign,
+        storageKey: 'marketplace',
+        defaultExpanded: true,
+        items: [
+            { title: 'Marketplace Plans', href: '/admin/marketplace-plans', icon: Package },
+            { title: 'Payments (Chapa)', href: '/admin/marketplace-payments', icon: DollarSign },
+        ],
+    },
+    {
+        title: 'System & Security',
+        icon: ShieldCheck,
+        storageKey: 'system',
         defaultExpanded: false,
         items: [
             {

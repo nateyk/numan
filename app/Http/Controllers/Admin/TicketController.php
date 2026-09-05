@@ -37,7 +37,10 @@ class TicketController extends Controller
 
         return Inertia::render('admin/tickets/index', [
             'tickets' => $tickets,
-            'filters' => $request->only(['status', 'search']),
+            'filters' => [
+                'status' => $request->query('status'),
+                'search' => $request->query('search'),
+            ],
         ]);
     }
 

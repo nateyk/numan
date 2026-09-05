@@ -27,7 +27,10 @@ class FeedbackController extends Controller
 
         return Inertia::render('admin/feedback', [
             'feedback' => $query->paginate(20)->withQueryString(),
-            'filters' => $request->only(['type', 'status']),
+            'filters' => [
+                'type' => $request->query('type'),
+                'status' => $request->query('status'),
+            ],
             'counts' => [
                 'new' => Feedback::where('status', 'new')->count(),
                 'reviewed' => Feedback::where('status', 'reviewed')->count(),

@@ -14,8 +14,8 @@ interface Interest {
     status: string;
     message: string | null;
     created_at?: string | null;
-    freightPost?: { ulid: string; status: string; originLocation?: { name: string; region_name: string }; destinationLocation?: { name: string; region_name: string }; cargoType?: { name: string }; truckType?: { name: string }; user?: { name: string } };
-    freight_post?: { ulid: string; status: string; origin_location?: { name: string; region_name: string }; destination_location?: { name: string; region_name: string }; cargo_type?: { name: string }; truck_type?: { name: string }; user?: { name: string } };
+    freightPost?: { ulid: string; status: string; originLocation?: { name: string; region_name: string }; destinationLocation?: { name: string; region_name: string }; cargoType?: { name: string }; truckType?: { name: string }; user?: { name: string } } | null;
+    freight_post?: { ulid: string; status: string; origin_location?: { name: string; region_name: string }; destination_location?: { name: string; region_name: string }; cargo_type?: { name: string }; truck_type?: { name: string }; user?: { name: string } } | null;
 }
 
 interface Props {
@@ -39,6 +39,11 @@ const statusColor = (status: string) => {
 };
 
 export default function MyInterests({ interests, sort, counts }: Props) {
+    const safeInterests = (interests && typeof interests === 'object' && !Array.isArray(interests) ? interests : { data: [] }) as Props['interests'];
+    const safeCounts = (counts && typeof counts === 'object' && !Array.isArray(counts) ? counts : {}) as Record<string, number>;
+    const safeSort = typeof sort === 'string' && sort ? sort : 'latest';
+    const interestData = Array.isArray(safeInterests.data) ? safeInterests.data : [];
+
     return (
         <AppLayout>
             <Head title="My Interests — Manage" />
@@ -50,12 +55,12 @@ export default function MyInterests({ interests, sort, counts }: Props) {
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary" className="px-2.5 py-1">All: {counts.all ?? interests.data.length}</Badge>
-                        <Badge variant="outline" className={statusColor('submitted')}>Submitted: {counts.submitted ?? 0}</Badge>
-                        <Badge variant="outline" className={statusColor('shortlisted')}>Shortlisted: {counts.shortlisted ?? 0}</Badge>
-                        <Badge variant="outline" className={statusColor('selected')}>Selected: {counts.selected ?? 0}</Badge>
+                        <Badge variant="secondary" className="px-2.5 py-1">All: {safeCounts.all ?? interestData.length}</Badge>
+                        <Badge variant="outline" className={statusColor('submitted')}>Submitted: {safeCounts.submitted ?? 0}</Badge>
+                        <Badge variant="outline" className={statusColor('shortlisted')}>Shortlisted: {safeCounts.shortlisted ?? 0}</Badge>
+                        <Badge variant="outline" className={statusColor('selected')}>Selected: {safeCounts.selected ?? 0}</Badge>
                     </div>
-                    <Select value={sort} onValueChange={(v) => router.get('/my-interests', { sort: v }, { preserveState: true })}>
+                    <Select value={safeSort} onValueChange={(v) => router.get('/my-interests', { sort: v }, { preserveState: true })}>
                         <SelectTrigger className="w-40"><SelectValue placeholder="Sort" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="latest">Latest</SelectItem>
@@ -65,7 +70,7 @@ export default function MyInterests({ interests, sort, counts }: Props) {
                     </Select>
                 </div>
 
-                {interests.data.length === 0 ? (
+                {interestData.length === 0 ? (
                     <Card className="border-dashed">
                         <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
                             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
@@ -92,8 +97,20 @@ export default function MyInterests({ interests, sort, counts }: Props) {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {interests.data.map((i) => {
-                                            const fp = (i as unknown as Record<string, unknown>).freightPost as Interest['freightPost'] ?? (i as unknown as Record<string, unknown>).freight_post as unknown as Interest['freightPost'];
+                                        {interestData.map((i) => {
+                                            const fpRaw = (i as unknown as Record<string, unknown>).freightPost as Interest['freightPost'] ?? (i as unknown as Record<string, unknown>).freight_post as unknown as Interest['freightPost'];
+                                            const fp = fpRaw ?? null;
+                                            if (!fp || !fp.ulid) {
+                                                return (
+                                                    <TableRow key={i.id} className="opacity-60">
+                                                        <TableCell colSpan={4}>
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <Package className="size-4" /> Freight unavailable (removed) — Interest #{i.id} • {i.status}
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            }
                                             const origin = (fp as unknown as Record<string, unknown>)?.originLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.origin_location as { name: string; region_name: string } | undefined;
                                             const destination = (fp as unknown as Record<string, unknown>)?.destinationLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.destination_location as { name: string; region_name: string } | undefined;
                                             const cargoType = (fp as unknown as Record<string, unknown>)?.cargoType as { name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.cargo_type as { name: string } | undefined;
@@ -137,10 +154,18 @@ export default function MyInterests({ interests, sort, counts }: Props) {
                         </Card>
 
                         <div className="grid gap-3 md:hidden">
-                            {interests.data.map((i) => {
-                                const fp = (i as unknown as Record<string, unknown>).freightPost as Interest['freightPost'] ?? (i as unknown as Record<string, unknown>).freight_post as unknown as Interest['freightPost'];
-                                const origin = (fp as unknown as Record<string, unknown>)?.originLocation as { name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.origin_location as { name: string } | undefined;
-                                const destination = (fp as unknown as Record<string, unknown>)?.destinationLocation as { name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.destination_location as { name: string } | undefined;
+                            {interestData.map((i) => {
+                                const fpRaw = (i as unknown as Record<string, unknown>).freightPost as Interest['freightPost'] ?? (i as unknown as Record<string, unknown>).freight_post as unknown as Interest['freightPost'];
+                                const fp = fpRaw ?? null;
+                                if (!fp || !fp.ulid) {
+                                    return (
+                                        <Card key={i.id} className="p-4 opacity-60">
+                                            <div className="text-sm text-muted-foreground">Freight unavailable — Interest #{i.id} • {i.status}</div>
+                                        </Card>
+                                    );
+                                }
+                                const origin = (fp as unknown as Record<string, unknown>)?.originLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.origin_location as { name: string; region_name: string } | undefined;
+                                const destination = (fp as unknown as Record<string, unknown>)?.destinationLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.destination_location as { name: string; region_name: string } | undefined;
                                 return (
                                     <Card key={i.id} className="p-4">
                                         <div className="flex items-start justify-between gap-2">
@@ -159,9 +184,9 @@ export default function MyInterests({ interests, sort, counts }: Props) {
                             })}
                         </div>
 
-                        {interests.links && (interests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.length > 3 && (
+                        {safeInterests.links && (safeInterests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.length > 3 && (
                             <div className="flex flex-wrap gap-1">
-                                {(interests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.map((link, idx) => (
+                                {(safeInterests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.map((link, idx) => (
                                     <Button key={idx} variant={link.active ? 'default' : 'outline'} size="sm" disabled={!link.url} onClick={() => link.url && router.get(link.url, {}, { preserveState: true })} className="h-7 px-2.5 text-xs">
                                         <span dangerouslySetInnerHTML={{ __html: link.label }} />
                                     </Button>

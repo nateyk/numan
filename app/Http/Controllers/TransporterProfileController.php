@@ -141,7 +141,11 @@ class TransporterProfileController extends Controller
         return Inertia::render('transporters/index', [
             'profiles' => $profiles,
             'truckTypes' => TruckType::active()->ordered()->get(['id', 'name', 'slug']),
-            'filters' => $request->only(['q', 'truck_type', 'location']),
+            'filters' => [
+                'q' => $request->query('q'),
+                'truck_type' => $request->query('truck_type'),
+                'location' => $request->query('location'),
+            ],
         ]);
     }
 

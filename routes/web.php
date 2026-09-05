@@ -19,6 +19,8 @@ use App\Http\Controllers\Admin\ImpersonationLogController;
 use App\Http\Controllers\Admin\LogViewerController;
 use App\Http\Controllers\Admin\MailTemplateController;
 use App\Http\Controllers\Admin\MaintenanceController;
+use App\Http\Controllers\Admin\MarketplacePaymentController;
+use App\Http\Controllers\Admin\MarketplacePlanController;
 use App\Http\Controllers\Admin\NotificationAnalyticsController;
 use App\Http\Controllers\Admin\OnboardingInsightsController;
 use App\Http\Controllers\Admin\PermissionPresetController;
@@ -61,6 +63,9 @@ use App\Http\Controllers\Freight\TransporterMyInterestsController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LocationSearchController;
+use App\Http\Controllers\Marketplace\ChapaCallbackController;
+use App\Http\Controllers\Marketplace\ChapaWebhookController;
+use App\Http\Controllers\Marketplace\CheckoutController;
 use App\Http\Controllers\MemberActivityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
@@ -227,6 +232,9 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
         Route::get('/portal', [BillingController::class, 'portal'])->name('portal');
         Route::get('/invoices/{invoice}', [BillingController::class, 'downloadInvoice'])->name('invoice.download');
     });
+
+    Route::post('/marketplace/checkout', [CheckoutController::class, 'store'])->name('marketplace.checkout');
+    Route::get('/chapa/callback/{tx_ref}', [ChapaCallbackController::class, 'show'])->name('chapa.callback');
     // Workspace Security Settings
     Route::get('/settings/workspace-security', [WorkspaceSecurityController::class, 'index'])->name('workspace.security');
     Route::put('/settings/workspace-security', [WorkspaceSecurityController::class, 'update'])->name('workspace.security.update');
@@ -393,6 +401,10 @@ Route::middleware(['auth'])->group(function () {
 // Stripe webhook (no CSRF, no auth)
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook'])
     ->name('cashier.webhook');
+
+// Chapa webhook (no CSRF, no auth)
+Route::post('/webhooks/chapa', [ChapaWebhookController::class, 'handle'])
+    ->name('webhooks.chapa');
 
 // Public locale switch
 Route::patch('/locale', [LocaleController::class, 'update'])->name('locale.update');
@@ -605,5 +617,15 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
             Route::get('/freight/{ulid}', 'show')->name('show');
             Route::post('/freight/{ulid}/moderate', 'moderate')->name('moderate');
         });
+
+        // Marketplace Plans & Payments (admin)
+        Route::get('/marketplace-plans', [MarketplacePlanController::class, 'index'])->name('marketplace-plans.index');
+        Route::post('/marketplace-plans', [MarketplacePlanController::class, 'store'])->name('marketplace-plans.store');
+        Route::put('/marketplace-plans/{marketplacePlan}', [MarketplacePlanController::class, 'update'])->name('marketplace-plans.update');
+        Route::delete('/marketplace-plans/{marketplacePlan}', [MarketplacePlanController::class, 'destroy'])->name('marketplace-plans.destroy');
+        Route::post('/marketplace-plans/{id}/restore', [MarketplacePlanController::class, 'restore'])->name('marketplace-plans.restore');
+
+        Route::get('/marketplace-payments', [MarketplacePaymentController::class, 'index'])->name('marketplace-payments.index');
+        Route::post('/marketplace-payments/{transaction}/reconcile', [MarketplacePaymentController::class, 'reconcile'])->name('marketplace-payments.reconcile');
     });
 });

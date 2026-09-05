@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MarketplacePlan;
+use App\Services\MarketplaceEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Cashier\Http\Controllers\WebhookController;
@@ -23,6 +26,10 @@ class BillingController extends Controller
 
         $subscription = $workspace->subscription('default');
 
+        $marketplaceEntitlement = app(MarketplaceEntitlementService::class);
+        $marketplaceSub = $workspace->activeMarketplaceSubscription();
+        $marketplacePlans = $this->getMarketplacePlansForDisplay();
+
         return Inertia::render('Billing/index', [
             'workspace' => [
                 'id' => $workspace->id,
@@ -32,12 +39,21 @@ class BillingController extends Controller
                 'trial_ends_at' => $subscription?->trial_ends_at,
                 'seat_count' => $workspace->activeSeatCount(),
                 'seat_limit' => $workspace->seatLimit(),
+                'marketplace_plan' => $marketplaceEntitlement->getPlanForWorkspace($workspace),
             ],
             'subscription' => $subscription ? [
                 'status' => $subscription->stripe_status,
                 'ends_at' => $subscription->ends_at,
                 'on_grace_period' => $subscription->onGracePeriod(),
                 'cancelled' => $subscription->canceled(),
+            ] : null,
+            'marketplaceSubscription' => $marketplaceSub ? [
+                'id' => $marketplaceSub->id,
+                'plan' => $marketplaceSub->plan?->name ?? $marketplaceSub->plan_id,
+                'status' => $marketplaceSub->status,
+                'billing_interval' => $marketplaceSub->billing_interval,
+                'current_period_ends_at' => $marketplaceSub->current_period_ends_at,
+                'ends_at' => $marketplaceSub->ends_at,
             ] : null,
             'upcoming_invoice' => Inertia::defer(function () use ($workspace, $subscription) {
                 if ($subscription && $subscription->active()) {
@@ -57,6 +73,13 @@ class BillingController extends Controller
                 return null;
             }),
             'usage' => Inertia::defer(fn () => $workspace->usageOverview()),
+            'marketplaceUsage' => Inertia::defer(fn () => $marketplaceEntitlement->usageOverview($workspace)),
+            'marketplaceEntitlement' => Inertia::defer(fn () => [
+                'can_post' => $marketplaceEntitlement->canCreateFreightPost($workspace),
+                'can_interest' => $marketplaceEntitlement->canExpressInterest($workspace),
+                'remaining_posts' => $marketplaceEntitlement->remainingActivePosts($workspace),
+                'message' => $marketplaceEntitlement->getPlanMessage($workspace),
+            ]),
             'invoices' => Inertia::defer(function () use ($workspace) {
                 return $workspace->invoices()->take(10)->map(fn ($invoice) => [
                     'id' => $invoice->id,
@@ -66,6 +89,7 @@ class BillingController extends Controller
                 ])->values();
             }),
             'plans' => $this->getPlansForDisplay(),
+            'marketplacePlans' => $marketplacePlans,
             'userRole' => $workspace->getUserRole($user),
         ]);
     }
@@ -88,19 +112,31 @@ class BillingController extends Controller
             $recommendedBillingPeriod = null;
         }
 
+        $marketplaceEntitlement = app(MarketplaceEntitlementService::class);
+        $marketplaceSub = $workspace->activeMarketplaceSubscription();
+
         return Inertia::render('Billing/plans', [
             'workspace' => [
                 'id' => $workspace->id,
                 'name' => $workspace->name,
                 'plan' => $workspace->plan_name,
+                'marketplace_plan' => $marketplaceEntitlement->getPlanForWorkspace($workspace),
             ],
             'plans' => $this->getPlansForDisplay(),
+            'marketplacePlans' => $this->getMarketplacePlansForDisplay(),
             'currentPlan' => $workspace->plan_key,
+            'currentMarketplacePlan' => $marketplaceSub?->plan?->slug ?? $marketplaceEntitlement->getPlanForWorkspace($workspace)['slug'] ?? 'free',
             'currentBillingPeriod' => $workspace->billing_period,
+            'currentMarketplaceBillingPeriod' => $marketplaceSub?->billing_interval,
             'recommendedPlan' => $recommendedPlan,
             'recommendedBillingPeriod' => $recommendedBillingPeriod,
             'fromOnboarding' => $request->query('onboarding') === '1',
             'userRole' => $workspace->getUserRole($user),
+            'marketplaceEntitlement' => [
+                'can_post' => $marketplaceEntitlement->canCreateFreightPost($workspace),
+                'remaining_posts' => $marketplaceEntitlement->remainingActivePosts($workspace),
+                'usage' => $marketplaceEntitlement->usageOverview($workspace),
+            ],
         ]);
     }
 
@@ -323,7 +359,7 @@ class BillingController extends Controller
     }
 
     /**
-     * Get plans formatted for frontend display.
+     * Get plans formatted for frontend display (Stripe).
      */
     protected function getPlansForDisplay(): array
     {
@@ -337,6 +373,48 @@ class BillingController extends Controller
                 'price' => $plan['price'],
                 'features' => $plan['features'],
                 'limits' => $plan['limits'],
+                'popular' => $plan['popular'] ?? false,
+            ];
+        })->values()->all();
+    }
+
+    protected function getMarketplacePlansForDisplay(): array
+    {
+        if (Schema::hasTable('marketplace_plans')) {
+            $dbPlans = MarketplacePlan::active()->ordered()->get();
+            if ($dbPlans->isNotEmpty()) {
+                return $dbPlans->map(fn ($p) => [
+                    'id' => $p->slug,
+                    'slug' => $p->slug,
+                    'name' => $p->name,
+                    'description' => $p->description,
+                    'price' => ['monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
+                    'price_etb' => ['monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
+                    'features' => $p->features ?? [],
+                    'limits' => $p->limits ?? [],
+                    'faq' => $p->faq ?? [],
+                    'popular' => (bool) $p->is_popular,
+                ])->values()->all();
+            }
+        }
+
+        $plans = config('marketplace.plans', config('billing.plans'));
+
+        return collect($plans)->map(function ($plan, $key) {
+            // Normalize ETB prices
+            $monthly = $plan['price_monthly_etb'] ?? $plan['price']['monthly'] ?? 0;
+            $yearly = $plan['price_yearly_etb'] ?? $plan['price']['yearly'] ?? 0;
+
+            return [
+                'id' => $key,
+                'slug' => $key,
+                'name' => $plan['name'],
+                'description' => $plan['description'] ?? null,
+                'price' => ['monthly' => (float) $monthly, 'yearly' => (float) $yearly],
+                'price_etb' => ['monthly' => (float) $monthly, 'yearly' => (float) $yearly],
+                'features' => $plan['features'] ?? [],
+                'limits' => $plan['limits'] ?? [],
+                'faq' => $plan['faq'] ?? [],
                 'popular' => $plan['popular'] ?? false,
             ];
         })->values()->all();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Freight;
 use App\Http\Controllers\Controller;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Services\MarketplaceEntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -14,6 +15,10 @@ class PublicFreightDiscoveryController extends Controller
 {
     public function index(Request $request): Response
     {
+        $search = $request->query('search');
+        $cargo = $request->query('cargo');
+        $sort = $request->query('sort', 'latest');
+
         $query = FreightPost::query()
             ->with(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
             ->active()
@@ -26,6 +31,11 @@ class PublicFreightDiscoveryController extends Controller
             ->when($request->query('cargo_type'), function ($q, $cargoType) {
                 $q->where('cargo_type_id', $cargoType);
             })
+            ->when($cargo, function ($q, $cargo) {
+                if ($cargo !== 'all') {
+                    $q->whereHas('cargoType', fn ($cq) => $cq->where('name', $cargo));
+                }
+            })
             ->when($request->query('truck_type'), function ($q, $truckType) {
                 $q->where('required_truck_type_id', $truckType);
             })
@@ -35,14 +45,26 @@ class PublicFreightDiscoveryController extends Controller
             ->when($request->query('pickup_to'), function ($q, $to) {
                 $q->where('pickup_date', '<=', $to);
             })
-            ->orderByDesc('pickup_date')
-            ->orderByDesc('created_at');
+            ->when($search, function ($q, $search) {
+                $q->where(function ($sq) use ($search) {
+                    $sq->where('cargo_description', 'like', "%{$search}%")
+                        ->orWhere('item_name', 'like', "%{$search}%")
+                        ->orWhere('ulid', 'like', "%{$search}%");
+                });
+            });
+
+        // Apply sorting
+        match ($sort) {
+            'distance_asc', 'distance_desc' => $query->orderByDesc('pickup_date')->orderByDesc('created_at'),
+            'pickup_asc' => $query->orderBy('pickup_date', 'asc')->orderBy('created_at', 'asc'),
+            default => $query->orderByDesc('pickup_date')->orderByDesc('created_at'),
+        };
 
         $posts = $query->paginate(12)->withQueryString();
 
         // For current user, map freight_post_id => interest {id, status} to show on cards
         $userInterestMap = [];
-        $user = auth()->user();
+        $user = $request->user();
         if ($user) {
             $ids = $posts->getCollection()->pluck('id')->toArray();
             if (! empty($ids)) {
@@ -55,14 +77,36 @@ class PublicFreightDiscoveryController extends Controller
             }
         }
 
+        $marketplaceEntitlement = null;
+        if ($user && $user->currentWorkspace) {
+            $service = app(MarketplaceEntitlementService::class);
+            $marketplaceEntitlement = [
+                'can_post' => $service->canCreateFreightPost($user->currentWorkspace),
+                'can_interest' => $service->canExpressInterest($user->currentWorkspace),
+                'remaining_posts' => $service->remainingActivePosts($user->currentWorkspace),
+                'plan' => $service->getPlanForWorkspace($user->currentWorkspace),
+            ];
+        }
+
         return Inertia::render('discover/index', [
             'freight' => $posts,
-            'filters' => $request->only(['origin', 'destination', 'cargo_type', 'truck_type', 'pickup_from', 'pickup_to']),
-            'userInterestMap' => $userInterestMap,
+            'filters' => [
+                'search' => $search,
+                'origin' => $request->query('origin'),
+                'destination' => $request->query('destination'),
+                'cargo' => $cargo,
+                'sort' => $sort,
+                'cargo_type' => $request->query('cargo_type'),
+                'truck_type' => $request->query('truck_type'),
+                'pickup_from' => $request->query('pickup_from'),
+                'pickup_to' => $request->query('pickup_to'),
+            ],
+            'userInterestMap' => (object) $userInterestMap,
+            'marketplaceEntitlement' => $marketplaceEntitlement,
         ]);
     }
 
-    public function show(string $ulid): Response
+    public function show(Request $request, string $ulid): Response
     {
         $post = FreightPost::where('ulid', $ulid)
             ->with(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
@@ -71,7 +115,7 @@ class PublicFreightDiscoveryController extends Controller
         Gate::authorize('view', $post);
 
         // Check if current user has already expressed interest
-        $user = auth()->user();
+        $user = $request->user();
         $hasInterest = false;
         $interestStatus = null;
         $interestsCount = 0;
@@ -87,11 +131,22 @@ class PublicFreightDiscoveryController extends Controller
             }
         }
 
+        $marketplaceEntitlement = null;
+        if ($user && $user->currentWorkspace) {
+            $service = app(MarketplaceEntitlementService::class);
+            $marketplaceEntitlement = [
+                'can_post' => $service->canCreateFreightPost($user->currentWorkspace),
+                'can_interest' => $service->canExpressInterest($user->currentWorkspace),
+                'plan' => $service->getPlanForWorkspace($user->currentWorkspace),
+            ];
+        }
+
         return Inertia::render('freight/show', [
             'post' => $post,
             'hasInterest' => $hasInterest,
             'interestStatus' => $interestStatus,
             'interestsCount' => $interestsCount,
+            'marketplaceEntitlement' => $marketplaceEntitlement,
         ]);
     }
 }

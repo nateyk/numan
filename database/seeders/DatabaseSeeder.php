@@ -579,6 +579,8 @@ class DatabaseSeeder extends Seeder
                 'ends_at' => now()->subDays(30),
             ]);
 
+            $this->call(MarketplacePlanSeeder::class);
+
             // Seed feature flags
             FeatureFlag::create([
                 'key' => 'new-dashboard',

@@ -3,9 +3,11 @@
 namespace App\Policies;
 
 use App\Enums\FreightInterestStatus;
+use App\Enums\FreightPostStatus;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\User;
+use App\Services\MarketplaceEntitlementService;
 
 class FreightInterestPolicy
 {
@@ -29,7 +31,7 @@ class FreightInterestPolicy
             return false;
         }
 
-        if ($post->status !== \App\Enums\FreightPostStatus::Active->value) {
+        if ($post->status !== FreightPostStatus::Active->value) {
             return false;
         }
 
@@ -38,7 +40,19 @@ class FreightInterestPolicy
             ->whereNotIn('status', [FreightInterestStatus::Rejected->value, FreightInterestStatus::Withdrawn->value])
             ->exists();
 
-        return ! $exists;
+        if ($exists) {
+            return false;
+        }
+
+        $workspace = $user->currentWorkspace;
+        if ($workspace) {
+            $entitlement = app(MarketplaceEntitlementService::class);
+            if (! $entitlement->canExpressInterest($workspace)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function withdraw(User $user, FreightInterest $interest): bool

@@ -65,9 +65,12 @@ class FreightPostController extends Controller
     {
         Gate::authorize('create', FreightPost::class);
 
+        $workspace = $request->user()->currentWorkspace;
+
         $post = FreightPost::create([
             'ulid' => (string) Str::ulid(),
             'user_id' => $request->user()->id,
+            'workspace_id' => $workspace?->id,
             'status' => FreightPostStatus::Draft->value,
             'completion_score' => 0,
         ]);

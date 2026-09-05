@@ -215,6 +215,23 @@ class Workspace extends Model
         return $this->hasMany(WebhookLog::class);
     }
 
+    public function marketplaceSubscriptions(): HasMany
+    {
+        return $this->hasMany(MarketplaceSubscription::class);
+    }
+
+    public function marketplaceTransactions(): HasMany
+    {
+        return $this->hasMany(MarketplacePaymentTransaction::class);
+    }
+
+    public function activeMarketplaceSubscription(): ?MarketplaceSubscription
+    {
+        return $this->marketplaceSubscriptions()->whereIn('status', ['active', 'trialing'])->where(function ($q) {
+            $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+        })->latest()->first();
+    }
+
     /**
      * Determine if the given user belongs to the workspace.
      */

@@ -19,25 +19,47 @@ import { type BreadcrumbItem, type Plan, type WorkspaceRole } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { Check, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import PlanQandA from '@/components/marketplace/PlanQandA';
+
+interface MarketplacePlan {
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    price: { monthly: number; yearly: number };
+    price_etb: { monthly: number; yearly: number };
+    features: string[];
+    limits: Record<string, number>;
+    faq?: Array<{ q: string; a: string }>;
+    popular?: boolean;
+}
 
 interface PlansPageProps {
     plans: Plan[];
+    marketplacePlans?: MarketplacePlan[];
     currentPlan: string;
+    currentMarketplacePlan?: string;
     currentBillingPeriod: 'monthly' | 'yearly' | null;
+    currentMarketplaceBillingPeriod?: 'monthly' | 'yearly' | null;
     recommendedPlan: 'pro' | 'business' | null;
     recommendedBillingPeriod: 'monthly' | 'yearly' | null;
     fromOnboarding: boolean;
     userRole: WorkspaceRole;
+    marketplaceEntitlement?: { can_post: boolean; remaining_posts: number; usage: Record<string, { label: string; count: number; limit: number; percentage: number }> };
 }
 
 export default function PlansPage({
     plans,
+    marketplacePlans,
     currentPlan,
+    currentMarketplacePlan,
     currentBillingPeriod,
+    currentMarketplaceBillingPeriod,
     recommendedPlan,
     recommendedBillingPeriod,
     fromOnboarding,
     userRole,
+    marketplaceEntitlement,
 }: PlansPageProps) {
     const { t } = useTranslations();
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
@@ -91,6 +113,31 @@ export default function PlansPage({
             }
         } catch (error) {
             console.error('Subscription error:', error);
+            setProcessing(null);
+        }
+    };
+
+    const handleMarketplaceSubscribe = async (slug: string) => {
+        if (!isOwner) return;
+        setProcessing(`marketplace-${slug}`);
+        try {
+            const { data } = await http.post<{ checkout_url?: string; success?: boolean; error?: string }>('/marketplace/checkout', {
+                body: { plan: slug, billing_interval: billingPeriod },
+            });
+            if (data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else if (data.success) {
+                addToast('Plan activated', 'success');
+                router.visit('/billing');
+            } else if (data.error) {
+                addToast(data.error, 'error');
+                setProcessing(null);
+            } else {
+                router.visit('/billing');
+            }
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : 'Chapa checkout failed';
+            addToast(msg, 'error');
             setProcessing(null);
         }
     };
@@ -241,7 +288,87 @@ export default function PlansPage({
                         </Label>
                     </div>
 
-                    {/* Plans Grid */}
+                    {marketplacePlans && marketplacePlans.length > 0 && (
+                        <div className="space-y-6">
+                            <div className="text-center">
+                                <h3 className="text-xl font-bold tracking-tight">NumanFreight ETB — Chapa</h3>
+                                <p className="text-sm text-muted-foreground">Pay in ETB via Chapa (Telebirr, cards). Verified, ETB invoices.</p>
+                                {marketplaceEntitlement && (
+                                    <p className="mt-1 text-xs text-muted-foreground">Remaining active posts: {marketplaceEntitlement.remaining_posts === -1 ? 'Unlimited' : marketplaceEntitlement.remaining_posts}</p>
+                                )}
+                            </div>
+                            <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
+                                {marketplacePlans.map((plan, index) => {
+                                    const isCurrent = currentMarketplacePlan === plan.slug && billingPeriod === (currentMarketplaceBillingPeriod ?? billingPeriod);
+                                    const price = billingPeriod === 'monthly' ? plan.price_etb.monthly : plan.price_etb.yearly;
+                                    return (
+                                        <Card
+                                            key={`mp-${plan.slug}`}
+                                            className={`relative flex flex-col border-primary/20 ${isCurrent ? 'z-10 border-primary shadow-md ring-2 ring-primary/20' : plan.popular ? 'border-primary/50 shadow-xl' : 'hover:shadow-lg'}`}
+                                        >
+                                            {isCurrent ? (
+                                                <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
+                                                    <Badge className="gap-1 bg-green-600 px-3 py-1 font-bold shadow-lg">
+                                                        <Check className="h-3.5 w-3.5 stroke-[3]" /> Your ETB Plan
+                                                    </Badge>
+                                                </div>
+                                            ) : (
+                                                plan.popular && (
+                                                    <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
+                                                        <Badge className="gap-1 bg-primary px-3 py-1 font-bold shadow-lg">
+                                                            <Sparkles className="h-3.5 w-3.5" /> Popular
+                                                        </Badge>
+                                                    </div>
+                                                )
+                                            )}
+                                            <CardHeader className="pt-8 text-center">
+                                                <CardTitle className="text-2xl font-black tracking-tight">{plan.name}</CardTitle>
+                                                <CardDescription className="font-medium text-muted-foreground/80">{plan.description}</CardDescription>
+                                                <div className="mt-4">
+                                                    <span className="text-4xl font-black tracking-tighter">{Number(price).toLocaleString()} ETB</span>
+                                                    <span className="text-lg font-bold text-muted-foreground">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="flex-1 px-6 pt-2">
+                                                <ul className="space-y-3">
+                                                    {plan.features.map((feature, fi) => (
+                                                        <li key={fi} className="flex gap-2 text-sm">
+                                                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                                                            <span>{feature}</span>
+                                                        </li>
+                                                    ))}
+                                                    <li className="pt-2 text-xs text-muted-foreground">Limits: {Object.entries(plan.limits).map(([k, v]) => `${k}: ${v === -1 ? '∞' : v}`).join(' • ')}</li>
+                                                </ul>
+                                            </CardContent>
+                                            <CardFooter className="px-6 pb-6">
+                                                <Button
+                                                    className="h-11 w-full font-bold"
+                                                    variant={isCurrent ? 'secondary' : 'default'}
+                                                    disabled={isCurrent || !isOwner || processing !== null}
+                                                    onClick={() => handleMarketplaceSubscribe(plan.slug)}
+                                                >
+                                                    {processing === `marketplace-${plan.slug}` && <Spinner className="mr-2" />}
+                                                    {isCurrent ? 'Current ETB Plan' : Number(price) === 0 ? 'Use Free' : `Pay ${Number(price).toLocaleString()} ETB via Chapa`}
+                                                </Button>
+                                            </CardFooter>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                            <div className="mx-auto max-w-3xl">
+                                <PlanQandA
+                                    title="ETB Plans — Q&A"
+                                    items={
+                                        marketplacePlans.flatMap((p) => p.faq ?? []).length
+                                            ? marketplacePlans.flatMap((p) => p.faq as { q: string; a: string }[])
+                                            : undefined
+                                    }
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Stripe Plans Grid (legacy USD) */}
                     <div className="mx-auto grid max-w-7xl gap-8 pb-12 md:grid-cols-3">
                         {plans.map((plan, index) => (
                             <Card

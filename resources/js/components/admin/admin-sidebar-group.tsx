@@ -1,4 +1,4 @@
-import { useFeature } from '@/contexts/feature-context';
+import { useFeatures } from '@/contexts/feature-context';
 import { cn } from '@/lib/utils';
 import { ChevronDown, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -34,7 +34,7 @@ export function AdminSidebarGroup({
         return saved ? saved === 'true' : defaultExpanded;
     });
 
-    const isFeatureEnabled = useFeature;
+    const { isEnabled: isFeatureEnabled } = useFeatures();
 
     // Auto-expand if current route is in this group
     useEffect(() => {

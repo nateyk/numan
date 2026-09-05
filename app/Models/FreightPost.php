@@ -22,6 +22,7 @@ class FreightPost extends Model
     protected $fillable = [
         'ulid',
         'user_id',
+        'workspace_id',
         'origin_location_id',
         'destination_location_id',
         'origin_exact_lat',
@@ -79,12 +80,21 @@ class FreightPost extends Model
             if (empty($model->ulid)) {
                 $model->ulid = (string) Str::ulid();
             }
+            if (empty($model->workspace_id) && $model->user_id) {
+                $user = User::find($model->user_id);
+                $model->workspace_id = $user?->currentWorkspace?->id;
+            }
         });
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function workspace(): BelongsTo
+    {
+        return $this->belongsTo(Workspace::class);
     }
 
     public function originLocation(): BelongsTo

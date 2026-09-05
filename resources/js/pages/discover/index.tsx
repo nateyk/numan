@@ -42,6 +42,7 @@ interface Props {
     filters: Record<string, string>;
     canRegister?: boolean;
     userInterestMap?: Record<number, { id: number; status: string }>;
+    marketplaceEntitlement?: { can_post: boolean; can_interest: boolean; remaining_posts: number; plan: { slug: string; name: string } } | null;
 }
 
 const sortOptions = [
@@ -51,19 +52,26 @@ const sortOptions = [
     { id: 'pickup_asc', label: 'Pickup: Earliest' },
 ];
 
-export default function DiscoverIndex({ freight, filters, canRegister = true, userInterestMap = {} }: Props) {
+export default function DiscoverIndex({ freight, filters, canRegister = true, userInterestMap = {}, marketplaceEntitlement }: Props) {
     const { auth } = usePage<SharedData>().props;
-    const [searchQuery, setSearchQuery] = useState(filters.search ?? '');
-    const [origin, setOrigin] = useState(filters.origin ?? '');
-    const [destination, setDestination] = useState(filters.destination ?? '');
-    const [selectedCargo, setSelectedCargo] = useState(filters.cargo ?? 'all');
-    const [selectedSort, setSelectedSort] = useState(filters.sort ?? 'latest');
+    const safeFilters = (filters && !Array.isArray(filters) ? filters : {}) as Record<string, string>;
+    const getStringFilter = (key: string, fallback = ''): string => {
+        const val = safeFilters[key];
+        return typeof val === 'string' ? val : fallback;
+    };
+    const safeFreight = (freight && typeof freight === 'object' && !Array.isArray(freight) ? freight : { data: [], links: [], total: 0, from: null, to: null }) as Props['freight'];
+    const safeInterestMap = (userInterestMap && typeof userInterestMap === 'object' && !Array.isArray(userInterestMap) ? userInterestMap : {}) as Record<number, { id: number; status: string }>;
+    const [searchQuery, setSearchQuery] = useState(getStringFilter('search', ''));
+    const [origin, setOrigin] = useState(getStringFilter('origin', ''));
+    const [destination, setDestination] = useState(getStringFilter('destination', ''));
+    const [selectedCargo, setSelectedCargo] = useState(getStringFilter('cargo', 'all') || 'all');
+    const [selectedSort, setSelectedSort] = useState(getStringFilter('sort', 'latest') || 'latest');
 
     const activeFilters: Array<{ type: string; label: string }> = [];
     if (origin) activeFilters.push({ type: 'origin', label: `Origin #${origin}` });
     if (destination) activeFilters.push({ type: 'destination', label: `Destination #${destination}` });
     if (selectedCargo !== 'all') activeFilters.push({ type: 'cargo', label: selectedCargo });
-    if (filters.search) activeFilters.push({ type: 'search', label: `"${filters.search}"` });
+    if (searchQuery) activeFilters.push({ type: 'search', label: `"${searchQuery}"` });
 
     const clearFilter = (type: string) => {
         if (type === 'origin') {
@@ -118,7 +126,7 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                     Discover Freight Across Ethiopia
                                 </h1>
                                 <p className="mt-2 max-w-2xl text-muted-foreground">
-                                    Browse {freight.total ?? freight.data.length} active freight posts — 934 major towns from Addis Ababa to Jijiga, Hawassa to Mekelle. Find
+                                    Browse {safeFreight.total ?? safeFreight.data.length} active freight posts — 934 major towns from Addis Ababa to Jijiga, Hawassa to Mekelle. Find
                                     verified loads for your fleet.
                                 </p>
                             </div>
@@ -267,9 +275,23 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                 </CardContent>
                             </Card>
 
+                            {marketplaceEntitlement && !marketplaceEntitlement.can_post && (
+                                <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+                                    <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                                        <div>
+                                            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Post limit reached on {marketplaceEntitlement.plan.name} plan</p>
+                                            <p className="text-xs text-amber-800 dark:text-amber-200">Upgrade to post more freight. ETB via Chapa.</p>
+                                        </div>
+                                        <Button size="sm" asChild>
+                                            <Link href="/billing/plans">View ETB Plans</Link>
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            )}
+
                             <div className="flex items-center justify-between gap-4 px-1 py-2 text-sm" aria-live="polite" aria-atomic="true">
                                 <p className="font-medium">
-                                    Showing {freight.from ?? 1}–{freight.to ?? freight.data.length} of {freight.total ?? freight.data.length} results
+                                    Showing {safeFreight.from ?? 1}–{safeFreight.to ?? safeFreight.data.length} of {safeFreight.total ?? safeFreight.data.length} results
                                 </p>
                                 <p className="text-xs text-muted-foreground">Sorted by {sortOptions.find((s) => s.id === selectedSort)?.label}</p>
                             </div>
@@ -281,7 +303,7 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                             Freight results
                         </h2>
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                            {freight.data.length === 0 ? (
+                            {safeFreight.data.length === 0 ? (
                                 <Card className="border-dashed">
                                     <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
                                         <div className="flex size-12 items-center justify-center rounded-full bg-muted" aria-hidden="true">
@@ -296,7 +318,7 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                 </Card>
                             ) : (
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
-                                    {freight.data.map((f) => {
+                                    {safeFreight.data.map((f) => {
                                         const origin =
                                             ((f as unknown as Record<string, unknown>).originLocation as Freight['originLocation']) ??
                                             ((f as unknown as Record<string, unknown>).origin_location as Freight['originLocation']);
@@ -310,7 +332,7 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                             ((f as unknown as Record<string, unknown>).truckType as Freight['truckType']) ??
                                             ((f as unknown as Record<string, unknown>).truck_type as Freight['truckType']);
                                         const isOwn = auth?.user?.id && f.user?.id === auth.user.id;
-                                        const interest = userInterestMap?.[f.id];
+                                        const interest = safeInterestMap?.[f.id];
                                         const titleId = `freight-${f.ulid}-title`;
                                         return (
                                             <Card key={f.ulid} role="listitem" aria-labelledby={titleId} className="flex flex-col overflow-hidden border bg-card">
@@ -440,9 +462,9 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                     })}
                                 </div>
                             )}
-                            {freight.links && freight.links.length > 3 && (
+                            {safeFreight.links && safeFreight.links.length > 3 && (
                                 <nav aria-label="Freight pagination" className="mt-8 flex flex-wrap justify-center gap-1">
-                                    {freight.links.map((link, i) => {
+                                    {safeFreight.links.map((link, i) => {
                                         const isDisabled = !link.url;
                                         const labelText = link.label.replace(/&laquo;|&raquo;/g, '').trim() || link.label;
                                         return (
