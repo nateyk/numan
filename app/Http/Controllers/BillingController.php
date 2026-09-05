@@ -388,8 +388,8 @@ class BillingController extends Controller
                     'slug' => $p->slug,
                     'name' => $p->name,
                     'description' => $p->description,
-                    'price' => ['monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
-                    'price_etb' => ['monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
+                    'price' => ['weekly' => (float) ($p->price_weekly_etb ?? 0), 'monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
+                    'price_etb' => ['weekly' => (float) ($p->price_weekly_etb ?? 0), 'monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
                     'features' => $p->features ?? [],
                     'limits' => $p->limits ?? [],
                     'faq' => $p->faq ?? [],
@@ -402,6 +402,7 @@ class BillingController extends Controller
 
         return collect($plans)->map(function ($plan, $key) {
             // Normalize ETB prices
+            $weekly = $plan['price_weekly_etb'] ?? $plan['price']['weekly'] ?? 0;
             $monthly = $plan['price_monthly_etb'] ?? $plan['price']['monthly'] ?? 0;
             $yearly = $plan['price_yearly_etb'] ?? $plan['price']['yearly'] ?? 0;
 
@@ -410,8 +411,8 @@ class BillingController extends Controller
                 'slug' => $key,
                 'name' => $plan['name'],
                 'description' => $plan['description'] ?? null,
-                'price' => ['monthly' => (float) $monthly, 'yearly' => (float) $yearly],
-                'price_etb' => ['monthly' => (float) $monthly, 'yearly' => (float) $yearly],
+                'price' => ['weekly' => (float) $weekly, 'monthly' => (float) $monthly, 'yearly' => (float) $yearly],
+                'price_etb' => ['weekly' => (float) $weekly, 'monthly' => (float) $monthly, 'yearly' => (float) $yearly],
                 'features' => $plan['features'] ?? [],
                 'limits' => $plan['limits'] ?? [],
                 'faq' => $plan['faq'] ?? [],

@@ -18,7 +18,7 @@ class CheckoutController extends Controller
     {
         $data = $request->validate([
             'plan' => ['required', 'string', 'exists:marketplace_plans,slug'],
-            'billing_interval' => ['required', 'in:monthly,yearly'],
+            'billing_interval' => ['required', 'in:weekly,monthly,yearly'],
         ]);
 
         $user = $request->user();
@@ -30,7 +30,11 @@ class CheckoutController extends Controller
 
         $plan = MarketplacePlan::where('slug', $data['plan'])->where('is_active', true)->firstOrFail();
 
-        $amount = $data['billing_interval'] === 'monthly' ? $plan->price_monthly_etb : $plan->price_yearly_etb;
+        $amount = match ($data['billing_interval']) {
+            'weekly' => $plan->price_weekly_etb,
+            'monthly' => $plan->price_monthly_etb,
+            'yearly' => $plan->price_yearly_etb,
+        };
         $amountStr = (string) $amount;
 
         // Free plan — no payment needed, just assign

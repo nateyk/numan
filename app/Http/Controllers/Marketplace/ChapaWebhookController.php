@@ -110,10 +110,14 @@ class ChapaWebhookController extends Controller
                         MarketplaceSubscription::where('workspace_id', $workspace->id)->whereIn('status', ['active', 'trialing'])->update(['status' => 'canceled', 'ends_at' => now()]);
 
                         $billingInterval = $transaction->provider_response['meta']['billing_interval'] ?? $verified['meta']['billing_interval'] ?? 'monthly';
-                        if (! in_array($billingInterval, ['monthly', 'yearly'])) {
+                        if (! in_array($billingInterval, ['weekly', 'monthly', 'yearly'])) {
                             $billingInterval = 'monthly';
                         }
-                        $periodDays = $billingInterval === 'yearly' ? 365 : 30;
+                        $periodDays = match ($billingInterval) {
+                            'weekly' => 7,
+                            'yearly' => 365,
+                            default => 30,
+                        };
 
                         $sub = MarketplaceSubscription::create([
                             'workspace_id' => $workspace->id,

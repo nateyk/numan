@@ -13,6 +13,7 @@ interface PlanItem {
     slug: string;
     name: string;
     description: string | null;
+    price_weekly_etb: string;
     price_monthly_etb: string;
     price_yearly_etb: string;
     is_active: boolean;
@@ -36,6 +37,7 @@ export default function AdminMarketplacePlans({ plans }: Props) {
         slug: '',
         name: '',
         description: '',
+        price_weekly_etb: '0',
         price_monthly_etb: '0',
         price_yearly_etb: '0',
         is_active: true as boolean,
@@ -52,6 +54,7 @@ export default function AdminMarketplacePlans({ plans }: Props) {
             slug: '',
             name: '',
             description: '',
+            price_weekly_etb: '0',
             price_monthly_etb: '0',
             price_yearly_etb: '0',
             is_active: true,
@@ -71,6 +74,7 @@ export default function AdminMarketplacePlans({ plans }: Props) {
             slug: plan.slug,
             name: plan.name,
             description: plan.description ?? '',
+            price_weekly_etb: String(plan.price_weekly_etb ?? '0'),
             price_monthly_etb: String(plan.price_monthly_etb),
             price_yearly_etb: String(plan.price_yearly_etb),
             is_active: plan.is_active,
@@ -95,6 +99,7 @@ export default function AdminMarketplacePlans({ plans }: Props) {
             slug: form.data.slug,
             name: form.data.name,
             description: form.data.description || null,
+            price_weekly_etb: form.data.price_weekly_etb,
             price_monthly_etb: form.data.price_monthly_etb,
             price_yearly_etb: form.data.price_yearly_etb,
             is_active: form.data.is_active,
@@ -106,7 +111,7 @@ export default function AdminMarketplacePlans({ plans }: Props) {
         };
 
         if (editing) {
-            router.put(`/admin/marketplace-plans/${editing.id}`, payload as never, {
+            router.put(`/admin/marketplace-plans/${editing.slug}`, payload as never, {
                 onSuccess: () => closeForm(),
                 preserveScroll: true,
             });
@@ -120,7 +125,7 @@ export default function AdminMarketplacePlans({ plans }: Props) {
 
     const destroy = (plan: PlanItem) => {
         if (confirm(`Archive plan "${plan.name}"?`)) {
-            router.delete(`/admin/marketplace-plans/${plan.id}`, { preserveScroll: true });
+            router.delete(`/admin/marketplace-plans/${plan.slug}`, { preserveScroll: true });
         }
     };
 
@@ -168,7 +173,11 @@ export default function AdminMarketplacePlans({ plans }: Props) {
                                     <Label htmlFor="description">Description</Label>
                                     <Input id="description" value={form.data.description} onChange={(e) => form.setData('description', e.target.value)} placeholder="For growing teams" />
                                 </div>
-                                <div className="grid gap-4 md:grid-cols-3">
+                                <div className="grid gap-4 md:grid-cols-4">
+                                    <div className="space-y-1.5">
+                                        <Label>Weekly ETB</Label>
+                                        <Input type="number" value={form.data.price_weekly_etb} onChange={(e) => form.setData('price_weekly_etb', e.target.value)} placeholder="349" />
+                                    </div>
                                     <div className="space-y-1.5">
                                         <Label>Monthly ETB *</Label>
                                         <Input type="number" value={form.data.price_monthly_etb} onChange={(e) => form.setData('price_monthly_etb', e.target.value)} />
@@ -234,6 +243,7 @@ export default function AdminMarketplacePlans({ plans }: Props) {
                                 </div>
                                 <p className="text-sm text-muted-foreground">{plan.description}</p>
                                 <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                                    {Number(plan.price_weekly_etb) > 0 && <span>{Number(plan.price_weekly_etb).toLocaleString()} ETB / wk</span>}
                                     <span>{Number(plan.price_monthly_etb).toLocaleString()} ETB / mo</span>
                                     <span className="text-muted-foreground">• {Number(plan.price_yearly_etb).toLocaleString()} ETB / yr</span>
                                     <span className="text-muted-foreground">• Active: {plan.limits?.active_freight_posts ?? '-'}</span>

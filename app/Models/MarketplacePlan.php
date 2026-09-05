@@ -13,6 +13,7 @@ class MarketplacePlan extends Model
         'slug',
         'name',
         'description',
+        'price_weekly_etb',
         'price_monthly_etb',
         'price_yearly_etb',
         'is_active',
@@ -27,6 +28,7 @@ class MarketplacePlan extends Model
     protected function casts(): array
     {
         return [
+            'price_weekly_etb' => 'decimal:2',
             'price_monthly_etb' => 'decimal:2',
             'price_yearly_etb' => 'decimal:2',
             'is_active' => 'boolean',

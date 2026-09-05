@@ -26,8 +26,8 @@ interface MarketplacePlan {
     slug: string;
     name: string;
     description: string | null;
-    price: { monthly: number; yearly: number };
-    price_etb: { monthly: number; yearly: number };
+    price: { weekly: number; monthly: number; yearly: number };
+    price_etb: { weekly: number; monthly: number; yearly: number };
     features: string[];
     limits: Record<string, number>;
     faq?: Array<{ q: string; a: string }>;
@@ -39,10 +39,10 @@ interface PlansPageProps {
     marketplacePlans?: MarketplacePlan[];
     currentPlan: string;
     currentMarketplacePlan?: string;
-    currentBillingPeriod: 'monthly' | 'yearly' | null;
-    currentMarketplaceBillingPeriod?: 'monthly' | 'yearly' | null;
-    recommendedPlan: 'pro' | 'business' | null;
-    recommendedBillingPeriod: 'monthly' | 'yearly' | null;
+    currentBillingPeriod: 'weekly' | 'monthly' | 'yearly' | null;
+    currentMarketplaceBillingPeriod?: 'weekly' | 'monthly' | 'yearly' | null;
+    recommendedPlan: 'pro' | 'business' | 'weekly' | null;
+    recommendedBillingPeriod: 'weekly' | 'monthly' | 'yearly' | null;
     fromOnboarding: boolean;
     userRole: WorkspaceRole;
     marketplaceEntitlement?: { can_post: boolean; remaining_posts: number; usage: Record<string, { label: string; count: number; limit: number; percentage: number }> };
@@ -62,8 +62,8 @@ export default function PlansPage({
     marketplaceEntitlement,
 }: PlansPageProps) {
     const { t } = useTranslations();
-    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
-        recommendedBillingPeriod || currentBillingPeriod || 'monthly',
+    const [billingPeriod, setBillingPeriod] = useState<'weekly' | 'monthly' | 'yearly'>(
+        (recommendedBillingPeriod as 'weekly' | 'monthly' | 'yearly') || (currentBillingPeriod as 'weekly' | 'monthly' | 'yearly') || 'monthly',
     );
     const [processing, setProcessing] = useState<string | null>(null);
     const { addToast } = useToast();
@@ -241,51 +241,28 @@ export default function PlansPage({
                         </Card>
                     )}
 
-                    {/* Billing Period Toggle */}
-                    <div className="animate-fade-in-up flex items-center justify-center gap-4">
-                        <Label
-                            htmlFor="billing-monthly"
-                            className={`cursor-pointer transition-colors duration-300 ${billingPeriod === 'monthly' ? 'font-bold text-foreground' : 'text-muted-foreground/60 hover:text-muted-foreground'}`}
-                        >
-                            {t('billing.plans.monthly', 'Monthly')}
-                        </Label>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={billingPeriod === 'yearly'}
-                            onClick={() =>
-                                setBillingPeriod(
-                                    billingPeriod === 'monthly'
-                                        ? 'yearly'
-                                        : 'monthly',
-                                )
-                            }
-                            className={`relative inline-flex h-7 w-14 items-center rounded-full shadow-inner transition-all duration-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${
-                                billingPeriod === 'yearly'
-                                    ? 'bg-primary'
-                                    : 'bg-input'
-                            }`}
-                        >
-                            <span
-                                className={`inline-block h-5 w-5 rounded-full bg-background shadow-md transition-transform duration-500 ease-in-out ${
-                                    billingPeriod === 'yearly'
-                                        ? 'translate-x-8'
-                                        : 'translate-x-1'
-                                }`}
-                            />
-                        </button>
-                        <Label
-                            htmlFor="billing-yearly"
-                            className={`flex cursor-pointer items-center gap-2 transition-colors duration-300 ${billingPeriod === 'yearly' ? 'font-bold text-foreground' : 'text-muted-foreground/60 hover:text-muted-foreground'}`}
-                        >
-                            Yearly
-                            <Badge
-                                variant="secondary"
-                                className="animate-pulse border-none bg-primary/10 font-bold text-primary"
-                            >
-                                Save 17%
-                            </Badge>
-                        </Label>
+                    {/* Billing Period Toggle — weekly/monthly/yearly */}
+                    <div className="flex items-center justify-center">
+                        <div className="inline-flex items-center gap-1 rounded-lg border bg-muted p-1">
+                            {(['weekly', 'monthly', 'yearly'] as const).map((period) => (
+                                <Button
+                                    key={period}
+                                    variant={billingPeriod === period ? 'default' : 'ghost'}
+                                    size="sm"
+                                    className="h-7 px-4 text-xs capitalize"
+                                    onClick={() => setBillingPeriod(period)}
+                                    aria-pressed={billingPeriod === period}
+                                >
+                                    {period === 'weekly' ? 'Weekly' : period === 'monthly' ? 'Monthly' : 'Yearly'}
+                                    {period === 'yearly' && (
+                                        <Badge variant="secondary" className="ml-1 border-none bg-primary/10 px-1 py-0 text-[10px] font-bold text-primary">
+                                            Save 17%
+                                        </Badge>
+                                    )}
+                                    {period === 'weekly' && <span className="ml-1 text-[10px]">7d</span>}
+                                </Button>
+                            ))}
+                        </div>
                     </div>
 
                     {marketplacePlans && marketplacePlans.length > 0 && (
@@ -297,10 +274,15 @@ export default function PlansPage({
                                     <p className="mt-1 text-xs text-muted-foreground">Remaining active posts: {marketplaceEntitlement.remaining_posts === -1 ? 'Unlimited' : marketplaceEntitlement.remaining_posts}</p>
                                 )}
                             </div>
-                            <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
+                            <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3 lg:grid-cols-4">
                                 {marketplacePlans.map((plan, index) => {
                                     const isCurrent = currentMarketplacePlan === plan.slug && billingPeriod === (currentMarketplaceBillingPeriod ?? billingPeriod);
-                                    const price = billingPeriod === 'monthly' ? plan.price_etb.monthly : plan.price_etb.yearly;
+                                    const price =
+                                        billingPeriod === 'weekly'
+                                            ? plan.price_etb.weekly
+                                            : billingPeriod === 'monthly'
+                                              ? plan.price_etb.monthly
+                                              : plan.price_etb.yearly;
                                     return (
                                         <Card
                                             key={`mp-${plan.slug}`}
@@ -326,7 +308,10 @@ export default function PlansPage({
                                                 <CardDescription className="font-medium text-muted-foreground/80">{plan.description}</CardDescription>
                                                 <div className="mt-4">
                                                     <span className="text-4xl font-black tracking-tighter">{Number(price).toLocaleString()} ETB</span>
-                                                    <span className="text-lg font-bold text-muted-foreground">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                                                    <span className="text-lg font-bold text-muted-foreground">
+                                                        /{billingPeriod === 'weekly' ? 'wk' : billingPeriod === 'monthly' ? 'mo' : 'yr'}
+                                                    </span>
+                                                    {billingPeriod === 'weekly' && <span className="ml-2 text-xs font-medium text-muted-foreground">7-day</span>}
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="flex-1 px-6 pt-2">

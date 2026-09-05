@@ -86,14 +86,18 @@ class ChapaCallbackController extends Controller
 
             $billingInterval = $transaction->provider_response['meta']['billing_interval'] ?? $verified['meta']['billing_interval'] ?? $transaction->provider_response['billing_interval'] ?? 'monthly';
             // fallback to meta from transaction
-            if (! in_array($billingInterval, ['monthly', 'yearly'])) {
+            if (! in_array($billingInterval, ['weekly', 'monthly', 'yearly'])) {
                 $billingInterval = 'monthly';
             }
 
             // Cancel previous active subs
             MarketplaceSubscription::where('workspace_id', $workspace->id)->whereIn('status', ['active', 'trialing'])->update(['status' => 'canceled', 'ends_at' => now()]);
 
-            $periodDays = $billingInterval === 'yearly' ? 365 : 30;
+            $periodDays = match ($billingInterval) {
+                'weekly' => 7,
+                'yearly' => 365,
+                default => 30,
+            };
             $subscription = MarketplaceSubscription::create([
                 'workspace_id' => $workspace->id,
                 'plan_id' => $plan->id,
