@@ -132,7 +132,7 @@ jobs:
       # ── Option B: Deploy via SSH + rsync (if SSH enabled) ──
       - name: Deploy via SSH (rsync)
         if: ${{ secrets.CPANEL_SSH_HOST != '' }}
-        uses: easingthemes/ssh-deploy@v5.0.3
+        uses: easingthemes/ssh-deploy@v6.0.3
         with:
           SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.CPANEL_SSH_HOST }}
