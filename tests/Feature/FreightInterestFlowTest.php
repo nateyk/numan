@@ -92,7 +92,9 @@ it('prevents self-interest', function () {
         'bank_account_number' => '1000123456789',
         'bank_iban' => 'ET123456789012345678901',
         'bank_swift' => 'CBEETAA',
-    ])->assertForbidden();
+    ])->assertSessionHasErrors('interest');
+
+    expect(FreightInterest::count())->toBe(0);
 });
 
 it('allows transporter to withdraw before accept', function () {

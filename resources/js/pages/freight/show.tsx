@@ -13,6 +13,7 @@ import { Truck, Package, Calendar, MapPin, Route, Clock, User, ShieldCheck, Arro
 import RoutePreviewMap from '@/components/maps/RoutePreviewMap';
 import type { SharedData } from '@/types';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface Props {
     post: {
@@ -66,7 +67,13 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
 
     const isOwnPost = auth?.user?.id === post.user?.id;
 
-    const { data: interestData, setData: setInterestData, post: postInterest, processing: interestProcessing, errors: interestErrors, reset: resetInterest } = useForm({
+    const { data: interestData, setData: setInterestData, post: postInterest, processing: interestProcessing, errors: interestErrors, reset: resetInterest } = useForm<{
+        message: string;
+        contact_name: string;
+        contact_phone: string;
+        contact_email: string;
+        interest?: string;
+    }>({
         message: '',
         contact_name: auth?.user?.name ?? '',
         contact_phone: '',
@@ -88,6 +95,16 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
             onSuccess: () => {
                 setInterestOpen(false);
                 resetInterest();
+                toast.success('Interest expressed successfully.');
+            },
+            onError: (errors) => {
+                const msg = (errors as Record<string, string>).interest || Object.values(errors)[0] as string;
+                if (msg) {
+                    toast.error(msg);
+                    if (String(msg).toLowerCase().includes('transporter profile')) {
+                        setTimeout(() => router.visit('/my-transporter-profile'), 1500);
+                    }
+                }
             },
         });
     };
@@ -197,6 +214,8 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                                                             <Link href="/my-interests"><Users className="mr-1 size-4" /> My Interests</Link>
                                                         </Button>
                                                     </>
+                                                ) : post.status !== 'active' ? (
+                                                    <Badge variant="outline" className="justify-center py-2 capitalize">Freight {post.status} — not available for interest</Badge>
                                                 ) : (
                                                     <Dialog open={interestOpen} onOpenChange={setInterestOpen}>
                                                         <Button onClick={handleExpressInterest} className="w-full" size="lg">
@@ -208,6 +227,16 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                                                                 <DialogDescription>Provide your contact details for the consignor to contact you.</DialogDescription>
                                                             </DialogHeader>
                                                             <form onSubmit={submitInterest} className="space-y-4">
+                                                                {interestErrors.interest && (
+                                                                    <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                                                                        {interestErrors.interest}
+                                                                        {String(interestErrors.interest).toLowerCase().includes('transporter profile') && (
+                                                                            <div className="mt-2">
+                                                                                <Button size="sm" variant="outline" onClick={() => router.visit('/my-transporter-profile')}>Create Transporter Profile</Button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                                 <div>
                                                                     <Label>Message (optional)</Label>
                                                                     <Textarea value={interestData.message} onChange={(e) => setInterestData('message', e.target.value)} placeholder="Why are you interested? e.g., Available truck, experience on this route" rows={2} />

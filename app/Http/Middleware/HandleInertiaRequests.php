@@ -89,6 +89,8 @@ class HandleInertiaRequests extends Middleware
                     'tour_completed_at' => $user->tour_completed_at,
                     'created_at' => $user->created_at,
                     'profile_completeness' => $user->profileCompletenessScore(),
+                    'phone' => $user->profile?->phone,
+                    'transporter_status' => $user->transporterProfile?->status,
                 ] : null,
                 'is_impersonating' => $request->session()->has('impersonated_by'),
             ],

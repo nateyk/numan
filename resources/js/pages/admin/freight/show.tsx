@@ -12,7 +12,9 @@ interface Props {
         status: string;
         cargo_description: string | null;
         cargo_type?: { name: string } | null;
+        cargoType?: { name: string } | null;
         truck_type?: { name: string } | null;
+        truckType?: { name: string } | null;
         truck_count?: number | null;
         schedule_type?: string | null;
         pickup_date: string | null;
@@ -22,9 +24,12 @@ interface Props {
         destination_exact_lat: string | null;
         destination_exact_lng: string | null;
         origin_location?: { name: string; region_name: string } | null;
+        originLocation?: { name: string; region_name: string } | null;
         destination_location?: { name: string; region_name: string } | null;
+        destinationLocation?: { name: string; region_name: string } | null;
         user?: { id: number; name: string; email: string } | null;
         route_snapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null;
+        routeSnapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null;
         moderation_logs?: Array<{ id: number; from_status: string; to_status: string; reason: string | null; moderator: string | null; created_at: string | null }>;
         created_at: string | null;
     };
@@ -41,6 +46,15 @@ export default function AdminFreightShow({ post }: Props) {
     const canApprove = post.status === 'submitted' || post.status === 'under_review';
     const canReject = post.status === 'submitted' || post.status === 'under_review';
     const canUnderReview = post.status === 'submitted';
+
+    // Handle both snake_case and camelCase (Eloquent vs Inertia)
+    const originLocation = (post as unknown as Record<string, unknown>).originLocation as Props['post']['origin_location'] ?? (post as unknown as Record<string, unknown>).origin_location as Props['post']['origin_location'] ?? post.originLocation ?? post.origin_location;
+    const destinationLocation = (post as unknown as Record<string, unknown>).destinationLocation as Props['post']['destination_location'] ?? (post as unknown as Record<string, unknown>).destination_location as Props['post']['destination_location'] ?? post.destinationLocation ?? post.destination_location;
+    const cargoType = (post as unknown as Record<string, unknown>).cargoType as Props['post']['cargo_type'] ?? (post as unknown as Record<string, unknown>).cargo_type as Props['post']['cargo_type'] ?? post.cargoType ?? post.cargo_type;
+    const truckType = (post as unknown as Record<string, unknown>).truckType as Props['post']['truck_type'] ?? (post as unknown as Record<string, unknown>).truck_type as Props['post']['truck_type'] ?? post.truckType ?? post.truck_type;
+    const routeSnapshot = (post as unknown as Record<string, unknown>).routeSnapshot as Props['post']['route_snapshot'] ?? (post as unknown as Record<string, unknown>).route_snapshot as Props['post']['route_snapshot'] ?? post.routeSnapshot ?? post.route_snapshot;
+    const hasRoute = !!(originLocation && destinationLocation);
+    const hasExact = !!(post.origin_exact_lat && post.origin_exact_lng && post.destination_exact_lat && post.destination_exact_lng);
 
     return (
         <AdminLayout>
@@ -71,18 +85,42 @@ export default function AdminFreightShow({ post }: Props) {
                     <Card>
                         <CardHeader><CardTitle className="text-base">Route & Schedule</CardTitle></CardHeader>
                         <CardContent className="space-y-1 text-sm">
-                            <p><span className="text-muted-foreground">Origin:</span> {post.origin_location?.name ?? '—'} ({post.origin_location?.region_name ?? '—'})</p>
-                            <p><span className="text-muted-foreground">Destination:</span> {post.destination_location?.name ?? '—'} ({post.destination_location?.region_name ?? '—'})</p>
-                            <p><span className="text-muted-foreground">Exact:</span> {post.origin_exact_lat ?? '—'},{post.origin_exact_lng ?? '—'} → {post.destination_exact_lat ?? '—'},{post.destination_exact_lng ?? '—'}</p>
-                            <p><span className="text-muted-foreground">Schedule:</span> {post.schedule_type ?? '—'} • {post.pickup_date ? String(post.pickup_date).slice(0, 10) : '—'} {post.pickup_time ?? ''}</p>
+                            <p>
+                                <span className="text-muted-foreground">Origin:</span>{' '}
+                                {originLocation ? (
+                                    <span className="font-medium">{originLocation.name} <span className="text-muted-foreground">({originLocation.region_name})</span></span>
+                                ) : (
+                                    <span className="text-amber-600 dark:text-amber-400">Not set — complete route step</span>
+                                )}
+                            </p>
+                            <p>
+                                <span className="text-muted-foreground">Destination:</span>{' '}
+                                {destinationLocation ? (
+                                    <span className="font-medium">{destinationLocation.name} <span className="text-muted-foreground">({destinationLocation.region_name})</span></span>
+                                ) : (
+                                    <span className="text-amber-600 dark:text-amber-400">Not set — complete route step</span>
+                                )}
+                            </p>
+                            <p>
+                                <span className="text-muted-foreground">Exact:</span>{' '}
+                                {hasExact ? (
+                                    <span>{Number(post.origin_exact_lat).toFixed(4)},{Number(post.origin_exact_lng).toFixed(4)} → {Number(post.destination_exact_lat).toFixed(4)},{Number(post.destination_exact_lng).toFixed(4)}</span>
+                                ) : (
+                                    <span className="text-muted-foreground">— No precise points</span>
+                                )}
+                            </p>
+                            <p><span className="text-muted-foreground">Schedule:</span> {post.schedule_type ?? '—'} • {post.pickup_date ? String(post.pickup_date).slice(0, 10) : <span className="text-amber-600">Not set</span>} {post.pickup_time ?? ''}</p>
                             <p><span className="text-muted-foreground">Created:</span> {post.created_at ? new Date(post.created_at).toLocaleString() : '—'}</p>
+                            {!hasRoute && (
+                                <p className="pt-2 text-xs font-medium text-amber-600 dark:text-amber-400">⚠ Route incomplete — draft cannot be submitted until origin & destination are set.</p>
+                            )}
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader><CardTitle className="text-base">Cargo & Truck</CardTitle></CardHeader>
                         <CardContent className="space-y-1 text-sm">
-                            <p><span className="text-muted-foreground">Cargo:</span> {post.cargo_type?.name ?? '—'} — {post.cargo_description ?? '—'}</p>
-                            <p><span className="text-muted-foreground">Truck:</span> {post.truck_type?.name ?? '—'} × {post.truck_count ?? '—'}</p>
+                            <p><span className="text-muted-foreground">Cargo:</span> {cargoType?.name ?? <span className="text-amber-600">Not set</span>} — {post.cargo_description ?? <span className="text-muted-foreground">—</span>}</p>
+                            <p><span className="text-muted-foreground">Truck:</span> {truckType?.name ?? <span className="text-amber-600">Not set</span>} × {post.truck_count ?? '—'}</p>
                             <p><span className="text-muted-foreground">Consignor:</span> {post.user?.name ?? '—'} ({post.user?.email ?? '—'})</p>
                         </CardContent>
                     </Card>
