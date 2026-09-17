@@ -146,7 +146,7 @@ jobs:
       # ── Post-deploy: run migrations, cache, etc. via SSH ──
       - name: Post-deploy via SSH
         if: ${{ secrets.CPANEL_SSH_HOST != '' }}
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.CPANEL_SSH_HOST }}
           username: ${{ secrets.CPANEL_SSH_USER }}
