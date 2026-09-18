@@ -1,0 +1,45 @@
+name: Diagnose cPanel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    environment: production-numan
+    env:
+      CPANEL_SSH_HOST: ${{ vars.CPANEL_SSH_HOST || secrets.CPANEL_SSH_HOST }}
+      CPANEL_SSH_USER: ${{ vars.CPANEL_SSH_USER || secrets.CPANEL_SSH_USER }}
+      CPANEL_SSH_PORT: ${{ vars.CPANEL_SSH_PORT || secrets.CPANEL_SSH_PORT || '22' }}
+      CPANEL_REMOTE_DIR: ${{ vars.CPANEL_REMOTE_DIR || secrets.CPANEL_REMOTE_DIR || 'numan/' }}
+      ALLOW_INSECURE_HOSTKEY: ${{ vars.ALLOW_INSECURE_HOSTKEY || 'false' }}
+      CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+      CPANEL_SSH_KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$CPANEL_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$CPANEL_SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$CPANEL_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 644 ~/.ssh/known_hosts
+          fi
+          if [ "$ALLOW_INSECURE_HOSTKEY" = "true" ]; then
+            echo "SSH_OPTS=-o StrictHostKeyChecking=accept-new" >> "$GITHUB_ENV"
+          else
+            echo "SSH_OPTS=-o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
+          fi
+
+      - name: Check Laravel error log
+        run: |
+          ssh -p "${CPANEL_SSH_PORT}" -i ~/.ssh/deploy_key ${SSH_OPTS} \
+            "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" bash -s <<'EOF'
+          echo "=== Laravel error log (last 50 lines) ==="
+          tail -n 50 ~/numan/storage/logs/laravel.log 2>&1
+          echo "=== .env file ==="
+          cat ~/numan/.env | head -50
+          EOF
