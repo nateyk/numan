@@ -162,6 +162,7 @@ jobs:
             "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" \
             "REMOTE_DIR='${CPANEL_REMOTE_DIR}' bash -s" <<'REMOTE'
           set -e
+          REMOTE_DIR="${REMOTE_DIR/#\~/$HOME}"
           cd "$REMOTE_DIR"
           composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts || true
           php artisan storage:link || true
