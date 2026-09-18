@@ -9,9 +9,12 @@ concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   # ──────────────────────────────────────────────
-  # 1. CI — Tests + Lint + Build (must pass before deploy)
+  # 1. CI — tests must pass before deploy
   # ──────────────────────────────────────────────
   ci:
     runs-on: ubuntu-latest
@@ -55,123 +58,106 @@ jobs:
         run: php artisan test --compact
 
   # ──────────────────────────────────────────────
-  # 2. Deploy to cPanel (FTP or SSH)
-  #    Requires GitHub Secrets — see DEPLOY.md
+  # 2. Deploy to cPanel over SSH (rsync + artisan)
+  #    Configure in GitHub → Settings → Environments → production-numan
+  #      Variables: CPANEL_SSH_HOST, CPANEL_SSH_PORT, CPANEL_SSH_USER,
+  #                 CPANEL_REMOTE_DIR, ALLOW_INSECURE_HOSTKEY, APP_URL
+  #      Secrets:   CPANEL_SSH_KEY, CPANEL_SSH_KNOWN_HOSTS
   # ──────────────────────────────────────────────
   deploy:
     needs: ci
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: production-numan
+    env:
+      CPANEL_SSH_HOST: ${{ vars.CPANEL_SSH_HOST || secrets.CPANEL_SSH_HOST }}
+      CPANEL_SSH_USER: ${{ vars.CPANEL_SSH_USER || secrets.CPANEL_SSH_USER }}
+      CPANEL_SSH_PORT: ${{ vars.CPANEL_SSH_PORT || secrets.CPANEL_SSH_PORT || '22' }}
+      CPANEL_REMOTE_DIR: ${{ vars.CPANEL_REMOTE_DIR || secrets.CPANEL_REMOTE_DIR || 'numan/' }}
+      ALLOW_INSECURE_HOSTKEY: ${{ vars.ALLOW_INSECURE_HOSTKEY || 'false' }}
+      APP_URL: ${{ vars.APP_URL || 'https://numan.agrigebeya.com' }}
+      CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+      CPANEL_SSH_KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
     steps:
+      - name: Skip notice (no SSH secrets configured)
+        if: env.CPANEL_SSH_HOST == '' || env.CPANEL_SSH_KEY == ''
+        run: |
+          echo "::warning::Deploy skipped — set CPANEL_SSH_HOST and CPANEL_SSH_KEY in the production-numan environment. See DEPLOY.md"
+
       - uses: actions/checkout@v4
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
 
       - name: Setup PHP 8.4
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           tools: composer:v2
 
       - name: Setup pnpm
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
         uses: pnpm/action-setup@v4
 
       - name: Setup Node 22
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Install & Build (for artifact)
+      - name: Build production artifact
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
         run: |
           composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
           pnpm install --frozen-lockfile
           pnpm run build
 
-      - name: Create deploy artifact (exclude dev files)
+      - name: Configure SSH
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
         run: |
-          mkdir -p /tmp/deploy
-          rsync -av --progress ./ /tmp/deploy/ \
+          mkdir -p ~/.ssh
+          printf '%s\n' "$CPANEL_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$CPANEL_SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$CPANEL_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 644 ~/.ssh/known_hosts
+          fi
+          if [ "$ALLOW_INSECURE_HOSTKEY" = "true" ]; then
+            echo "SSH_OPTS=-o StrictHostKeyChecking=accept-new" >> "$GITHUB_ENV"
+          else
+            echo "SSH_OPTS=-o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
+          fi
+
+      - name: Deploy (rsync)
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
+        run: |
+          rsync -avz --delete \
+            -e "ssh -p ${CPANEL_SSH_PORT} -i ~/.ssh/deploy_key ${SSH_OPTS}" \
             --exclude='.git' \
             --exclude='.github' \
+            --exclude='.ddev' \
             --exclude='node_modules' \
             --exclude='tests' \
             --exclude='.env' \
-            --exclude='.env.example' \
+            --exclude='NUL' \
             --exclude='storage/app/*' \
             --exclude='storage/logs/*' \
             --exclude='storage/framework/cache/*' \
             --exclude='storage/framework/sessions/*' \
             --exclude='storage/framework/views/*' \
-            --exclude='.ddev' \
-            --exclude='NUL'
-          # keep storage structure
-          mkdir -p /tmp/deploy/storage/app/public /tmp/deploy/storage/framework/{cache,sessions,views} /tmp/deploy/bootstrap/cache
-          # tar for faster transfer
-          tar -czf /tmp/deploy.tar.gz -C /tmp/deploy .
+            ./ "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}:${CPANEL_REMOTE_DIR}"
 
-      # ── Option A: Deploy via FTP (most cPanel hosts) ──
-      - name: Deploy via FTP
-        if: ${{ secrets.CPANEL_FTP_SERVER != '' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.CPANEL_FTP_SERVER }}
-          username: ${{ secrets.CPANEL_FTP_USERNAME }}
-          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
-          port: ${{ secrets.CPANEL_FTP_PORT || 21 }}
-          protocol: ${{ secrets.CPANEL_FTP_PROTOCOL || 'ftp' }} # ftp or ftps
-          local-dir: ./ # deployed via artifact above, but FTP action needs local-dir; we extract tar on server via SSH fallback
-          server-dir: ${{ secrets.CPANEL_REMOTE_DIR || 'public_html/' }}
-          exclude: |
-            **/.git*
-            **/.github/**
-            **/node_modules/**
-            **/tests/**
-            **/.env
-            **/.ddev/**
-            **/NUL
-
-      # ── Option B: Deploy via SSH + rsync (if SSH enabled) ──
-      - name: Deploy via SSH (rsync)
-        if: ${{ secrets.CPANEL_SSH_HOST != '' }}
-        uses: easingthemes/ssh-deploy@v5.0.3
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.CPANEL_SSH_HOST }}
-          REMOTE_USER: ${{ secrets.CPANEL_SSH_USER }}
-          REMOTE_PORT: ${{ secrets.CPANEL_SSH_PORT || 22 }}
-          SOURCE: "/tmp/deploy/"
-          TARGET: ${{ secrets.CPANEL_REMOTE_DIR || '~/numan/' }}
-          EXCLUDE: ".git/, .github/, node_modules/, tests/, .ddev/, NUL"
-          ARGS: "-avz --delete"
-
-      # ── Post-deploy: run migrations, cache, etc. via SSH ──
-      - name: Post-deploy via SSH
-        if: ${{ secrets.CPANEL_SSH_HOST != '' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.CPANEL_SSH_HOST }}
-          username: ${{ secrets.CPANEL_SSH_USER }}
-          key: ${{ secrets.CPANEL_SSH_KEY }}
-          port: ${{ secrets.CPANEL_SSH_PORT || 22 }}
-          script: |
-            set -e
-            cd ${{ secrets.CPANEL_REMOTE_DIR || '~/numan' }}
-            echo "→ composer install (prod)"
-            composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts || composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-            echo "→ storage link"
-            php artisan storage:link || true
-            echo "→ migrate --force"
-            php artisan migrate --force
-            echo "→ cache"
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            php artisan event:cache || true
-            echo "→ permissions"
-            chmod -R 775 storage bootstrap/cache || true
-            echo "✓ deploy done"
-
-      - name: No deploy secrets — skip
-        if: ${{ secrets.CPANEL_FTP_SERVER == '' && secrets.CPANEL_SSH_HOST == '' }}
+      - name: Post-deploy (artisan)
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
         run: |
-          echo "::warning::No CPANEL_FTP_SERVER or CPANEL_SSH_HOST secrets set — skipping deploy. See DEPLOY.md"
-          echo "CI passed, but deploy was skipped. Set secrets to enable auto-deploy."
+          ssh -p "${CPANEL_SSH_PORT}" -i ~/.ssh/deploy_key ${SSH_OPTS} \
+            "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" \
+            "cd ${CPANEL_REMOTE_DIR} && \
+             composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader && \
+             php artisan storage:link || true && \
+             php artisan migrate --force && \
+             php artisan config:cache && \
+             php artisan route:cache && \
+             php artisan view:cache && \
+             chmod -R 775 storage bootstrap/cache || true && \
+             echo '✓ deploy complete'"
