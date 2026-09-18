@@ -221,8 +221,8 @@ importers:
         version: 8.62.1(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu':
-        specifier: 4.62.2
-        version: 4.62.2
+        specifier: 4.63.3
+        version: 4.63.3
       '@rollup/rollup-win32-x64-msvc':
         specifier: 4.62.2
         version: 4.62.2
@@ -1784,6 +1784,12 @@ packages:
 
   '@rollup/rollup-linux-x64-gnu@4.62.2':
     resolution: {integrity: sha512-5BqxR/pshjey51iliyzTD5Xi3EN0aLmQ2lZ3lvefVV9c82BvrLo2/6OT55iifpWBufs6kdwWbuOKS841DrmK9A==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@rollup/rollup-linux-x64-gnu@4.63.3':
+    resolution: {integrity: sha512-SXagRwnI2Wlwlitllu59UK/nGVbD1CKPcNqDplHwIC4BqJcpXFjD32d1R/RbuISa95HdQrZM3/7v4bKiowFaLA==}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
@@ -5365,6 +5371,9 @@ snapshots:
     optional: true
 
   '@rollup/rollup-linux-x64-gnu@4.62.2':
+    optional: true
+
+  '@rollup/rollup-linux-x64-gnu@4.63.3':
     optional: true
 
   '@rollup/rollup-linux-x64-musl@4.62.2':
