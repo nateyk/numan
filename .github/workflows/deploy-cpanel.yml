@@ -128,24 +128,32 @@ jobs:
             echo "SSH_OPTS=-o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
           fi
 
-      - name: Deploy (rsync)
+      - name: Package artifact (tar)
         if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
         run: |
-          rsync -avz --delete \
-            -e "ssh -p ${CPANEL_SSH_PORT} -i ~/.ssh/deploy_key ${SSH_OPTS}" \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='.ddev' \
-            --exclude='node_modules' \
-            --exclude='tests' \
-            --exclude='.env' \
-            --exclude='NUL' \
-            --exclude='storage/app/*' \
-            --exclude='storage/logs/*' \
-            --exclude='storage/framework/cache/*' \
-            --exclude='storage/framework/sessions/*' \
-            --exclude='storage/framework/views/*' \
-            ./ "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}:${CPANEL_REMOTE_DIR}"
+          tar -czf /tmp/deploy.tar.gz \
+            --exclude='./.git' \
+            --exclude='./.github' \
+            --exclude='./.ddev' \
+            --exclude='./node_modules' \
+            --exclude='./tests' \
+            --exclude='./.env' \
+            --exclude='./NUL' \
+            --exclude='./storage/app/*' \
+            --exclude='./storage/logs/*' \
+            --exclude='./storage/framework/cache/*' \
+            --exclude='./storage/framework/sessions/*' \
+            --exclude='./storage/framework/views/*' \
+            --exclude='./bootstrap/cache/*' \
+            .
+          ls -lh /tmp/deploy.tar.gz
+
+      - name: Upload + extract (ssh, no rsync on server)
+        if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
+        run: |
+          SSH_BASE="ssh -p ${CPANEL_SSH_PORT} -i ~/.ssh/deploy_key ${SSH_OPTS} ${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}"
+          $SSH_BASE "mkdir -p ${CPANEL_REMOTE_DIR} && echo '✓ remote dir ready'"
+          cat /tmp/deploy.tar.gz | $SSH_BASE "cd ${CPANEL_REMOTE_DIR} && tar -xzf - && echo '✓ extracted'"
 
       - name: Post-deploy (artisan)
         if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
@@ -153,11 +161,11 @@ jobs:
           ssh -p "${CPANEL_SSH_PORT}" -i ~/.ssh/deploy_key ${SSH_OPTS} \
             "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" \
             "cd ${CPANEL_REMOTE_DIR} && \
-             composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader && \
-             php artisan storage:link || true && \
+             (composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts || true) && \
+             php artisan storage:link || true; \
              php artisan migrate --force && \
              php artisan config:cache && \
              php artisan route:cache && \
              php artisan view:cache && \
-             chmod -R 775 storage bootstrap/cache || true && \
+             chmod -R 775 storage bootstrap/cache || true; \
              echo '✓ deploy complete'"
