@@ -34,12 +34,31 @@ jobs:
             echo "SSH_OPTS=-o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
           fi
 
-      - name: Check Laravel error log
+      - name: Gather evidence (read-only, no changes)
         run: |
           ssh -p "${CPANEL_SSH_PORT}" -i ~/.ssh/deploy_key ${SSH_OPTS} \
             "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" bash -s <<'EOF'
-          echo "=== Laravel error log (last 50 lines) ==="
-          tail -n 50 ~/numan/storage/logs/laravel.log 2>&1
-          echo "=== .env file ==="
-          cat ~/numan/.env | head -50
+          D=~/numan
+          echo "=== 1. fresh request to generate a new log entry ==="
+          curl -s -o /dev/null -w "fresh-curl-http:%{http_code}\n" --max-time 15 http://numan.agrigebeya.com/ || true
+          sleep 2
+          echo "=== 2. FIRST exception for latest failed request (not the tail) ==="
+          RID=$(grep -o '"request_id":"[a-f0-9-]*"' $D/storage/logs/laravel.log 2>/dev/null | tail -1 | cut -d'"' -f4)
+          echo "latest-request-id: $RID"
+          grep -F "$RID" $D/storage/logs/laravel.log 2>/dev/null | head -30
+          echo "=== 3. server PHP ==="
+          php -v 2>&1 | head -3
+          php -r 'echo "output_buffering=", ini_get("output_buffering"), PHP_EOL, "display_errors=", ini_get("display_errors"), PHP_EOL, "log_errors=", ini_get("log_errors"), PHP_EOL;' 2>&1
+          php -m 2>&1 | grep -iE "pdo|mysql|sqlite|mbstring|openssl|tokenizer|xml|ctype|json|bcmath|curl|fileinfo|intl" | head -20
+          echo "=== 4. .env keys present (values masked) ==="
+          for k in APP_KEY APP_ENV APP_DEBUG APP_URL LOG_CHANNEL DB_CONNECTION DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
+            if grep -q "^${k}=" $D/.env 2>/dev/null; then v=$(grep "^${k}=" $D/.env | head -1 | cut -d= -f2-); echo "$k=SET(len=${#v})"; else echo "$k=MISSING"; fi
+          done
+          echo "=== 5. bootstrap/cache + storage perms ==="
+          ls -la $D/bootstrap/cache/ 2>&1
+          ls -ld $D/storage $D/storage/logs $D/storage/framework/views $D/bootstrap/cache 2>&1
+          echo "=== 6. public/index.php head ==="
+          head -20 $D/public/index.php 2>&1
+          echo "=== 7. which php handles web (lsphp) ==="
+          ls /opt/cpanel/ea-php*/root/usr/bin/php 2>/dev/null | head; which php
           EOF
