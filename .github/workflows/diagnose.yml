@@ -55,6 +55,18 @@ jobs:
           realpath ~/numan/public 2>&1
           echo "--- .htaccess in public ---"
           ls -la ~/numan/public/.htaccess 2>&1
+          echo "--- create health file ---"
+          echo "numan-health-ok" > ~/numan/public/health.txt && echo "created"
+          echo "--- .env exists? ---"
+          ls -la ~/numan/.env 2>&1
+          echo "--- vhost grep ---"
+          grep -r "numan" /var/cpanel/userdata/agrigeyo/ 2>/dev/null | head -20
+          echo "--- apache vhost conf ---"
+          ls -la /var/cpanel/userdata/agrigeyo/ 2>&1 | grep -i numan
+          echo "--- litespeed vhost ---"
+          grep -ri "numan" /usr/local/lsws/conf/ 2>/dev/null | head
+          echo "--- userdata file ---"
+          cat /var/cpanel/userdata/agrigeyo/numan.agrigebeya.com 2>&1 | head -40
           echo "--- laravel log tail ---"
           tail -n 20 ~/numan/storage/logs/laravel.log 2>&1
           EOF
