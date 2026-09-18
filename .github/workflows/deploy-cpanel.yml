@@ -160,12 +160,19 @@ jobs:
         run: |
           ssh -p "${CPANEL_SSH_PORT}" -i ~/.ssh/deploy_key ${SSH_OPTS} \
             "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" \
-            "cd ${CPANEL_REMOTE_DIR} && \
-             (composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts || true) && \
-             php artisan storage:link || true; \
-             php artisan migrate --force && \
-             php artisan config:cache && \
-             php artisan route:cache && \
-             php artisan view:cache && \
-             chmod -R 775 storage bootstrap/cache || true; \
-             echo '✓ deploy complete'"
+            "REMOTE_DIR='${CPANEL_REMOTE_DIR}' bash -s" <<'REMOTE'
+          set -e
+          cd "$REMOTE_DIR"
+          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts || true
+          php artisan storage:link || true
+          if ! grep -q '^APP_KEY=base64:' .env 2>/dev/null; then
+            echo "::error::APP_KEY missing or invalid in $REMOTE_DIR/.env — fix with: php artisan key:generate --force"
+            exit 1
+          fi
+          php artisan migrate --force
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          chmod -R 775 storage bootstrap/cache || true
+          echo "✓ deploy complete"
+          REMOTE
