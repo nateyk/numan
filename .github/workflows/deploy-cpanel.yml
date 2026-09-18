@@ -19,7 +19,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
@@ -84,7 +84,7 @@ jobs:
         run: |
           echo "::warning::Deploy skipped — set CPANEL_SSH_HOST and CPANEL_SSH_KEY in the production-numan environment. See DEPLOY.md"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.CPANEL_SSH_HOST != '' && env.CPANEL_SSH_KEY != ''
 
       - name: Setup PHP 8.4
