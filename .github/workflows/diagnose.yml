@@ -34,24 +34,21 @@ jobs:
             echo "SSH_OPTS=-o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
           fi
 
-      - name: Gather evidence round 2 (read-only)
+      - name: Gather evidence round 3 (read-only)
         run: |
           ssh -p "${CPANEL_SSH_PORT}" -i ~/.ssh/deploy_key ${SSH_OPTS} \
             "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" bash -s <<'EOF'
           D=~/numan
-          echo "=== A. FIRST exception text for latest request (first 1200 chars each) ==="
-          RID=$(grep -o '"request_id":"[a-f0-9-]*"' $D/storage/logs/laravel.log 2>/dev/null | tail -1 | cut -d'"' -f4)
-          echo "latest-request-id: $RID"
-          grep -F "$RID" $D/storage/logs/laravel.log 2>/dev/null | head -4 | cut -c1-1200
-          echo "=== B. APP_KEY lines (count + prefix only, value masked) ==="
-          grep -c "^APP_KEY=" $D/.env 2>/dev/null
-          grep "^APP_KEY=" $D/.env 2>/dev/null | cut -c1-18
-          echo "=== C. cached config key/db (is cache stale vs .env?) ==="
-          grep -o "'key' => '[^']*'" $D/bootstrap/cache/config.php 2>/dev/null | head -1 | cut -c1-30
-          grep -o "'database' => '[^']*'" $D/bootstrap/cache/config.php 2>/dev/null | head -2 | cut -c1-60
-          ls -la --time-style=full-iso $D/.env $D/bootstrap/cache/config.php 2>&1
-          echo "=== D. log file size + newest entries timestamps ==="
-          ls -la --time-style=full-iso $D/storage/logs/ 2>&1
-          echo "=== E. artisan boot check (read-only, does app boot?) ==="
-          cd $D && php artisan about --only=environment 2>&1 | head -20
+          LOG=$D/storage/logs/laravel.log
+          echo "=== A. exception classes ranked (whole log) ==="
+          grep -oE '[A-Za-z_\\]+(Exception|Error)[^"]{0,120}' $LOG 2>/dev/null | sort | uniq -c | sort -rn | head -15
+          echo "=== B. MissingAppKey / key-length mentions ==="
+          grep -ci "No application encryption key" $LOG 2>/dev/null
+          grep -ci "incorrect key length\|Unsupported cipher" $LOG 2>/dev/null
+          echo "=== C. newest log line head (first 600 chars) ==="
+          tail -1 $LOG 2>/dev/null | cut -c1-600; echo
+          echo "=== D. APP_KEY shape (no value shown) ==="
+          grep "^APP_KEY=" $D/.env 2>/dev/null | awk -F= '{print "len-after-=:", length($0)-8, "| starts-base64:", ($2 ~ /^base64:/ ? "yes" : "no"), "| has-spaces:", ($0 ~ / / ? "yes" : "no"), "| has-quotes:", ($0 ~ /\"/ ? "yes" : "no")}'
+          echo "=== E. APP_KEY payload length after 'base64:' ==="
+          grep "^APP_KEY=" $D/.env 2>/dev/null | sed 's/^APP_KEY=base64://' | tr -d '" \r\n' | wc -c
           EOF
