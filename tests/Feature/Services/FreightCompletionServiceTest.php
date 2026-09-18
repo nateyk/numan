@@ -2,6 +2,7 @@
 
 use App\Models\FreightPost;
 use App\Services\FreightCompletionService;
+use App\Services\RoutePreviewService;
 use Illuminate\Support\Facades\Http;
 
 it('scores freight post completion', function () {
@@ -37,5 +38,5 @@ it('updates completion score on model', function () {
 
 it('returns null when OSRM unreachable', function () {
     Http::fake(fn () => Http::response(null, 500));
-    expect(app(\App\Services\RoutePreviewService::class)->preview(9, 38, 7, 38))->toBeNull();
+    expect(app(RoutePreviewService::class)->preview(9, 38, 7, 38))->toBeNull();
 });

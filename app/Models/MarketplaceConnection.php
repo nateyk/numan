@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\MarketplaceConnectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,8 +12,9 @@ use Illuminate\Support\Str;
 
 class MarketplaceConnection extends Model
 {
-    /** @use HasFactory<\Database\Factories\MarketplaceConnectionFactory> */
+    /** @use HasFactory<MarketplaceConnectionFactory> */
     use HasFactory;
+
     protected $fillable = [
         'public_id',
         'freight_post_id',

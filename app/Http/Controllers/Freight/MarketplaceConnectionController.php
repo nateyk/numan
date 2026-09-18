@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Freight;
 
-use App\Models\MarketplaceConnection;
 use App\Http\Controllers\Controller;
+use App\Models\MarketplaceConnection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;

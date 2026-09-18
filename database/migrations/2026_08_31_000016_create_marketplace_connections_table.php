@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique('freight_interest_id');
-            $table->index(['consignor_user_id', 'transporter_user_id']);
+            $table->index(['consignor_user_id', 'transporter_user_id'], 'mpc_consignor_transporter_idx');
         });
     }
 

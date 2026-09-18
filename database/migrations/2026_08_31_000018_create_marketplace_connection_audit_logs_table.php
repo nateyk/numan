@@ -10,11 +10,13 @@ return new class extends Migration
     {
         Schema::create('marketplace_connection_audit_logs', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('marketplace_connection_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('marketplace_connection_id');
             $table->string('action');
             $table->json('metadata')->nullable();
             $table->foreignId('actor_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+
+            $table->foreign('marketplace_connection_id', 'mpc_audit_conn_fk')->references('id')->on('marketplace_connections')->cascadeOnDelete();
         });
     }
 

@@ -2,9 +2,10 @@
 
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
-use App\Models\MarketplaceConnection;
 use App\Models\Location;
+use App\Models\MarketplaceConnection;
 use App\Models\Profile;
+use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,7 +46,7 @@ function createApprovedTransporterForConnection(): User
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
     $workspace->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $workspace->id]);
-    \App\Models\TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
+    TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
     $user->setRelation('transporterProfile', $user->transporterProfile()->first());
 
     return $user->fresh();
@@ -56,7 +57,7 @@ it('contactDetailsFor returns null for outsider', function () {
     $transporter = createApprovedTransporterForConnection();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
     $interest = FreightInterest::factory()->for($post)->for($transporter)->create(['status' => 'submitted']);
-    \App\Models\MarketplaceConnection::factory()->create([
+    MarketplaceConnection::factory()->create([
         'freight_post_id' => $post->id,
         'freight_interest_id' => $interest->id,
         'consignor_user_id' => $consignor->id,
@@ -64,7 +65,7 @@ it('contactDetailsFor returns null for outsider', function () {
     ]);
 
     $outsider = User::factory()->create();
-    $conn = \App\Models\MarketplaceConnection::first();
+    $conn = MarketplaceConnection::first();
     expect($conn->contactDetailsFor($outsider))->toBeNull();
 });
 
@@ -73,14 +74,14 @@ it('contactDetailsFor returns contact for transporter participant', function () 
     $transporter = createApprovedTransporterForConnection();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
     $interest = FreightInterest::factory()->for($post)->for($transporter)->create(['status' => 'submitted']);
-    \App\Models\MarketplaceConnection::factory()->create([
+    MarketplaceConnection::factory()->create([
         'freight_post_id' => $post->id,
         'freight_interest_id' => $interest->id,
         'consignor_user_id' => $consignor->id,
         'transporter_user_id' => $transporter->id,
     ]);
 
-    $conn = \App\Models\MarketplaceConnection::first();
+    $conn = MarketplaceConnection::first();
     $details = $conn->contactDetailsFor($transporter);
     expect($details)->not->toBeNull()
         ->and($details['name'])->not->toBeEmpty();
@@ -91,21 +92,21 @@ it('contactDetailsFor returns contact for consignor participant', function () {
     $transporter = createApprovedTransporterForConnection();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
     $interest = FreightInterest::factory()->for($post)->for($transporter)->create(['status' => 'submitted']);
-    \App\Models\MarketplaceConnection::factory()->create([
+    MarketplaceConnection::factory()->create([
         'freight_post_id' => $post->id,
         'freight_interest_id' => $interest->id,
         'consignor_user_id' => $consignor->id,
         'transporter_user_id' => $transporter->id,
     ]);
 
-    $conn = \App\Models\MarketplaceConnection::first();
+    $conn = MarketplaceConnection::first();
     $details = $conn->contactDetailsFor($consignor);
     expect($details)->not->toBeNull()
         ->and($details['name'])->not->toBeEmpty();
 });
 
 it('factory generates unique public_id', function () {
-    \App\Models\MarketplaceConnection::factory()->create();
-    \App\Models\MarketplaceConnection::factory()->create();
-    expect(\App\Models\MarketplaceConnection::count())->toBe(2);
+    MarketplaceConnection::factory()->create();
+    MarketplaceConnection::factory()->create();
+    expect(MarketplaceConnection::count())->toBe(2);
 });

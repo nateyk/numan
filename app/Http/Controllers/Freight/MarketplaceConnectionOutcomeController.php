@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Freight;
 
 use App\Enums\ConnectionOutcome;
-use App\Models\MarketplaceConnection;
-use App\Models\MarketplaceConnectionOutcome;
 use App\Http\Controllers\Controller;
+use App\Models\MarketplaceConnection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class MarketplaceConnectionOutcomeController extends Controller
 {
@@ -18,7 +18,7 @@ class MarketplaceConnectionOutcomeController extends Controller
         Gate::authorize('update', $connection);
 
         $validated = $request->validate([
-            'outcome' => ['required', 'string', \Illuminate\Validation\Rule::in(ConnectionOutcome::values())],
+            'outcome' => ['required', 'string', Rule::in(ConnectionOutcome::values())],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 

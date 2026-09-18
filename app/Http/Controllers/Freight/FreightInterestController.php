@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Freight;
 
 use App\Enums\FreightInterestStatus;
+use App\Enums\FreightPostStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreFreightInterestRequest;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Notifications\FreightInterestSubmitted;
 use App\Policies\FreightInterestPolicy;
+use App\Services\MarketplaceEntitlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
@@ -66,13 +68,13 @@ class FreightInterestController extends Controller
             return back()->withErrors(['interest' => 'Your transporter profile is pending approval (status: '.$transporter->status.'). Please wait for admin approval.']);
         }
 
-        if ($post->status !== \App\Enums\FreightPostStatus::Active->value) {
+        if ($post->status !== FreightPostStatus::Active->value) {
             return back()->withErrors(['interest' => 'This freight is not active (status: '.$post->status.'). You can only express interest on active freights.']);
         }
 
-        $exists = \App\Models\FreightInterest::where('freight_post_id', $post->id)
+        $exists = FreightInterest::where('freight_post_id', $post->id)
             ->where('user_id', $user->id)
-            ->whereNotIn('status', [\App\Enums\FreightInterestStatus::Rejected->value, \App\Enums\FreightInterestStatus::Withdrawn->value])
+            ->whereNotIn('status', [FreightInterestStatus::Rejected->value, FreightInterestStatus::Withdrawn->value])
             ->exists();
 
         if ($exists) {
@@ -81,7 +83,7 @@ class FreightInterestController extends Controller
 
         $workspace = $user->currentWorkspace;
         if ($workspace) {
-            $entitlement = app(\App\Services\MarketplaceEntitlementService::class);
+            $entitlement = app(MarketplaceEntitlementService::class);
             if (! $entitlement->canExpressInterest($workspace)) {
                 return back()->withErrors(['interest' => 'Monthly interest limit reached for your workspace. Please upgrade your plan.']);
             }

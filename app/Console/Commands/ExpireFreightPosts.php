@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\FreightPostStatus;
 use App\Models\FreightPost;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +22,7 @@ class ExpireFreightPosts extends Command
             ->whereNotNull('pickup_date')
             ->chunkById(100, function ($posts) use (&$count): void {
                 foreach ($posts as $post) {
-                    $pickup = $post->pickup_date instanceof \Carbon\Carbon ? $post->pickup_date : \Carbon\Carbon::parse($post->pickup_date);
+                    $pickup = $post->pickup_date instanceof Carbon ? $post->pickup_date : Carbon::parse($post->pickup_date);
                     $flex = (int) ($post->pickup_date_flexibility_days ?? 0);
                     $expiresAt = $pickup->copy()->addDays($flex)->endOfDay();
 
