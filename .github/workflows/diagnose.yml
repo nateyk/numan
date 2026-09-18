@@ -1,0 +1,60 @@
+name: Diagnose cPanel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    environment: production-numan
+    env:
+      CPANEL_SSH_HOST: ${{ vars.CPANEL_SSH_HOST || secrets.CPANEL_SSH_HOST }}
+      CPANEL_SSH_USER: ${{ vars.CPANEL_SSH_USER || secrets.CPANEL_SSH_USER }}
+      CPANEL_SSH_PORT: ${{ vars.CPANEL_SSH_PORT || secrets.CPANEL_SSH_PORT || '22' }}
+      CPANEL_REMOTE_DIR: ${{ vars.CPANEL_REMOTE_DIR || secrets.CPANEL_REMOTE_DIR || 'numan/' }}
+      ALLOW_INSECURE_HOSTKEY: ${{ vars.ALLOW_INSECURE_HOSTKEY || 'false' }}
+      CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+      CPANEL_SSH_KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$CPANEL_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$CPANEL_SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$CPANEL_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 644 ~/.ssh/known_hosts
+          fi
+          if [ "$ALLOW_INSECURE_HOSTKEY" = "true" ]; then
+            echo "SSH_OPTS=-o StrictHostKeyChecking=accept-new" >> "$GITHUB_ENV"
+          else
+            echo "SSH_OPTS=-o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
+          fi
+
+      - name: Diagnose remote
+        run: |
+          ssh -p "${CPANEL_SSH_PORT}" -i ~/.ssh/deploy_key ${SSH_OPTS} \
+            "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" bash -s <<'EOF'
+          echo "HOME=$HOME"
+          echo "pwd=$(pwd)"
+          echo "REMOTE_DIR=${CPANEL_REMOTE_DIR}"
+          echo "--- ~ listing ---"
+          ls -la ~
+          echo "--- ~/numan listing ---"
+          ls -la ~/numan 2>&1 | head -40
+          echo "--- ~/numan/public listing ---"
+          ls -la ~/numan/public 2>&1 | head -40
+          echo "--- public_html listing ---"
+          ls -la ~/public_html 2>&1 | head -40
+          echo "--- find index.php ---"
+          find ~ -maxdepth 4 -name index.php 2>/dev/null | head
+          echo "--- realpath ---"
+          realpath ~/numan/public 2>&1
+          echo "--- .htaccess in public ---"
+          ls -la ~/numan/public/.htaccess 2>&1
+          echo "--- laravel log tail ---"
+          tail -n 20 ~/numan/storage/logs/laravel.log 2>&1
+          EOF
