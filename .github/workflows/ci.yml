@@ -36,6 +36,7 @@ jobs:
           path: vendor
           key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
       - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - run: php artisan wayfinder:generate --with-form
       - run: pnpm run build
       - run: cp .env.example .env
       - run: php artisan key:generate
@@ -55,6 +56,7 @@ jobs:
           cache: 'pnpm'
       - run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
       - run: pnpm install --frozen-lockfile
+      - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
       - run: pnpm run format:check
         continue-on-error: true
