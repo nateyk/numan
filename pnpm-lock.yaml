@@ -230,8 +230,8 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2
       '@tailwindcss/oxide-win32-x64-msvc':
-        specifier: ^4.3.2
-        version: 4.3.2
+        specifier: ^4.3.3
+        version: 4.3.3
       lightningcss-linux-x64-gnu:
         specifier: ^1.32.0
         version: 1.32.0
@@ -2231,6 +2231,12 @@ packages:
 
   '@tailwindcss/oxide-win32-x64-msvc@4.3.2':
     resolution: {integrity: sha512-QI9BO7KlNZsp2GuO0jwAAj5jCDABOKXRkCk2XuKTSaNEFSdfzqswYVTtCHBNKHLsqyjFyFkqlDiwkNbTYSssMQ==}
+    engines: {node: '>= 20'}
+    cpu: [x64]
+    os: [win32]
+
+  '@tailwindcss/oxide-win32-x64-msvc@4.3.3':
+    resolution: {integrity: sha512-yJ0pwIVc/nYeGoV02WtsN8KYyLQv7kyI2wDnkezyJlGGjkd4QLwDGAwl47YpPJeuI0M0ObaXGSPjvWDPeTPggw==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [win32]
@@ -5994,6 +6000,9 @@ snapshots:
     optional: true
 
   '@tailwindcss/oxide-win32-x64-msvc@4.3.2':
+    optional: true
+
+  '@tailwindcss/oxide-win32-x64-msvc@4.3.3':
     optional: true
 
   '@tailwindcss/oxide@4.3.2':
