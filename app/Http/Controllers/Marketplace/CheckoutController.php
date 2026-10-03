@@ -59,7 +59,6 @@ class CheckoutController extends Controller
             'currency' => 'ETB',
             'status' => 'pending',
             'mode' => config('chapa.mode', 'test'),
-            'idempotency_key' => (string) Str::ulid(),
             'billing_interval' => $data['billing_interval'],
         ]);
 

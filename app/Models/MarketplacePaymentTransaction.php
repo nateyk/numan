@@ -20,7 +20,6 @@ class MarketplacePaymentTransaction extends Model
         'mode',
         'provider_response',
         'verified_at',
-        'idempotency_key',
     ];
 
     protected function casts(): array

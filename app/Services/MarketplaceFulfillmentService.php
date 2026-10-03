@@ -40,14 +40,27 @@ class MarketplaceFulfillmentService
             }
 
             $billingInterval = $transaction->billing_interval ?? 'monthly';
-            if (! in_array($billingInterval, ['weekly', 'monthly', 'yearly'])) {
+            if (! in_array($billingInterval, ['weekly', 'monthly', 'yearly'], true)) {
                 $billingInterval = 'monthly';
             }
 
-            // Cancel previous active subs
-            MarketplaceSubscription::where('workspace_id', $workspace->id)
+            // A renewal extends the current period instead of overwriting it, so
+            // an early upgrade never loses the days already paid for.
+            $current = MarketplaceSubscription::where('workspace_id', $workspace->id)
                 ->whereIn('status', ['active', 'trialing'])
-                ->update(['status' => 'canceled', 'ends_at' => now()]);
+                ->where(function ($query) {
+                    $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
+                })
+                ->latest('ends_at')
+                ->first();
+
+            $periodStart = $current?->ends_at?->isFuture() ? $current->ends_at->copy() : now();
+
+            // The previous subscription keeps its original ends_at so access is
+            // continuous; only the status changes.
+            if ($current) {
+                $current->update(['status' => 'superseded']);
+            }
 
             $periodDays = match ($billingInterval) {
                 'weekly' => 7,
@@ -55,7 +68,7 @@ class MarketplaceFulfillmentService
                 default => 30,
             };
 
-            $periodEnd = now()->addDays($periodDays);
+            $periodEnd = $periodStart->copy()->addDays($periodDays);
 
             $subscription = MarketplaceSubscription::create([
                 'workspace_id' => $workspace->id,
@@ -63,7 +76,7 @@ class MarketplaceFulfillmentService
                 'user_id' => $transaction->user_id,
                 'status' => 'active',
                 'billing_interval' => $billingInterval,
-                'current_period_start' => now(),
+                'current_period_start' => $periodStart,
                 'current_period_ends_at' => $periodEnd,
                 'ends_at' => $periodEnd,
                 'trial_ends_at' => null,

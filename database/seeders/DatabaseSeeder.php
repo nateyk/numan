@@ -621,7 +621,6 @@ class DatabaseSeeder extends Seeder
                         'status' => 'verified',
                         'mode' => 'test',
                         'verified_at' => now(),
-                        'idempotency_key' => (string) Str::ulid(),
                         'provider_response' => ['demo' => true, 'note' => 'Seeded weekly demo subscription'],
                     ]);
 
