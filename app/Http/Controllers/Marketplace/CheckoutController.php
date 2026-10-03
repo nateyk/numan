@@ -60,6 +60,7 @@ class CheckoutController extends Controller
             'status' => 'pending',
             'mode' => config('chapa.mode', 'test'),
             'idempotency_key' => (string) Str::ulid(),
+            'billing_interval' => $data['billing_interval'],
         ]);
 
         $callback = route('chapa.callback', ['tx_ref' => $txRef]);

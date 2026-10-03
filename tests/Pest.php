@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Profile;
+use App\Models\User;
+use App\Models\Workspace;
+use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +51,30 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Create an onboarded user with a personal workspace, ready for marketplace billing tests.
+ *
+ * @return array{User, Workspace}
+ */
+function marketplaceTestUserWithWorkspace(): array
+{
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+        'onboarded_at' => now(),
+    ]);
+
+    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $user->refresh();
+
+    Profile::firstOrCreate(['user_id' => $user->id], [
+        'posts_freight' => true,
+        'provides_transport' => false,
+        'onboarding_step' => 'completed',
+        'onboarding_completed_at' => now(),
+    ]);
+
+    return [$user, $workspace];
 }

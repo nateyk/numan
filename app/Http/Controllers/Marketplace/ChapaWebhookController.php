@@ -4,18 +4,18 @@ namespace App\Http\Controllers\Marketplace;
 
 use App\Http\Controllers\Controller;
 use App\Models\ChapaWebhookEvent;
-use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentTransaction;
-use App\Models\MarketplaceSubscription;
 use App\Services\ChapaService;
+use App\Services\MarketplaceFulfillmentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class ChapaWebhookController extends Controller
 {
-    public function __construct(protected ChapaService $chapa) {}
+    public function __construct(
+        protected ChapaService $chapa,
+        protected MarketplaceFulfillmentService $fulfillment,
+    ) {}
 
     public function handle(Request $request)
     {
@@ -36,7 +36,6 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Missing tx_ref'], 422);
         }
 
-        // Dedup
         $existing = ChapaWebhookEvent::where('tx_ref', $txRef)->where('event', $event)->first();
         if ($existing && $existing->status === 'processed') {
             return response()->json(['message' => 'Already processed'], 200);
@@ -52,7 +51,6 @@ class ChapaWebhookController extends Controller
             ]
         );
 
-        // Only process success events
         $isSuccess = str_contains((string) $event, 'success') || ($payload['status'] ?? null) === 'success';
         if (! $isSuccess) {
             $webhookEvent->update(['status' => 'processed', 'processed_at' => now()]);
@@ -60,7 +58,6 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Event ignored'], 200);
         }
 
-        // Server-side verification
         $verified = $this->chapa->verifyTransaction($txRef);
         $data = $verified['data'] ?? $verified;
         $verifiedSuccess = ($verified['status'] ?? null) === 'success' && (($data['status'] ?? null) === 'success' || ($data['status'] ?? null) === 'paid');
@@ -80,7 +77,6 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Transaction not found'], 200);
         }
 
-        // Amount / currency check
         $expected = (string) $transaction->amount_etb;
         $got = (string) ($data['amount'] ?? '');
         $currency = $data['currency'] ?? 'ETB';
@@ -91,60 +87,9 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Amount mismatch'], 200);
         }
 
-        // Fulfill idempotently
         try {
-            DB::transaction(function () use ($transaction, $verified, $webhookEvent, $chapaRef) {
-                if ($transaction->status === 'verified' && $transaction->verified_at) {
-                    // already done
-                } else {
-                    $transaction->update([
-                        'status' => 'verified',
-                        'verified_at' => now(),
-                        'chapa_ref' => $chapaRef ?? $transaction->chapa_ref,
-                        'provider_response' => $verified,
-                    ]);
-
-                    $workspace = $transaction->workspace;
-                    $plan = $transaction->plan;
-                    if ($workspace && $plan) {
-                        MarketplaceSubscription::where('workspace_id', $workspace->id)->whereIn('status', ['active', 'trialing'])->update(['status' => 'canceled', 'ends_at' => now()]);
-
-                        $billingInterval = $transaction->provider_response['meta']['billing_interval'] ?? $verified['meta']['billing_interval'] ?? 'monthly';
-                        if (! in_array($billingInterval, ['weekly', 'monthly', 'yearly'])) {
-                            $billingInterval = 'monthly';
-                        }
-                        $periodDays = match ($billingInterval) {
-                            'weekly' => 7,
-                            'yearly' => 365,
-                            default => 30,
-                        };
-
-                        $sub = MarketplaceSubscription::create([
-                            'workspace_id' => $workspace->id,
-                            'plan_id' => $plan->id,
-                            'user_id' => $transaction->user_id,
-                            'status' => 'active',
-                            'billing_interval' => $billingInterval,
-                            'current_period_start' => now(),
-                            'current_period_ends_at' => now()->addDays($periodDays),
-                            'chapa_tx_ref' => $transaction->tx_ref,
-                            'provider' => 'chapa',
-                        ]);
-
-                        MarketplacePaymentReceipt::create([
-                            'transaction_id' => $transaction->id,
-                            'subscription_id' => $sub->id,
-                            'workspace_id' => $workspace->id,
-                            'amount_etb' => $transaction->amount_etb,
-                            'currency' => 'ETB',
-                            'invoice_number' => 'NF-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
-                            'issued_at' => now(),
-                        ]);
-                    }
-                }
-
-                $webhookEvent->update(['status' => 'processed', 'processed_at' => now()]);
-            });
+            $this->fulfillment->fulfill($transaction, $verified);
+            $webhookEvent->update(['status' => 'processed', 'processed_at' => now()]);
         } catch (\Throwable $e) {
             Log::error('Chapa webhook fulfillment failed', ['tx_ref' => $txRef, 'error' => $e->getMessage()]);
             $webhookEvent->update(['status' => 'failed']);

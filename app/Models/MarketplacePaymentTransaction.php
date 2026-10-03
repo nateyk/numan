@@ -15,6 +15,7 @@ class MarketplacePaymentTransaction extends Model
         'chapa_ref',
         'amount_etb',
         'currency',
+        'billing_interval',
         'status',
         'mode',
         'provider_response',

@@ -25,3 +25,6 @@ Schedule::command('app:send-api-key-expiry-alerts')->dailyAt('08:00')->withoutOv
 
 // Expire freight posts past pickup window daily at 02:00 UTC
 Schedule::command('freight:expire')->dailyAt('02:00')->withoutOverlapping();
+
+// Reconcile pending Chapa payments every 5 minutes
+Schedule::command('chapa:reconcile')->everyFiveMinutes()->withoutOverlapping();

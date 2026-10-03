@@ -2,17 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Marketplace\ChapaCallbackController;
 use App\Models\MarketplacePaymentReceipt;
-use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
-use App\Services\ChapaService;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -35,31 +31,7 @@ class BillingController extends Controller
         $marketplaceSub = $workspace->activeMarketplaceSubscription();
         $marketplacePlans = $this->getMarketplacePlansForDisplay();
 
-        // Auto-verify pending Chapa tx for DDEV (webhook not reachable locally)
-        if (Schema::hasTable('marketplace_payment_transactions')) {
-            $pendingTxs = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->whereIn('status', ['pending', 'initialized'])->where('created_at', '>', now()->subDays(2))->get();
-            foreach ($pendingTxs as $pendingTx) {
-                try {
-                    $chapa = app(ChapaService::class);
-                    $verified = $chapa->verifyTransaction($pendingTx->tx_ref);
-                    $vd = $verified['data'] ?? $verified;
-                    if (($verified['status'] ?? null) === 'success' && in_array($vd['status'] ?? null, ['success', 'paid'])) {
-                        $expected = (string) $pendingTx->amount_etb;
-                        $got = (string) ($vd['amount'] ?? '');
-                        $cur = $vd['currency'] ?? 'ETB';
-                        if ($cur === 'ETB' && ($got === '' || $got === $expected || (float) $got === (float) $expected)) {
-                            $cb = new ChapaCallbackController($chapa);
-                            $ref = new \ReflectionMethod($cb, 'fulfill');
-                            $ref->setAccessible(true);
-                            $ref->invoke($cb, $pendingTx, $verified);
-                            $marketplaceSub = $workspace->fresh()->activeMarketplaceSubscription();
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    Log::info('Billing auto-verify failed', ['tx' => $pendingTx->tx_ref, 'error' => $e->getMessage()]);
-                }
-            }
-        }
+        // Pending Chapa transactions are reconciled by the scheduled ReconcileChapaPayments command
 
         $marketplaceInvoices = Schema::hasTable('marketplace_payment_receipts')
             ? MarketplacePaymentReceipt::where('workspace_id', $workspace->id)->latest()->take(10)->get()->map(fn ($r) => [
