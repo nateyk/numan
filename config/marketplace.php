@@ -5,6 +5,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Scheduled expiry
+    |--------------------------------------------------------------------------
+    |
+    | marketplace:expire-subscriptions flips lapsed subscriptions to 'expired'
+    | and hides the excess listings of workspaces whose paid plan ended. It
+    | writes to real data, so it is NOT scheduled unless this is enabled.
+    |
+    | Enabling it registers the command with the scheduler (hourly). The command
+    | itself always works when invoked by hand, so you can dry-run it first.
+    |
+    */
+
+    'expiry_enabled' => env('MARKETPLACE_EXPIRY_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Free plan limits
     |--------------------------------------------------------------------------
     |

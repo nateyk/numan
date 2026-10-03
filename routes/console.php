@@ -30,6 +30,16 @@ Schedule::command('freight:expire')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('chapa:reconcile')->everyFiveMinutes()->withoutOverlapping();
 
 // Expire lapsed marketplace subscriptions and hide their excess listings.
+//
 // Hourly because entitlement is already enforced immediately on ends_at; this
 // only maintains the status column and listing visibility.
-Schedule::command('marketplace:expire-subscriptions')->hourly()->withoutOverlapping();
+//
+// DISABLED BY DEFAULT. This command writes to production data, so it is only
+// registered when MARKETPLACE_EXPIRY_ENABLED is truthy. Run it by hand with
+// --dry-run first to see what it would do.
+//
+//   MARKETPLACE_EXPIRY_ENABLED=true php artisan marketplace:expire-subscriptions --dry-run
+//   MARKETPLACE_EXPIRY_ENABLED=true php artisan marketplace:expire-subscriptions
+if (config('marketplace.expiry_enabled')) {
+    Schedule::command('marketplace:expire-subscriptions')->hourly()->withoutOverlapping();
+}
