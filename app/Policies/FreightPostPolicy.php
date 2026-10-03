@@ -51,7 +51,7 @@ class FreightPostPolicy
         $workspace = $user->currentWorkspace;
         if ($workspace) {
             $entitlement = app(MarketplaceEntitlementService::class);
-            if (! $entitlement->canCreateFreightPost($workspace) || ! $entitlement->canCreateMonthlyPost($workspace)) {
+            if (! $entitlement->canCreateFreightPost($workspace)) {
                 return false;
             }
         }

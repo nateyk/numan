@@ -16,14 +16,14 @@ beforeEach(function () {
 
 it('fulfills a pending transaction via the reconcile command', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-pro_reconcile_test',
-        'amount_etb' => 999,
+        'amount_etb' => 449,
         'currency' => 'ETB',
         'status' => 'pending',
         'mode' => 'test',
@@ -33,7 +33,7 @@ it('fulfills a pending transaction via the reconcile command', function () {
     Http::fake([
         'api.chapa.co/v1/transaction/verify/NF-pro_reconcile_test' => Http::response([
             'status' => 'success',
-            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 999, 'reference' => 'chapa_ref_123'],
+            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 449, 'reference' => 'chapa_ref_123'],
         ], 200),
     ]);
 
@@ -47,14 +47,14 @@ it('fulfills a pending transaction via the reconcile command', function () {
 
 it('does not grant access for a pending unverified transaction', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-pro_pending_test',
-        'amount_etb' => 999,
+        'amount_etb' => 449,
         'currency' => 'ETB',
         'status' => 'pending',
         'mode' => 'test',
@@ -78,14 +78,14 @@ it('does not grant access for a pending unverified transaction', function () {
 
 it('continues processing other transactions when one fails', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-pro_fail_test',
-        'amount_etb' => 999,
+        'amount_etb' => 449,
         'currency' => 'ETB',
         'status' => 'pending',
         'mode' => 'test',
@@ -97,7 +97,7 @@ it('continues processing other transactions when one fails', function () {
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-pro_success_test',
-        'amount_etb' => 999,
+        'amount_etb' => 449,
         'currency' => 'ETB',
         'status' => 'pending',
         'mode' => 'test',
@@ -111,7 +111,7 @@ it('continues processing other transactions when one fails', function () {
         ], 200),
         'api.chapa.co/v1/transaction/verify/NF-pro_success_test' => Http::response([
             'status' => 'success',
-            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 999, 'reference' => 'chapa_ref_123'],
+            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 449, 'reference' => 'chapa_ref_123'],
         ], 200),
     ]);
 

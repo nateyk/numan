@@ -2,9 +2,8 @@
 
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
-use App\Models\Profile;
-use App\Models\User;
-use App\Services\WorkspaceService;
+use App\Models\MarketplaceSubscription;
+use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -20,80 +19,156 @@ beforeEach(function () {
         ], 200),
         'api.chapa.co/v1/transaction/verify/*' => Http::response([
             'status' => 'success',
-            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 999, 'tx_ref' => 'test', 'reference' => 'chapa_ref_123'],
+            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 449, 'reference' => 'chapa_ref_123'],
         ], 200),
     ]);
 });
 
 it('requires authentication for checkout', function () {
-    $this->postJson('/marketplace/checkout', ['plan' => 'pro', 'billing_interval' => 'monthly'])->assertUnauthorized();
+    $this->postJson('/marketplace/checkout', ['plan' => 'standard', 'billing_interval' => 'monthly'])->assertUnauthorized();
 });
 
-it('creates chapa transaction and returns checkout_url for pro monthly', function () {
-    $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
-    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
-    $user->update(['current_workspace_id' => $workspace->id]);
-    $user->refresh();
+it('creates a chapa transaction at the monthly price', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
 
-    // Ensure profile for completeness
-    Profile::firstOrCreate(['user_id' => $user->id], [
-        'posts_freight' => true,
-        'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
+    $response = $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
     ]);
 
-    $response = $this->actingAs($user)->postJson('/marketplace/checkout', ['plan' => 'pro', 'billing_interval' => 'monthly']);
-
     $response->assertSuccessful();
-    $data = $response->json();
-    expect($data['checkout_url'] ?? null)->toBe('https://checkout.chapa.co/test_123');
+    expect($response->json()['checkout_url'] ?? null)->toBe('https://checkout.chapa.co/test_123');
 
-    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->exists())->toBeTrue();
     $tx = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->latest()->first();
-    expect($tx->plan->slug)->toBe('pro');
-    expect((float) $tx->amount_etb)->toBe(999.0);
+    expect($tx->plan->slug)->toBe('standard');
+    expect((float) $tx->amount_etb)->toBe(449.0);
     expect($tx->currency)->toBe('ETB');
+    expect($tx->billing_interval)->toBe('monthly');
 });
 
-it('handles free plan without chapa', function () {
-    $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
-    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
-    $user->update(['current_workspace_id' => $workspace->id]);
-    Profile::firstOrCreate(['user_id' => $user->id], [
-        'posts_freight' => true,
-        'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
+it('creates a chapa transaction at the weekly price', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'weekly',
+    ])->assertSuccessful();
+
+    $tx = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->latest()->first();
+    expect((float) $tx->amount_etb)->toBe(149.0);
+    expect($tx->billing_interval)->toBe('weekly');
+});
+
+it('creates a chapa transaction at the yearly price', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'yearly',
+    ])->assertSuccessful();
+
+    $tx = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->latest()->first();
+    expect((float) $tx->amount_etb)->toBe(3999.0);
+    expect($tx->billing_interval)->toBe('yearly');
+});
+
+it('refuses a zero-priced checkout and leaves an active subscription untouched', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+
+    // Active paid subscription the user must keep.
+    $sub = MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'status' => 'active',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now(),
+        'current_period_ends_at' => now()->addDays(30),
+        'ends_at' => now()->addDays(30),
+        'provider' => 'chapa',
     ]);
 
-    $response = $this->actingAs($user)->postJson('/marketplace/checkout', ['plan' => 'free', 'billing_interval' => 'monthly']);
-    $response->assertSuccessful();
-    // No transaction for free
+    // A zero-priced duration must not be purchasable.
+    $plan->update(['price_weekly_etb' => 0]);
+
+    $response = $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'weekly',
+    ]);
+
+    $response->assertStatus(422);
     expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(0);
+
+    $sub->refresh();
+    expect($sub->status)->toBe('active');
+    expect($sub->ends_at)->not->toBeNull();
 });
 
-it('validates chapa webhook signature and processes', function () {
-    $user = User::factory()->create();
-    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+it('validates the chapa webhook signature and processes', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
-    $tx = MarketplacePaymentTransaction::create([
+    MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'webhook_test_123',
-        'amount_etb' => 999,
+        'amount_etb' => 449,
         'currency' => 'ETB',
+        'billing_interval' => 'monthly',
         'status' => 'initialized',
         'mode' => 'test',
     ]);
 
-    $payload = json_encode(['event' => 'charge.success', 'tx_ref' => 'webhook_test_123', 'status' => 'success', 'amount' => 999, 'currency' => 'ETB']);
-    $sig = hash_hmac('sha256', $payload, config('chapa.webhookSecret'));
+    $payload = json_encode([
+        'event' => 'charge.success',
+        'tx_ref' => 'webhook_test_123',
+        'status' => 'success',
+        'amount' => 449,
+        'currency' => 'ETB',
+    ]);
+    $signature = hash_hmac('sha256', $payload, config('chapa.webhookSecret'));
 
-    $response = $this->postJson('/webhooks/chapa', json_decode($payload, true), ['x-chapa-signature' => $sig]);
+    $this->postJson('/webhooks/chapa', json_decode($payload, true), ['x-chapa-signature' => $signature])
+        ->assertSuccessful();
 
-    // Should process (200) even if verify mocked
-    $response->assertSuccessful();
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
+it('fulfilling all three durations gives 7, 30 and 365 day periods', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+    $service = app(MarketplaceFulfillmentService::class);
+
+    $cases = [
+        'weekly' => [149, 7],
+        'monthly' => [449, 30],
+        'yearly' => [3999, 365],
+    ];
+
+    foreach ($cases as $interval => [$amount, $days]) {
+        $tx = MarketplacePaymentTransaction::create([
+            'workspace_id' => $workspace->id,
+            'plan_id' => $plan->id,
+            'user_id' => $user->id,
+            'tx_ref' => "NF-standard_duration_{$interval}",
+            'amount_etb' => $amount,
+            'currency' => 'ETB',
+            'billing_interval' => $interval,
+            'status' => 'initialized',
+            'mode' => 'test',
+        ]);
+
+        $service->fulfill($tx, [
+            'status' => 'success',
+            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => $amount, 'reference' => 'ref_'.$interval],
+        ]);
+
+        $sub = MarketplaceSubscription::where('chapa_tx_ref', "NF-standard_duration_{$interval}")->first();
+
+        expect($sub)->not->toBeNull();
+        expect((int) $sub->current_period_start->diffInDays($sub->current_period_ends_at))->toBe($days);
+        expect((int) $sub->ends_at->diffInSeconds($sub->current_period_ends_at, false))->toBe(0);
+    }
 });

@@ -14,6 +14,7 @@ import { Head } from '@inertiajs/react';
 export default function Welcome({
     canRegister = true,
     marketplacePlans = [],
+    freeLimits,
 }: {
     canRegister?: boolean;
     marketplacePlans?: Array<{
@@ -27,6 +28,11 @@ export default function Welcome({
         features: string[];
         limits: Record<string, number>;
     }>;
+    freeLimits?: {
+        free_active_posts: number;
+        free_interests_per_week: number;
+        free_contact_reveals_per_week: number;
+    };
 }) {
     const { t } = useTranslations();
 
@@ -94,7 +100,10 @@ export default function Welcome({
                 <main>
                     <LandingHero />
                     <LandingFeatures />
-                    <LandingPricing plans={marketplacePlans} />
+                    <LandingPricing
+                        plans={marketplacePlans}
+                        freeLimits={freeLimits}
+                    />
                     <LandingTestimonials />
                     <LandingFaq />
                     <LandingCta />

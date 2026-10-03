@@ -15,28 +15,28 @@ beforeEach(function () {
     Http::fake([
         'api.chapa.co/v1/transaction/verify/*' => Http::response([
             'status' => 'success',
-            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 999, 'tx_ref' => 'test', 'reference' => 'chapa_ref_123'],
+            'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 449, 'tx_ref' => 'test', 'reference' => 'chapa_ref_123'],
         ], 200),
     ]);
 });
 
 it('grants 7 days for weekly billing_interval', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'weekly')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $tx = MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-weekly_duration_test',
-        'amount_etb' => 349,
+        'amount_etb' => 149,
         'currency' => 'ETB',
         'status' => 'initialized',
         'mode' => 'test',
         'billing_interval' => 'weekly',
     ]);
 
-    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 349, 'reference' => 'chapa_ref_123']];
+    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 149, 'reference' => 'chapa_ref_123']];
     app(MarketplaceFulfillmentService::class)->fulfill($tx, $verified);
 
     $sub = MarketplaceSubscription::where('workspace_id', $workspace->id)->first();
@@ -46,21 +46,21 @@ it('grants 7 days for weekly billing_interval', function () {
 
 it('grants 30 days for monthly billing_interval', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $tx = MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-pro_monthly_duration_test',
-        'amount_etb' => 999,
+        'amount_etb' => 449,
         'currency' => 'ETB',
         'status' => 'initialized',
         'mode' => 'test',
         'billing_interval' => 'monthly',
     ]);
 
-    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 999, 'reference' => 'chapa_ref_123']];
+    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 449, 'reference' => 'chapa_ref_123']];
     app(MarketplaceFulfillmentService::class)->fulfill($tx, $verified);
 
     $sub = MarketplaceSubscription::where('workspace_id', $workspace->id)->first();
@@ -70,21 +70,21 @@ it('grants 30 days for monthly billing_interval', function () {
 
 it('grants 365 days for yearly billing_interval', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $tx = MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-pro_yearly_duration_test',
-        'amount_etb' => 9990,
+        'amount_etb' => 3999,
         'currency' => 'ETB',
         'status' => 'initialized',
         'mode' => 'test',
         'billing_interval' => 'yearly',
     ]);
 
-    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 9990, 'reference' => 'chapa_ref_123']];
+    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 3999, 'reference' => 'chapa_ref_123']];
     app(MarketplaceFulfillmentService::class)->fulfill($tx, $verified);
 
     $sub = MarketplaceSubscription::where('workspace_id', $workspace->id)->first();
@@ -94,14 +94,14 @@ it('grants 365 days for yearly billing_interval', function () {
 
 it('reads billing_interval from the transaction, not from provider_response', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'weekly')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $tx = MarketplacePaymentTransaction::create([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-weekly_no_meta_test',
-        'amount_etb' => 349,
+        'amount_etb' => 149,
         'currency' => 'ETB',
         'status' => 'initialized',
         'mode' => 'test',
@@ -109,7 +109,7 @@ it('reads billing_interval from the transaction, not from provider_response', fu
         'provider_response' => ['meta' => ['billing_interval' => 'yearly']], // wrong value in provider_response
     ]);
 
-    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 349, 'reference' => 'chapa_ref_123']];
+    $verified = ['status' => 'success', 'data' => ['status' => 'success', 'currency' => 'ETB', 'amount' => 149, 'reference' => 'chapa_ref_123']];
     app(MarketplaceFulfillmentService::class)->fulfill($tx, $verified);
 
     $sub = MarketplaceSubscription::where('workspace_id', $workspace->id)->first();

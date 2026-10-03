@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Marketplace;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
-use App\Models\MarketplaceSubscription;
 use App\Services\ChapaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -37,15 +36,18 @@ class CheckoutController extends Controller
         };
         $amountStr = (string) $amount;
 
-        // Free plan — no payment needed, just assign
-        if ((float) $amount === 0.0) {
-            MarketplaceSubscription::where('workspace_id', $workspace->id)->whereIn('status', ['active', 'trialing'])->update(['status' => 'canceled', 'ends_at' => now()]);
-
+        // Checkout is for paid durations only. The Free state is implicit
+        // (no subscription), so a zero-priced plan can never be "bought" and
+        // must never cancel a running paid subscription.
+        if ((float) $amount <= 0.0) {
             if ($request->wantsJson() || $request->header('X-Inertia')) {
-                return response()->json(['success' => true, 'message' => 'Switched to Free plan.']);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This duration has no price. Please choose Weekly, Monthly or Yearly.',
+                ], 422);
             }
 
-            return back()->with('success', 'Switched to Free plan.');
+            return back()->withErrors(['plan' => 'This duration has no price. Please choose Weekly, Monthly or Yearly.']);
         }
 
         $txRef = $this->chapa->generateReference('NF-'.$plan->slug.'-'.$data['billing_interval']);

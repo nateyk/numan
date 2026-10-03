@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\MailTemplateController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\MarketplacePaymentController;
 use App\Http\Controllers\Admin\MarketplacePlanController;
+use App\Http\Controllers\Admin\MarketplaceSettingController;
 use App\Http\Controllers\Admin\NotificationAnalyticsController;
 use App\Http\Controllers\Admin\OnboardingInsightsController;
 use App\Http\Controllers\Admin\PermissionPresetController;
@@ -95,6 +96,7 @@ use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceTrashController;
 use App\Http\Middleware\RequireAdminTwoFactor;
 use App\Models\MarketplacePlan;
+use App\Services\MarketplaceSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -110,7 +112,7 @@ Route::get('/', function () {
                 'slug' => $p->slug,
                 'name' => $p->name,
                 'description' => $p->description,
-                'price_weekly_etb' => (float) ($p->price_weekly_etb ?? 0),
+                'price_weekly_etb' => (float) $p->price_weekly_etb,
                 'price_monthly_etb' => (float) $p->price_monthly_etb,
                 'price_yearly_etb' => (float) $p->price_yearly_etb,
                 'is_popular' => (bool) $p->is_popular,
@@ -119,15 +121,14 @@ Route::get('/', function () {
             ])->values()->all();
         }
     }
-    if (empty($marketplacePlans)) {
-        $cfg = config('marketplace.plans', []);
-        $marketplacePlans = collect($cfg)->map(fn ($plan, $slug) => [
+    if ($marketplacePlans === []) {
+        $marketplacePlans = collect(config('marketplace.plans', []))->map(fn ($plan, $slug) => [
             'slug' => $slug,
             'name' => $plan['name'],
             'description' => $plan['description'] ?? null,
             'price_weekly_etb' => (float) ($plan['price_weekly_etb'] ?? 0),
-            'price_monthly_etb' => (float) ($plan['price_monthly_etb'] ?? $plan['price']['monthly'] ?? 0),
-            'price_yearly_etb' => (float) ($plan['price_yearly_etb'] ?? $plan['price']['yearly'] ?? 0),
+            'price_monthly_etb' => (float) ($plan['price_monthly_etb'] ?? 0),
+            'price_yearly_etb' => (float) ($plan['price_yearly_etb'] ?? 0),
             'is_popular' => (bool) ($plan['popular'] ?? false),
             'features' => $plan['features'] ?? [],
             'limits' => $plan['limits'] ?? [],
@@ -137,6 +138,8 @@ Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
         'marketplacePlans' => $marketplacePlans,
+        // Free limits come from admin-editable settings, never hardcoded text.
+        'freeLimits' => app(MarketplaceSettingsService::class)->all(),
     ]);
 })->name('home');
 
@@ -389,7 +392,11 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace'])->group(functio
     })->name('workspace.suspended');
 });
 
+// Reference data search (public for location search, OSM autocomplete)
+Route::get('/locations/search', [LocationSearchController::class, '__invoke'])->name('locations.search');
+
 Route::middleware(['auth'])->group(function () {
+
     // Onboarding Sequences (Exempt from onboarded check) — NumanFreight 3-step public profile
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
     Route::post('/onboarding/capabilities', [OnboardingController::class, 'storeCapabilities'])->name('onboarding.capabilities');
@@ -397,9 +404,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/onboarding/details', [OnboardingController::class, 'storeDetails'])->name('onboarding.details');
     Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
     Route::post('/onboarding/track-step', [OnboardingController::class, 'trackStep'])->name('onboarding.track-step');
-
-    // Reference data search (available during onboarding and after)
-    Route::get('/locations/search', [LocationSearchController::class, '__invoke'])->name('locations.search');
 
     Route::middleware(['onboarded'])->group(function () {
         Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
@@ -657,8 +661,12 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
         Route::get('/marketplace-plans', [MarketplacePlanController::class, 'index'])->name('marketplace-plans.index');
         Route::post('/marketplace-plans', [MarketplacePlanController::class, 'store'])->name('marketplace-plans.store');
         Route::put('/marketplace-plans/{marketplacePlan}', [MarketplacePlanController::class, 'update'])->name('marketplace-plans.update');
+        Route::patch('/marketplace-plans/{marketplacePlan}/toggle', [MarketplacePlanController::class, 'toggle'])->name('marketplace-plans.toggle');
         Route::delete('/marketplace-plans/{marketplacePlan}', [MarketplacePlanController::class, 'destroy'])->name('marketplace-plans.destroy');
         Route::post('/marketplace-plans/{id}/restore', [MarketplacePlanController::class, 'restore'])->name('marketplace-plans.restore');
+
+        // Free plan limits (admin-editable settings)
+        Route::put('/marketplace-settings', [MarketplaceSettingController::class, 'update'])->name('marketplace-settings.update');
 
         Route::get('/marketplace-payments', [MarketplacePaymentController::class, 'index'])->name('marketplace-payments.index');
         Route::post('/marketplace-payments/{transaction}/reconcile', [MarketplacePaymentController::class, 'reconcile'])->name('marketplace-payments.reconcile');

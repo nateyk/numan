@@ -48,7 +48,7 @@ function prepVerifiedResponse(float $amount): array
 
 it('rejects a second subscription for the same chapa_tx_ref', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     DB::table('marketplace_subscriptions')->insert([
         'workspace_id' => $workspace->id,
@@ -91,7 +91,7 @@ it('rejects a second subscription for the same chapa_tx_ref', function () {
 
 it('rejects a second receipt for the same transaction', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $tx = prepTransaction($workspace->id, $user->id, $plan->id, 'monthly', 999, 'NF-pro_receipt_uniq');
 
@@ -99,7 +99,7 @@ it('rejects a second receipt for the same transaction', function () {
         'transaction_id' => $tx->id,
         'subscription_id' => null,
         'workspace_id' => $workspace->id,
-        'amount_etb' => 999,
+        'amount_etb' => 449,
         'currency' => 'ETB',
         'invoice_number' => 'NF-'.now()->format('Ymd').'-'.uniqid(),
         'issued_at' => now(),
@@ -114,7 +114,7 @@ it('rejects a second receipt for the same transaction', function () {
 
 it('allows multiple subscriptions with a null chapa_tx_ref', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $row = fn () => DB::table('marketplace_subscriptions')->insert([
         'workspace_id' => $workspace->id,
@@ -142,7 +142,7 @@ it('allows multiple subscriptions with a null chapa_tx_ref', function () {
 
 it('renewal extends the current period instead of overwriting it', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     // Existing monthly subscription that ends in 25 days.
     $existingEnd = now()->addDays(25);
@@ -179,7 +179,7 @@ it('renewal extends the current period instead of overwriting it', function () {
 
 it('keeps the superseded subscription end date so no days are lost', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $existingEnd = now()->addDays(25);
     DB::table('marketplace_subscriptions')->insert([
@@ -211,7 +211,7 @@ it('keeps the superseded subscription end date so no days are lost', function ()
 
 it('access remains continuous after an early renewal', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $existingEnd = now()->addDays(25);
     DB::table('marketplace_subscriptions')->insert([
@@ -246,7 +246,7 @@ it('access remains continuous after an early renewal', function () {
 
 it('renews an expired subscription from now', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     // Expired 10 days ago.
     DB::table('marketplace_subscriptions')->insert([

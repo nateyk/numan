@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePlan;
 use App\Services\MarketplaceEntitlementService;
+use App\Services\MarketplaceSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -103,8 +104,10 @@ class BillingController extends Controller
                 ])->values();
             }),
             'marketplaceInvoices' => $marketplaceInvoices,
-            'plans' => $this->getPlansForDisplay(),
+            'plans' => [],
+            'marketplacePlan' => $marketplaceEntitlement->getPlanForWorkspace($workspace),
             'marketplacePlans' => $marketplacePlans,
+            'freeLimits' => $this->getFreeLimitsForDisplay(),
             'userRole' => $workspace->getUserRole($user),
         ]);
     }
@@ -137,8 +140,9 @@ class BillingController extends Controller
                 'plan' => $workspace->plan_name,
                 'marketplace_plan' => $marketplaceEntitlement->getPlanForWorkspace($workspace),
             ],
-            'plans' => $this->getPlansForDisplay(),
+            'plans' => [],
             'marketplacePlans' => $this->getMarketplacePlansForDisplay(),
+            'freeLimits' => $this->getFreeLimitsForDisplay(),
             'currentPlan' => $workspace->plan_key,
             'currentMarketplacePlan' => $marketplaceSub?->plan?->slug ?? $marketplaceEntitlement->getPlanForWorkspace($workspace)['slug'] ?? 'free',
             'currentBillingPeriod' => $workspace->billing_period,
@@ -156,9 +160,19 @@ class BillingController extends Controller
     }
 
     /**
-     * Display plan comparison table.
+     * There is a single paid plan with three durations, so there is nothing
+     * to compare side by side. The compare page and the Stripe multi-plan
+     * table are kept on disk but unreachable; send visitors to the plans page.
      */
-    public function compare(Request $request): Response
+    public function compare(Request $request): RedirectResponse
+    {
+        return redirect()->route('billing.plans');
+    }
+
+    /**
+     * Display plan comparison table (legacy Stripe plans).
+     */
+    public function compareLegacy(Request $request): Response
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
@@ -395,44 +409,47 @@ class BillingController extends Controller
 
     protected function getMarketplacePlansForDisplay(): array
     {
-        if (Schema::hasTable('marketplace_plans')) {
-            $dbPlans = MarketplacePlan::active()->ordered()->get();
-            if ($dbPlans->isNotEmpty()) {
-                return $dbPlans->map(fn ($p) => [
-                    'id' => $p->slug,
-                    'slug' => $p->slug,
-                    'name' => $p->name,
-                    'description' => $p->description,
-                    'price' => ['weekly' => (float) ($p->price_weekly_etb ?? 0), 'monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
-                    'price_etb' => ['weekly' => (float) ($p->price_weekly_etb ?? 0), 'monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
-                    'features' => $p->features ?? [],
-                    'limits' => $p->limits ?? [],
-                    'faq' => $p->faq ?? [],
-                    'popular' => (bool) $p->is_popular,
-                ])->values()->all();
-            }
-        }
+        $plans = MarketplacePlan::active()->ordered()->get()
+            ->map(fn ($p) => [
+                'id' => $p->slug,
+                'slug' => $p->slug,
+                'name' => $p->name,
+                'description' => $p->description,
+                'price' => ['weekly' => (float) $p->price_weekly_etb, 'monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
+                'price_etb' => ['weekly' => (float) $p->price_weekly_etb, 'monthly' => (float) $p->price_monthly_etb, 'yearly' => (float) $p->price_yearly_etb],
+                'features' => $p->features ?? [],
+                'limits' => $p->limits ?? [],
+                'faq' => $p->faq ?? [],
+                'popular' => (bool) $p->is_popular,
+            ])->values()->all();
 
-        $plans = config('marketplace.plans', config('billing.plans'));
-
-        return collect($plans)->map(function ($plan, $key) {
-            // Normalize ETB prices
-            $weekly = $plan['price_weekly_etb'] ?? $plan['price']['weekly'] ?? 0;
-            $monthly = $plan['price_monthly_etb'] ?? $plan['price']['monthly'] ?? 0;
-            $yearly = $plan['price_yearly_etb'] ?? $plan['price']['yearly'] ?? 0;
-
-            return [
+        // Fall back to config when the table is empty (fresh install).
+        if ($plans === []) {
+            $plans = collect(config('marketplace.plans', []))->map(fn ($plan, $key) => [
                 'id' => $key,
                 'slug' => $key,
                 'name' => $plan['name'],
                 'description' => $plan['description'] ?? null,
-                'price' => ['weekly' => (float) $weekly, 'monthly' => (float) $monthly, 'yearly' => (float) $yearly],
-                'price_etb' => ['weekly' => (float) $weekly, 'monthly' => (float) $monthly, 'yearly' => (float) $yearly],
+                'price' => ['weekly' => (float) ($plan['price_weekly_etb'] ?? 0), 'monthly' => (float) ($plan['price_monthly_etb'] ?? 0), 'yearly' => (float) ($plan['price_yearly_etb'] ?? 0)],
+                'price_etb' => ['weekly' => (float) ($plan['price_weekly_etb'] ?? 0), 'monthly' => (float) ($plan['price_monthly_etb'] ?? 0), 'yearly' => (float) ($plan['price_yearly_etb'] ?? 0)],
                 'features' => $plan['features'] ?? [],
                 'limits' => $plan['limits'] ?? [],
                 'faq' => $plan['faq'] ?? [],
                 'popular' => $plan['popular'] ?? false,
-            ];
-        })->values()->all();
+            ])->values()->all();
+        }
+
+        return $plans;
+    }
+
+    /**
+     * Free plan limits for display. Always read from marketplace_settings so
+     * an admin change shows up immediately.
+     *
+     * @return array<string, int>
+     */
+    protected function getFreeLimitsForDisplay(): array
+    {
+        return app(MarketplaceSettingsService::class)->all();
     }
 }

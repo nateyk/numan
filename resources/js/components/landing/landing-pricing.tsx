@@ -1,11 +1,14 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useTranslations } from '@/hooks/use-translations';
-import { register } from '@/routes';
-import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { ArrowRight, Check, Sparkles } from 'lucide-react';
+import {
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Check, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 interface MarketplacePlan {
@@ -20,145 +23,214 @@ interface MarketplacePlan {
     limits: Record<string, number>;
 }
 
-export function LandingPricing({ plans = [] }: { plans?: MarketplacePlan[] }) {
-    const { auth } = usePage<SharedData>().props;
-    const { t } = useTranslations();
-    const [period, setPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+interface FreeLimits {
+    free_active_posts: number;
+    free_interests_per_week: number;
+    free_contact_reveals_per_week: number;
+}
 
-    const displayPrice = (plan: MarketplacePlan) => {
-        if (plan.slug === 'weekly') return plan.price_weekly_etb;
-        if (period === 'weekly') return plan.price_weekly_etb || plan.price_monthly_etb;
-        if (period === 'monthly') return plan.price_monthly_etb;
-        return plan.price_yearly_etb;
+type Period = 'weekly' | 'monthly' | 'yearly';
+
+const formatLimit = (value: number): string =>
+    value === -1 ? 'Unlimited' : String(value);
+
+export function LandingPricing({
+    plans = [],
+    freeLimits,
+}: {
+    plans?: MarketplacePlan[];
+    freeLimits?: FreeLimits;
+}) {
+    const [period, setPeriod] = useState<Period>('monthly');
+
+    const free: FreeLimits = freeLimits ?? {
+        free_active_posts: 1,
+        free_interests_per_week: 3,
+        free_contact_reveals_per_week: 3,
     };
 
-    const periodLabel = period === 'weekly' ? '/wk' : period === 'monthly' ? '/mo' : '/yr';
-    const hasPlans = plans && plans.length > 0;
+    const priceFor = (plan: MarketplacePlan, chosen: Period): number => {
+        if (chosen === 'weekly') return Number(plan.price_weekly_etb);
+        if (chosen === 'monthly') return Number(plan.price_monthly_etb);
+        return Number(plan.price_yearly_etb);
+    };
+
+    /** Computed from the prices, so it stays right when an admin edits them. */
+    const savingsPercent = (): number | null => {
+        const plan = plans[0];
+        if (!plan) return null;
+
+        const monthly = Number(plan.price_monthly_etb);
+        const yearly = Number(plan.price_yearly_etb);
+        const fullYear = monthly * 12;
+
+        if (fullYear <= 0 || yearly <= 0 || yearly >= fullYear) return null;
+
+        return Math.round(((fullYear - yearly) / fullYear) * 100);
+    };
+
+    const suffix =
+        period === 'weekly' ? '/wk' : period === 'monthly' ? '/mo' : '/yr';
+    const savings = savingsPercent();
 
     return (
         <section id="pricing" className="bg-muted/30 py-20 sm:py-32">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-3xl text-center">
-                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-                        Simple <span className="text-primary">ETB</span> pricing for every fleet
+                <div className="mx-auto max-w-2xl text-center">
+                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                        One plan, three durations
                     </h2>
-                    <p className="mt-4 text-lg text-muted-foreground">Weekly 7-day, Free, Pro & Business — pay in ETB via Chapa (Telebirr, cards). No hidden fees.</p>
-                    {hasPlans && (
-                        <div className="mt-6 flex justify-center">
-                            <div className="inline-flex items-center gap-1 rounded-lg border bg-background p-1">
-                                {(['weekly', 'monthly', 'yearly'] as const).map((p) => (
-                                    <Button
-                                        key={p}
-                                        variant={period === p ? 'default' : 'ghost'}
-                                        size="sm"
-                                        className="h-7 px-3 text-xs capitalize"
-                                        onClick={() => setPeriod(p)}
-                                        aria-pressed={period === p}
-                                    >
-                                        {p === 'weekly' ? 'Weekly 7d' : p === 'monthly' ? 'Monthly' : 'Yearly'}
-                                        {p === 'yearly' && <span className="ml-1 text-[10px]">Save 17%</span>}
-                                    </Button>
-                                ))}
+                    <p className="mt-4 text-lg text-muted-foreground">
+                        Every duration includes the same features. Pay in ETB
+                        via Chapa (Telebirr, cards). No hidden fees.
+                    </p>
+                </div>
+
+                <div className="mt-10 flex items-center justify-center">
+                    <div className="inline-flex items-center gap-1 rounded-lg border bg-background p-1">
+                        {(['weekly', 'monthly', 'yearly'] as const).map(
+                            (option) => (
+                                <Button
+                                    key={option}
+                                    variant={
+                                        period === option ? 'default' : 'ghost'
+                                    }
+                                    size="sm"
+                                    className="h-8 px-4 text-xs capitalize"
+                                    onClick={() => setPeriod(option)}
+                                    aria-pressed={period === option}
+                                >
+                                    {option === 'weekly'
+                                        ? 'Weekly'
+                                        : option === 'monthly'
+                                          ? 'Monthly'
+                                          : 'Yearly'}
+                                    {option === 'yearly' &&
+                                        savings !== null && (
+                                            <Badge
+                                                variant="secondary"
+                                                className="ml-1 border-none bg-primary/10 px-1 text-[10px] font-bold text-primary"
+                                            >
+                                                Save {savings}%
+                                            </Badge>
+                                        )}
+                                </Button>
+                            ),
+                        )}
+                    </div>
+                </div>
+
+                <div className="mx-auto mt-10 grid max-w-5xl gap-8 md:grid-cols-2">
+                    {/* Free — values come from marketplace_settings */}
+                    <Card className="relative flex flex-col">
+                        <CardHeader className="text-center">
+                            <CardTitle className="text-2xl font-black tracking-tight">
+                                Free
+                            </CardTitle>
+                            <CardDescription>
+                                Browse, search and post as a consignor
+                            </CardDescription>
+                            <div className="mt-2">
+                                <span className="text-4xl font-black tracking-tighter">
+                                    0 ETB
+                                </span>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        </CardHeader>
+                        <CardContent className="flex-1">
+                            <ul className="space-y-3 text-sm">
+                                {[
+                                    `${formatLimit(free.free_active_posts)} active freight post${
+                                        free.free_active_posts === 1 ? '' : 's'
+                                    }`,
+                                    `${formatLimit(free.free_interests_per_week)} interest${
+                                        free.free_interests_per_week === 1
+                                            ? ''
+                                            : 's'
+                                    } per week`,
+                                    `${formatLimit(free.free_contact_reveals_per_week)} contact reveal${
+                                        free.free_contact_reveals_per_week === 1
+                                            ? ''
+                                            : 's'
+                                    } per week`,
+                                ].map((label) => (
+                                    <li key={label} className="flex gap-2">
+                                        <Check className="h-4 w-4 shrink-0 text-green-600" />
+                                        <span>{label}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                        <CardFooter>
+                            <Button
+                                className="h-10 w-full font-bold"
+                                variant="outline"
+                                disabled
+                            >
+                                Free forever
+                            </Button>
+                        </CardFooter>
+                    </Card>
 
-                {hasPlans ? (
-                    <div className="mx-auto mt-12 grid max-w-7xl gap-6 md:grid-cols-2 lg:grid-cols-4">
-                        {plans.map((plan) => {
-                            const price = displayPrice(plan);
-                            const isWeekly = plan.slug === 'weekly';
-                            return (
-                                <Card key={plan.slug} className={`relative flex flex-col ${plan.is_popular ? 'border-primary shadow-lg ring-1 ring-primary/20' : 'border-border'} ${isWeekly ? 'bg-amber-50/50 dark:bg-amber-950/10' : ''}`}>
-                                    {plan.is_popular && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                            <Badge className="gap-1 bg-primary px-3 py-1 font-bold"><Sparkles className="h-3 w-3" /> Popular</Badge>
-                                        </div>
-                                    )}
-                                    {isWeekly && !plan.is_popular && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                            <Badge variant="secondary" className="border-amber-200 bg-amber-100 px-3 py-1 font-bold text-amber-800">7-Day</Badge>
-                                        </div>
-                                    )}
-                                    <CardHeader className="pt-8 text-center">
-                                        <CardTitle className="text-xl font-bold">{plan.name}</CardTitle>
-                                        <CardDescription className="min-h-[40px] text-sm">{plan.description}</CardDescription>
-                                        <div className="mt-4">
-                                            <span className="text-3xl font-black tracking-tight">{Number(price).toLocaleString()} ETB</span>
-                                            <span className="text-sm font-bold text-muted-foreground">{isWeekly ? '/7d' : periodLabel}</span>
-                                        </div>
-                                        <div className="mt-1 text-xs text-muted-foreground">
-                                            {isWeekly ? '7-day validity' : period === 'yearly' ? `${(Number(plan.price_yearly_etb) / 12).toFixed(0)} ETB/mo billed yearly` : 'Billed monthly via Chapa'}
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="flex-1 space-y-3 px-6">
-                                        <ul className="space-y-2">
-                                            {plan.features.map((f, i) => (
-                                                <li key={i} className="flex gap-2 text-sm">
-                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-hidden="true" />
-                                                    <span>{f}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs">
-                                            <div className="flex flex-wrap gap-2 text-muted-foreground">
-                                                {Object.entries(plan.limits).map(([k, v]) => (
-                                                    <span key={k}>
-                                                        {k.replace(/_/g, ' ')}: <span className="font-medium text-foreground">{v === -1 ? '∞' : v}</span>
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="px-6 pb-6">
-                                        <Button asChild className="h-10 w-full font-bold" variant={plan.is_popular ? 'default' : 'outline'}>
-                                            <Link href={auth.user ? '/billing/plans' : register()}>
-                                                {Number(price) === 0 ? 'Get Started Free' : `Get ${plan.name} — ${Number(price).toLocaleString()} ETB`}
-                                                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-                                            </Link>
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {[
-                            { title: '100% Free', desc: 'No subscriptions, no per-project fees.' },
-                            { title: 'MIT License', desc: 'Commercial use welcome.' },
-                            { title: 'Production Ready', desc: 'Battle-tested Laravel best practices.' },
-                        ].map((item) => (
-                            <Card key={item.title} className="border-border">
-                                <CardHeader>
-                                    <CardTitle className="text-xl">{item.title}</CardTitle>
-                                    <CardDescription>{item.desc}</CardDescription>
+                    {plans.map((plan) => {
+                        const price = priceFor(plan, period);
+
+                        return (
+                            <Card
+                                key={plan.slug}
+                                className={`relative flex flex-col ${
+                                    plan.is_popular
+                                        ? 'border-primary shadow-lg ring-1 ring-primary/20'
+                                        : ''
+                                }`}
+                            >
+                                {plan.is_popular && (
+                                    <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
+                                        <Badge className="gap-1 bg-primary px-3 py-1 font-bold shadow-lg">
+                                            <Sparkles className="h-3.5 w-3.5" />{' '}
+                                            Popular
+                                        </Badge>
+                                    </div>
+                                )}
+                                <CardHeader className="text-center">
+                                    <CardTitle className="text-2xl font-black tracking-tight">
+                                        {plan.name}
+                                    </CardTitle>
+                                    <CardDescription>
+                                        {plan.description}
+                                    </CardDescription>
+                                    <div className="mt-2">
+                                        <span className="text-4xl font-black tracking-tighter">
+                                            {price.toLocaleString()} ETB
+                                        </span>
+                                        <span className="text-lg font-bold text-muted-foreground">
+                                            {suffix}
+                                        </span>
+                                    </div>
                                 </CardHeader>
+                                <CardContent className="flex-1">
+                                    <ul className="space-y-3 text-sm">
+                                        {plan.features.map((feature, index) => (
+                                            <li
+                                                key={index}
+                                                className="flex gap-2"
+                                            >
+                                                <Check className="h-4 w-4 shrink-0 text-green-600" />
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button
+                                        className="h-10 w-full font-bold"
+                                        asChild
+                                    >
+                                        <a href="/register">Subscribe</a>
+                                    </Button>
+                                </CardFooter>
                             </Card>
-                        ))}
-                    </div>
-                )}
-
-                <div className="mt-8 text-center">
-                    <p className="text-sm text-muted-foreground">
-                        Pay in ETB via <span className="font-medium text-foreground">Chapa</span> (Telebirr, Visa, Mastercard) • ETB invoices • 7-day Weekly or monthly/yearly
-                    </p>
-                </div>
-
-                <div className="mt-10 text-center">
-                    <Button size="lg" asChild className="h-12 px-8 text-base">
-                        <Link href={auth.user ? '/billing/plans' : register()}>
-                            {t('landing.pricing.cta.get_started', 'Get Started Free')}
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                    </Button>
-                    <p className="mt-4 text-sm text-muted-foreground">
-                        {t('landing.pricing.cta.or', 'Or')}{' '}
-                        <a href="https://github.com/xco-agency/laravel-saas-starter" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
-                            {t('landing.pricing.cta.github', 'view on GitHub')}
-                        </a>
-                    </p>
+                        );
+                    })}
                 </div>
             </div>
         </section>

@@ -47,7 +47,10 @@ export default function Dashboard() {
     const quickActions = [
         {
             title: t('dashboard.create_freight', 'Post Freight'),
-            description: t('dashboard.create_freight_desc', 'Create a new freight post'),
+            description: t(
+                'dashboard.create_freight_desc',
+                'Create a new freight post',
+            ),
             icon: Plus,
             href: '/my-freight',
             color: 'bg-amber-600',
@@ -168,10 +171,7 @@ export default function Dashboard() {
                         <Button asChild>
                             <Link href="/billing/plans">
                                 <Sparkles className="mr-2 h-4 w-4" />
-                                {t(
-                                    'dashboard.upgrade_to_pro',
-                                    'Upgrade to Pro',
-                                )}
+                                {t('dashboard.upgrade_to_pro', 'Subscribe')}
                             </Link>
                         </Button>
                     )}
@@ -370,7 +370,7 @@ export default function Dashboard() {
                                     <h3 className="font-semibold">
                                         {t(
                                             'dashboard.upgrade_to_pro',
-                                            'Upgrade to Pro',
+                                            'Subscribe',
                                         )}
                                     </h3>
                                     <p className="text-sm text-muted-foreground">

@@ -39,7 +39,6 @@ import {
     Download,
     ExternalLink,
     History,
-    Layers,
     Receipt,
     Sparkles,
     Users,
@@ -79,7 +78,10 @@ interface BillingIndexProps {
     workspace: BillingWorkspace;
     subscription: Subscription | null;
     upcoming_invoice: UpcomingInvoice | null;
-    usage: Record<string, UsageMetric>;
+    // Stripe resource usage is no longer displayed; marketplaceUsage is shown instead.
+    usage?: Record<string, UsageMetric>;
+    marketplaceUsage?: Record<string, UsageMetric>;
+    marketplacePlan?: { slug: string; name: string };
     invoices: Invoice[];
     marketplaceInvoices?: (Invoice & {
         is_marketplace?: boolean;
@@ -96,6 +98,7 @@ interface BillingIndexProps {
 
 // Spec-compatible alias: PlansPageProps must expose marketplace ETB fields
 // Satisfies task wording "PlansPageProps to include marketplaceInvoices?: Invoice[] & {is_marketplace?:boolean, amount_etb?:string}"
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type PlansPageProps = BillingIndexProps;
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Billing', href: '/billing' }];
@@ -104,7 +107,8 @@ export default function BillingIndex({
     workspace,
     subscription,
     upcoming_invoice,
-    usage,
+    marketplaceUsage,
+    marketplacePlan,
     invoices,
     marketplaceInvoices,
     marketplaceSubscription,
@@ -307,7 +311,7 @@ export default function BillingIndex({
                                                     {workspace.plan === 'Free'
                                                         ? t(
                                                               'billing.upgrade',
-                                                              'Upgrade Now',
+                                                              'Subscribe',
                                                           )
                                                         : t(
                                                               'billing.change_plan',
@@ -331,15 +335,11 @@ export default function BillingIndex({
                                                     align="end"
                                                     className="w-48"
                                                 >
-                                                    <DropdownMenuItem asChild>
-                                                        <Link
-                                                            href="/billing/compare"
-                                                            className="flex cursor-pointer items-center gap-2"
-                                                        >
-                                                            <Layers className="h-4 w-4" />
-                                                            Compare Plans
-                                                        </Link>
-                                                    </DropdownMenuItem>
+                                                    {/* Compare Plans removed: there is a single
+                                                        paid plan with three durations, so
+                                                        there is nothing to compare side by side.
+                                                        /billing/compare still redirects to the
+                                                        plans page. */}
                                                     <DropdownMenuItem asChild>
                                                         <Link
                                                             href="/billing/history"
@@ -451,36 +451,10 @@ export default function BillingIndex({
                                 )}
                             </Deferred>
 
-                            {/* Payment Method Quick Look */}
-                            {subscription && isOwner && (
-                                <Card className="glass animate-fade-in-up transition-all delay-300 hover:bg-muted/30">
-                                    <CardHeader className="pt-4 pb-3">
-                                        <CardTitle className="flex items-center gap-2 text-sm font-bold tracking-tight text-muted-foreground uppercase">
-                                            <CreditCard className="h-3.5 w-3.5" />
-                                            {t(
-                                                'billing.payment_method',
-                                                'Payment Method',
-                                            )}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="pb-4">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-sm font-medium">
-                                                Managed via Stripe
-                                            </p>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={handlePortalRedirect}
-                                                disabled={portalLoading}
-                                                className="h-8 px-2 text-primary hover:bg-primary/5 hover:text-primary"
-                                            >
-                                                Update
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
+                            {/* HIDDEN (Stripe): the "Payment Method — Managed via Stripe"
+                                card. Marketplace billing is ETB via Chapa. The Stripe
+                                subscription, portal and webhook routes are intentionally
+                                still registered on the server. */}
 
                             {/* Trial Countdown or Help */}
                             {!subscription && workspace.plan === 'Free' && (
@@ -491,9 +465,8 @@ export default function BillingIndex({
                                             Unlock more power
                                         </p>
                                         <p className="mb-6 px-6 text-sm leading-relaxed text-muted-foreground">
-                                            Get unlimited workspaces, priority
-                                            support, and advanced analytics to
-                                            supercharge your workflow.
+                                            Unlimited freight posts, interests
+                                            and contact reveals, paid in ETB.
                                         </p>
                                         <Button
                                             asChild
@@ -512,7 +485,7 @@ export default function BillingIndex({
 
                     {/* Usage Overview */}
                     <Deferred
-                        data="usage"
+                        data="marketplaceUsage"
                         fallback={
                             <Card className="glass animate-fade-in-up overflow-hidden shadow-sm delay-400">
                                 <CardHeader className="border-b bg-muted/10">
@@ -546,14 +519,14 @@ export default function BillingIndex({
                                         variant="outline"
                                         className="bg-background/50 font-mono"
                                     >
-                                        {workspace.plan} Plan
+                                        {marketplacePlan?.name ?? 'Free'} Plan
                                     </Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-6">
                                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                                    {usage &&
-                                        Object.entries(usage).map(
+                                    {marketplaceUsage &&
+                                        Object.entries(marketplaceUsage).map(
                                             ([key, item]) => {
                                                 const isUnlimited =
                                                     item.limit === -1 ||
@@ -763,7 +736,9 @@ export default function BillingIndex({
                                         <span className="ml-2 font-mono text-xs">
                                             {marketplaceSubscription.plan} •{' '}
                                             {marketplaceSubscription.status} •{' '}
-                                            {marketplaceSubscription.billing_interval}
+                                            {
+                                                marketplaceSubscription.billing_interval
+                                            }
                                         </span>
                                     )}
                                 </CardDescription>

@@ -37,9 +37,14 @@ class MarketplaceSubscription extends Model
         return $this->belongsTo(Workspace::class);
     }
 
+    /**
+     * withTrashed is a safety net: retired plans are archived with
+     * is_active = false, but if one is ever soft deleted, existing
+     * subscribers must still resolve their limits rather than lose access.
+     */
     public function plan(): BelongsTo
     {
-        return $this->belongsTo(MarketplacePlan::class, 'plan_id');
+        return $this->belongsTo(MarketplacePlan::class, 'plan_id')->withTrashed();
     }
 
     public function user(): BelongsTo

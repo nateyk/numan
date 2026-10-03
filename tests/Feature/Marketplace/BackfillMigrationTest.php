@@ -38,7 +38,7 @@ function insertLegacySubscription(int $workspaceId, int $userId, int $planId, st
 
 it('sets ends_at on active subscriptions where it was null', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $subId = insertLegacySubscription($workspace->id, $user->id, $plan->id, 'monthly', now()->addDays(22));
 
@@ -55,7 +55,7 @@ it('sets ends_at on active subscriptions where it was null', function () {
 
 it('leaves already expired plans inactive after backfill', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'weekly')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     // Ends yesterday — currently treated as active because ends_at is null.
     $subId = insertLegacySubscription($workspace->id, $user->id, $plan->id, 'weekly', now()->subDay());
@@ -70,7 +70,7 @@ it('leaves already expired plans inactive after backfill', function () {
 
 it('keeps unexpired plans active after backfill', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'weekly')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $subId = insertLegacySubscription($workspace->id, $user->id, $plan->id, 'weekly', now()->addDays(5));
 
@@ -82,14 +82,14 @@ it('keeps unexpired plans active after backfill', function () {
 
 it('backfills billing_interval by parsing tx_ref', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'weekly')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $txId = DB::table('marketplace_payment_transactions')->insertGetId([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-weekly_68f3a1b2c3d4e5',
-        'amount_etb' => 349,
+        'amount_etb' => 149,
         'currency' => 'ETB',
         'status' => 'verified',
         'mode' => 'test',
@@ -106,14 +106,14 @@ it('backfills billing_interval by parsing tx_ref', function () {
 
 it('falls back to matching amount_etb when tx_ref cannot be parsed', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $txId = DB::table('marketplace_payment_transactions')->insertGetId([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'legacy_opaque_reference_123',
-        'amount_etb' => 9990, // matches Pro yearly
+        'amount_etb' => 3999, // matches Pro yearly
         'currency' => 'ETB',
         'status' => 'verified',
         'mode' => 'test',
@@ -132,7 +132,7 @@ it('falls back to matching amount_etb when tx_ref cannot be parsed', function ()
 
 it('leaves billing_interval null when neither tx_ref nor amount can be resolved', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'pro')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $txId = DB::table('marketplace_payment_transactions')->insertGetId([
         'workspace_id' => $workspace->id,
@@ -158,7 +158,7 @@ it('writes a csv report for subscriptions granted the wrong duration without cha
     Storage::fake('local');
 
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'weekly')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     // A weekly payment that was (incorrectly) granted 30 days by the old code.
     $subId = DB::table('marketplace_subscriptions')->insertGetId([
@@ -183,7 +183,7 @@ it('writes a csv report for subscriptions granted the wrong duration without cha
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-weekly_wrong_duration_ref',
-        'amount_etb' => 349,
+        'amount_etb' => 149,
         'currency' => 'ETB',
         'status' => 'verified',
         'mode' => 'test',
@@ -211,14 +211,14 @@ it('writes a csv report for subscriptions granted the wrong duration without cha
 
 it('does not overwrite an interval that was already set', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
-    $plan = MarketplacePlan::where('slug', 'weekly')->first();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
 
     $txId = DB::table('marketplace_payment_transactions')->insertGetId([
         'workspace_id' => $workspace->id,
         'plan_id' => $plan->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-weekly_already_set',
-        'amount_etb' => 349,
+        'amount_etb' => 149,
         'currency' => 'ETB',
         'status' => 'verified',
         'mode' => 'test',
