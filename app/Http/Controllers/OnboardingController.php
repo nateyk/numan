@@ -8,6 +8,7 @@ use App\Enums\OnboardingStep;
 use App\Models\Location;
 use App\Models\OnboardingStepLog;
 use App\Models\Profile;
+use App\Services\PhoneNumberService;
 use App\Services\WorkspaceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,10 @@ use Inertia\Response;
 
 class OnboardingController extends Controller
 {
+    public function __construct(
+        protected PhoneNumberService $phones,
+    ) {}
+
     /**
      * Display the NumanFreight 3-step onboarding wizard (public profile).
      */
@@ -166,7 +171,7 @@ class OnboardingController extends Controller
 
         $rules = [
             'display_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30', 'regex:/^\+?[0-9\s\-\(\)]+$/'],
+            'phone' => $this->phones->rules(required: true),
             'primary_location_id' => ['required', 'integer', 'exists:locations,id'],
         ];
 
@@ -180,11 +185,21 @@ class OnboardingController extends Controller
             $rules['legal_form_other'] = ['nullable', 'string', 'max:255'];
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'phone' => PhoneNumberService::INVALID_MESSAGE,
+        ]);
+
+        $phone = $this->phones->normalize($validated['phone']);
+
+        if ($phone === null) {
+            return back()
+                ->withErrors(['phone' => PhoneNumberService::INVALID_MESSAGE])
+                ->withInput();
+        }
 
         $profile->forceFill([
             'display_name' => $validated['display_name'],
-            'phone' => $validated['phone'],
+            'phone' => $phone,
             'primary_location_id' => $validated['primary_location_id'],
             'legal_name' => $validated['legal_name'] ?? null,
             'legal_form' => $validated['legal_form'] ?? null,

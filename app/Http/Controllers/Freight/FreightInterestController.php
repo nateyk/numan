@@ -125,12 +125,15 @@ class FreightInterestController extends Controller
         // A phone number on the profile is required. Contact details are
         // released from the profile through the reveal action, so an interest
         // cannot be expressed by someone we could never contact.
-        $profile = $user->profile()->first();
-
-        if (! $profile || blank($profile->phone)) {
-            return back()->withErrors([
-                'interest' => 'Add a phone number to your profile before expressing interest, so carriers can reach you.',
-            ]);
+        //
+        // Not a hard block: the layout renders one inline field and the user
+        // retries. No interest row is created until they confirm.
+        if (! $user->hasPhoneNumber()) {
+            return back()
+                ->with('requires_phone', true)
+                ->with('requires_phone_reason', 'expressing interest')
+                ->withErrors(['interest' => 'Add your phone number to continue. Carriers need a way to reach you.'])
+                ->withInput();
         }
 
         $interest = FreightInterest::create([

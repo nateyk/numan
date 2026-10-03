@@ -119,6 +119,9 @@ export interface SharedData {
     workspaces: Workspace[];
     sidebarOpen: boolean;
     flash: Flash;
+    // Set when an action bounced the user back for a missing phone number.
+    requires_phone?: boolean;
+    requires_phone_reason?: string | null;
     locale?: string;
     features?: Record<string, boolean>;
     show_experience_survey?: boolean;

@@ -1,4 +1,5 @@
 import CookieConsentBanner from '@/components/cookie-consent-banner';
+import PhoneNumberInlineStep from '@/components/phone-number-inline-step';
 import { useToast } from '@/components/ui/toast';
 import { FeatureProvider } from '@/contexts/feature-context';
 import AppLayoutTemplate from '@/layouts/app/app-sidebar-layout';
@@ -45,6 +46,7 @@ export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
                 </div>
             )}
             <FeatureProvider>
+                <PhoneNumberInlineStep />
                 <AppLayoutTemplate breadcrumbs={breadcrumbs} {...props}>
                     {children}
                 </AppLayoutTemplate>

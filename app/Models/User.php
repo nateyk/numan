@@ -247,6 +247,24 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Has this user a phone number on file?
+     *
+     * Required before posting freight, expressing interest or revealing a
+     * contact, because a reveal hands over the profile number and a phone-less
+     * user could never be called back. Never a hard block: the shared layout
+     * offers a single inline field when this is false.
+     *
+     * Deliberately queries rather than reading the loaded relation. The shared
+     * Inertia props read $user->profile, which caches the relation for the rest
+     * of the request, and a cached null would report "no phone" even after the
+     * number had just been saved.
+     */
+    public function hasPhoneNumber(): bool
+    {
+        return filled($this->profile()->value('phone'));
+    }
+
+    /**
      * Mark the user as having completed onboarding.
      */
     public function completeOnboarding(): void

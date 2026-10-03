@@ -71,6 +71,7 @@ use App\Http\Controllers\MemberActivityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\PhoneNumberController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Settings\WorkspaceLogoController;
 use App\Http\Controllers\Settings\WorkspaceSecurityController;
@@ -400,6 +401,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Onboarding Sequences (Exempt from onboarded check) — NumanFreight 3-step public profile
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
+    Route::post('/profile/phone', [PhoneNumberController::class, 'update'])->name('profile.phone.update');
     Route::post('/onboarding/capabilities', [OnboardingController::class, 'storeCapabilities'])->name('onboarding.capabilities');
     Route::post('/onboarding/account-type', [OnboardingController::class, 'storeAccountType'])->name('onboarding.account-type');
     Route::post('/onboarding/details', [OnboardingController::class, 'storeDetails'])->name('onboarding.details');

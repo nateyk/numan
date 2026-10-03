@@ -100,7 +100,11 @@ class MarketplaceConnectionController extends Controller
             abort(403);
         }
 
-        $contactDetails = $this->reveals->contactDetailsFor($viewer, $counterparty);
+        if ($missing = $this->missingPhoneStep($request)) {
+            return $missing;
+        }
+
+        $contactDetails = $this->reveals->contactDetailsFor($viewer, $counterparty, $connection);
 
         if (! $contactDetails) {
             return back()->withErrors(['contact' => 'No contact details are on file for this user.']);
@@ -135,7 +139,11 @@ class MarketplaceConnectionController extends Controller
             abort(403);
         }
 
-        $contactDetails = $this->reveals->contactDetailsFor($viewer, $counterparty);
+        if ($missing = $this->missingPhoneStep($request)) {
+            return $missing;
+        }
+
+        $contactDetails = $this->reveals->contactDetailsFor($viewer, $counterparty, $interest);
 
         if (! $contactDetails) {
             return back()->withErrors(['contact' => 'No contact details are on file for this user.']);
@@ -146,6 +154,32 @@ class MarketplaceConnectionController extends Controller
         }
 
         return back()->with('revealed_contact', $contactDetails);
+    }
+
+    /**
+     * A reveal hands over a phone number, so the viewer needs one too —
+     * otherwise a revealed counterparty could never call them back.
+     *
+     * Not a hard block. The shared layout renders one inline field and the user
+     * presses Reveal again.
+     */
+    private function missingPhoneStep(Request $request): RedirectResponse|JsonResponse|null
+    {
+        if ($request->user()->hasPhoneNumber()) {
+            return null;
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'requires_phone' => true,
+                'message' => 'Add your phone number to continue.',
+            ], 422);
+        }
+
+        return back()
+            ->with('requires_phone', true)
+            ->with('requires_phone_reason', 'revealing a contact')
+            ->withErrors(['contact' => 'Add your phone number to continue.']);
     }
 
     /**

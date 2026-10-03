@@ -5,17 +5,17 @@ namespace App\Services;
 use App\Models\FreightInterest;
 use App\Models\MarketplaceConnection;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Decides whether one user may see another user's contact details.
  *
- * In 4a this is unmetered but already gated on a real relationship: a live
- * interest or an existing connection between the two users. Metering is layered
- * on top in 4b without changing the gate.
+ * Gated on a real relationship: a live interest or an existing connection
+ * between the two users. Metering is layered on top without changing the gate.
  *
- * Contact details are read from the person's profile and transporter profile.
- * They are never read from per-interest fields, which are no longer collected.
+ * Contact details come from the person's profile and transporter profile, with
+ * the legacy per-interest phone as a last resort. Bank columns are never read.
  */
 class ContactRevealService
 {
@@ -85,11 +85,25 @@ class ContactRevealService
     }
 
     /**
-     * The counterparty's contact details, from their profile.
+     * The counterparty's contact details.
      *
-     * @return array<string, string|null>
+     * Resolution order, exactly:
+     *   1. the counterparty's profile phone
+     *   2. their transporter profile phone
+     *   3. the legacy FreightInterest.contact_phone — transporter side only,
+     *      because that column was only ever filled in by the transporter
+     *      submitting an interest
+     *   4. their email address
+     *
+     * Bank columns are never read. NumanFreight handles no payments, so
+     * freight_interests.bank_* has no consumer at all and must not become one.
+     *
+     * $context is the interest or connection the reveal came from, used only
+     * for the legacy step-3 fallback. Without it the fallback is skipped.
+     *
+     * @return array<string, string|null>|null
      */
-    public function contactDetailsFor(User $viewer, User $counterparty): ?array
+    public function contactDetailsFor(User $viewer, User $counterparty, ?Model $context = null): ?array
     {
         if (! $this->canReveal($viewer, $counterparty)) {
             return null;
@@ -103,24 +117,59 @@ class ContactRevealService
 
         $transporter = $counterparty->transporterProfile()->first();
 
-        // Respect the transporter's own visibility flags.
+        // A transporter who turned phone visibility off has said "do not
+        // publish my number". That is an explicit refusal, not a gap to fill,
+        // so it suppresses the number outright rather than falling through to
+        // the legacy per-interest phone below.
+        $phoneRefused = $transporter !== null && ! $transporter->phone_visible;
+
+        $phone = $phoneRefused
+            ? null
+            : (filled($profile->phone)
+                ? $profile->phone
+                : $transporter?->phone);
+
+        // Only fall back when the number was merely absent, never when it was
+        // explicitly refused.
+        if (blank($phone) && ! $phoneRefused) {
+            $phone = $this->legacyInterestPhone($counterparty, $context);
+        }
+
         if ($transporter !== null) {
-            $phone = $transporter->phone_visible ? ($transporter->phone ?: $profile->phone) : null;
             $email = $transporter->email_visible ? ($transporter->email ?: $counterparty->email) : null;
             $whatsapp = $transporter->whatsapp_visible ? $transporter->whatsapp : null;
         } else {
-            // A consignor publishes their profile phone; their email is always
-            // available to an accepted counterparty.
-            $phone = $profile->phone;
             $email = $counterparty->email;
             $whatsapp = null;
         }
 
         return [
             'name' => $profile->display_name ?? $counterparty->name,
-            'phone' => $phone,
-            'email' => $email,
-            'whatsapp' => $whatsapp,
+            'phone' => $phone ?: null,
+            'email' => $email ?: null,
+            'whatsapp' => $whatsapp ?: null,
         ];
+    }
+
+    /**
+     * The legacy per-interest phone, for the transporter side only.
+     *
+     * freight_interests.contact_phone used to be filled in by whoever submitted
+     * the interest, so it only ever holds a transporter's number. It is a
+     * last-resort fallback for legacy rows where the profile was never filled
+     * in, and is not consulted for a consignor.
+     */
+    private function legacyInterestPhone(User $counterparty, ?Model $context): ?string
+    {
+        if (! $context instanceof FreightInterest || ! Schema::hasColumn('freight_interests', 'contact_phone')) {
+            return null;
+        }
+
+        // Only the interest's own submitter has a legacy phone.
+        if ($context->user_id !== $counterparty->id) {
+            return null;
+        }
+
+        return filled($context->contact_phone) ? $context->contact_phone : null;
     }
 }
