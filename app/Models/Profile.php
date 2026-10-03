@@ -95,10 +95,32 @@ class Profile extends Model
         return (bool) ($this->posts_freight || $this->provides_transport);
     }
 
+    /**
+     * An explicit allowlist, never logFillable().
+     *
+     * logFillable() writes the *values* of every fillable attribute into
+     * activity_log.properties, which put every user's phone number and legal
+     * name into the audit trail in plaintext, permanently and exportable.
+     *
+     * phone and legal_name are therefore absent from this list rather than
+     * redacted: Spatie logs the value of whatever it is told to log, so the
+     * only way to keep a number out of the log is not to ask for it. The log
+     * still records that the profile was updated — just without the sensitive
+     * payload.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logFillable()
+            ->logOnly([
+                'posts_freight',
+                'provides_transport',
+                'account_type',
+                'display_name',
+                'primary_location_id',
+                'legal_form',
+                'onboarding_step',
+                'onboarding_completed_at',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('profile');

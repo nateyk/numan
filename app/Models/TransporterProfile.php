@@ -125,10 +125,34 @@ class TransporterProfile extends Model
         return $query->where('status', TransporterStatus::Pending->value);
     }
 
+    /**
+     * An explicit allowlist, never logFillable().
+     *
+     * logFillable() wrote the value of every fillable attribute into
+     * activity_log.properties, which put transporter phone, whatsapp, email and
+     * legal_name into the audit trail in plaintext.
+     *
+     * Those four are absent from the list rather than redacted, because Spatie
+     * logs the value of whatever it is asked to log. The *_visible flags stay:
+     * knowing a transporter published or hid their number is audit-relevant and
+     * carries no contact data.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logFillable()
+            ->logOnly([
+                'slug',
+                'display_name',
+                'business_description',
+                'is_company',
+                'status',
+                'verification_level',
+                'completion_score',
+                'phone_visible',
+                'whatsapp_visible',
+                'email_visible',
+                'primary_location_id',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('transporter_profile');
