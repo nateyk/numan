@@ -448,16 +448,20 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                                 }
                                                                 router.post(
                                                                     `/my-freight/${f.ulid}/interests`,
-                                                                    { message: '', contact_name: auth.user.name ?? '', contact_phone: '', contact_email: auth.user.email ?? '' },
+                                                                    // Contact details come from the profile and are
+                                                                    // released only on an explicit reveal.
+                                                                    { message: '' },
                                                                     {
                                                                         preserveScroll: true,
                                                                         onSuccess: () => toast.success('Interest expressed successfully.'),
                                                                         onError: (errors) => {
-                                                                            const msg = (errors as Record<string, string>).interest || (errors as Record<string, string>).contact_phone || (errors as Record<string, string>).contact_email || Object.values(errors)[0] as string;
+                                                                            const msg = (errors as Record<string, string>).interest || Object.values(errors)[0] as string;
                                                                             if (msg) {
                                                                                 toast.error(msg);
                                                                                 if (String(msg).toLowerCase().includes('transporter profile')) {
                                                                                     setTimeout(() => router.visit('/my-transporter-profile'), 1500);
+                                                                                } else if (String(msg).toLowerCase().includes('phone number')) {
+                                                                                    setTimeout(() => router.visit('/settings/profile'), 1500);
                                                                                 } else if (String(msg).toLowerCase().includes('not active')) {
                                                                                     toast.info('This freight is not yet active for interest.');
                                                                                 }

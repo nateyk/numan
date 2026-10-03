@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Freight;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\FreightPostResource;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Services\MarketplaceEntitlementService;
@@ -20,7 +21,7 @@ class PublicFreightDiscoveryController extends Controller
         $sort = $request->query('sort', 'latest');
 
         $query = FreightPost::query()
-            ->with(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
+            ->with(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
             ->active()
             ->visible()
             ->when($request->query('origin'), function ($q, $origin) {
@@ -90,7 +91,11 @@ class PublicFreightDiscoveryController extends Controller
         }
 
         return Inertia::render('discover/index', [
-            'freight' => $posts,
+            // Explicit columns only. The raw post includes the owner's User
+            // model, whose email is not hidden by User::$hidden.
+            'freight' => FreightPostResource::collection($posts->getCollection())->resolve(),
+            'total' => $posts->total(),
+            'links' => $posts->links(),
             'filters' => [
                 'search' => $search,
                 'origin' => $request->query('origin'),
@@ -118,7 +123,7 @@ class PublicFreightDiscoveryController extends Controller
             abort(404);
         }
 
-        $post->load(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
+        $post->load(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
         Gate::authorize('view', $post);
 
@@ -150,7 +155,8 @@ class PublicFreightDiscoveryController extends Controller
         }
 
         return Inertia::render('freight/show', [
-            'post' => $post,
+            // Explicit columns only: the owner's email must not reach the page.
+            'post' => (new FreightPostResource($post))->resolve(),
             'hasInterest' => $hasInterest,
             'interestStatus' => $interestStatus,
             'interestsCount' => $interestsCount,

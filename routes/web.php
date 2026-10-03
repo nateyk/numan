@@ -363,6 +363,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::get('/connections/{public_id}', [MarketplaceConnectionController::class, 'show'])->name('connections.show');
     Route::post('/connections/{public_id}/outcome', [MarketplaceConnectionOutcomeController::class, 'store'])->name('connections.outcome');
     Route::post('/connections/{public_id}/reveal', [MarketplaceConnectionController::class, 'reveal'])->name('connections.reveal');
+    Route::post('/interests/{interest}/reveal', [MarketplaceConnectionController::class, 'revealFromInterest'])->name('freight.interests.reveal');
 
     // Impersonation
     Route::post('/admin/impersonate/leave', [ImpersonationController::class, 'leave'])->name('admin.impersonate.leave');

@@ -19,7 +19,13 @@ interface Interest {
 }
 
 interface Props {
-    interests: { data: Interest[]; links?: Array<{ url: string | null; label: string; active: boolean }>; total?: number };
+    // Explicit resource array. Contact details are never included; they come
+    // from the reveal action only.
+    interests: Interest[];
+    total?: number;
+    links?: Array<{ url: string | null; label: string; active: boolean }>;
+    canReveal?: Record<string, boolean>;
+    revealedContacts?: Record<string, { name: string; phone: string | null; email: string | null; whatsapp: string | null }>;
     sort: string;
     counts: Record<string, number>;
 }
@@ -38,11 +44,10 @@ const statusColor = (status: string) => {
     }
 };
 
-export default function MyInterests({ interests, sort, counts }: Props) {
-    const safeInterests = (interests && typeof interests === 'object' && !Array.isArray(interests) ? interests : { data: [] }) as Props['interests'];
+export default function MyInterests({ interests, links, canReveal, revealedContacts, sort, counts }: Props) {
     const safeCounts = (counts && typeof counts === 'object' && !Array.isArray(counts) ? counts : {}) as Record<string, number>;
     const safeSort = typeof sort === 'string' && sort ? sort : 'latest';
-    const interestData = Array.isArray(safeInterests.data) ? safeInterests.data : [];
+    const interestData = Array.isArray(interests) ? interests : [];
 
     return (
         <AppLayout>
@@ -130,19 +135,36 @@ export default function MyInterests({ interests, sort, counts }: Props) {
                                                         <Badge variant="secondary" className={`${statusColor(i.status)} capitalize`}>{i.status}</Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right">
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <Button variant="ghost" size="icon" className="size-7" asChild>
-                                                                <Link href={`/freight/${fp?.ulid ?? ''}`}><Eye className="size-4" /></Link>
-                                                            </Button>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="size-7"><MoreHorizontal className="size-4" /></Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-40">
-                                                                    <DropdownMenuItem asChild><Link href={`/freight/${fp?.ulid ?? ''}`} className="cursor-pointer"><Eye className="mr-2 size-4" /> View Freight</Link></DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/withdraw`)} disabled={i.status === 'withdrawn' || i.status === 'selected'} className="cursor-pointer"><X className="mr-2 size-4" /> Withdraw</DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <Button variant="ghost" size="icon" className="size-7" asChild>
+                                                                    <Link href={`/freight/${fp?.ulid ?? ''}`}><Eye className="size-4" /></Link>
+                                                                </Button>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="size-7"><MoreHorizontal className="size-4" /></Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end" className="w-40">
+                                                                        <DropdownMenuItem asChild><Link href={`/freight/${fp?.ulid ?? ''}`} className="cursor-pointer"><Eye className="mr-2 size-4" /> View Freight</Link></DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/withdraw`)} disabled={i.status === 'withdrawn' || i.status === 'selected'} className="cursor-pointer"><X className="mr-2 size-4" /> Withdraw</DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                            {revealedContacts?.[String(i.id)] ? (
+                                                                <div className="text-right text-xs text-muted-foreground">
+                                                                    <div>{revealedContacts[String(i.id)]?.phone ?? 'No phone'}</div>
+                                                                    <div>{revealedContacts[String(i.id)]?.email ?? ''}</div>
+                                                                </div>
+                                                            ) : canReveal?.[String(i.id)] ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="h-7 text-xs"
+                                                                    onClick={() => router.post(`/interests/${i.id}/reveal`, {}, { preserveScroll: true })}
+                                                                >
+                                                                    Reveal contact
+                                                                </Button>
+                                                            ) : null}
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -184,9 +206,9 @@ export default function MyInterests({ interests, sort, counts }: Props) {
                             })}
                         </div>
 
-                        {safeInterests.links && (safeInterests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.length > 3 && (
+                        {links && links.length > 3 && (
                             <div className="flex flex-wrap gap-1">
-                                {(safeInterests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.map((link, idx) => (
+                                {links.map((link, idx) => (
                                     <Button key={idx} variant={link.active ? 'default' : 'outline'} size="sm" disabled={!link.url} onClick={() => link.url && router.get(link.url, {}, { preserveState: true })} className="h-7 px-2.5 text-xs">
                                         <span dangerouslySetInnerHTML={{ __html: link.label }} />
                                     </Button>

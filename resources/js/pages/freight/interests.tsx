@@ -8,15 +8,25 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Package, MapPin, Calendar, Phone, Mail, User, MoreHorizontal, Eye, Check, X, Star, ArrowLeft } from 'lucide-react';
 
+interface RevealedContact {
+    name: string;
+    phone: string | null;
+    email: string | null;
+    whatsapp: string | null;
+}
+
 interface Interest {
     id: number;
     status: string;
     message: string | null;
-    user: { id: number; name: string; email: string };
-    contact_name: string | null;
-    contact_phone: string | null;
-    contact_email: string | null;
     created_at?: string | null;
+    // Display identity only. Contact details are never part of the payload.
+    transporter?: {
+        id: number;
+        display_name: string;
+        is_verified: boolean;
+        routes: Array<{ id: number; origin: string | null; destination: string | null }>;
+    } | null;
 }
 
 interface FreightPost {
@@ -30,7 +40,11 @@ interface FreightPost {
 }
 
 interface Props {
-    interests: { data: Interest[]; links?: Array<{ url: string | null; label: string; active: boolean }>; total?: number };
+    interests: Interest[];
+    total?: number;
+    links?: Array<{ url: string | null; label: string; active: boolean }>;
+    canReveal?: Record<string, boolean>;
+    revealedContacts?: Record<string, RevealedContact>;
     post: FreightPost;
 }
 
@@ -48,15 +62,15 @@ const statusColor = (status: string) => {
     }
 };
 
-export default function FreightInterests({ interests, post }: Props) {
+export default function FreightInterests({ interests, links, canReveal, revealedContacts, post }: Props) {
     const origin = (post as unknown as Record<string, unknown>).originLocation as FreightPost['originLocation'] ?? (post as unknown as Record<string, unknown>).origin_location as FreightPost['originLocation'];
     const destination = (post as unknown as Record<string, unknown>).destinationLocation as FreightPost['destinationLocation'] ?? (post as unknown as Record<string, unknown>).destination_location as FreightPost['destinationLocation'];
 
     const counts = {
-        all: interests.data.length,
-        submitted: interests.data.filter((i) => i.status === 'submitted').length,
-        shortlisted: interests.data.filter((i) => i.status === 'shortlisted').length,
-        selected: interests.data.filter((i) => i.status === 'selected').length,
+        all: interests.length,
+        submitted: interests.filter((i) => i.status === 'submitted').length,
+        shortlisted: interests.filter((i) => i.status === 'shortlisted').length,
+        selected: interests.filter((i) => i.status === 'selected').length,
     };
 
     return (
@@ -69,7 +83,7 @@ export default function FreightInterests({ interests, post }: Props) {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Interests for {origin?.name ?? '—'} → {destination?.name ?? '—'}</h1>
-                        <p className="text-sm text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.cargo_description ?? 'General cargo'} • {counts.all} total</p>
+                        <p className="text-sm text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.item_name ?? 'General cargo'} • {counts.all} total</p>
                     </div>
                 </div>
 
@@ -80,7 +94,7 @@ export default function FreightInterests({ interests, post }: Props) {
                     <Badge variant="outline" className={statusColor('selected')}>Selected: {counts.selected}</Badge>
                 </div>
 
-                {interests.data.length === 0 ? (
+                {interests.length === 0 ? (
                     <Card className="border-dashed">
                         <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
                             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
@@ -106,16 +120,23 @@ export default function FreightInterests({ interests, post }: Props) {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {interests.data.map((i) => (
+                                        {interests.map((i) => (
                                             <TableRow key={i.id}>
                                                 <TableCell>
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="size-8">
-                                                            <AvatarFallback>{i.user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                                            <AvatarFallback>{(i.transporter?.display_name ?? '?').slice(0, 2).toUpperCase()}</AvatarFallback>
                                                         </Avatar>
                                                         <div>
-                                                            <div className="font-medium">{i.user.name}</div>
-                                                            <div className="text-xs text-muted-foreground">{i.user.email}</div>
+                                                            <div className="font-medium">{i.transporter?.display_name ?? '—'}</div>
+                                                            {i.transporter?.is_verified && (
+                                                                <div className="text-xs text-muted-foreground">Verified</div>
+                                                            )}
+                                                            {i.transporter?.routes?.map((r) => (
+                                                                <div key={r.id} className="text-xs text-muted-foreground">
+                                                                    {r.origin ?? '—'} → {r.destination ?? '—'}
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 </TableCell>
@@ -124,15 +145,32 @@ export default function FreightInterests({ interests, post }: Props) {
                                                     {i.created_at && <div className="text-xs text-muted-foreground">{new Date(i.created_at).toLocaleDateString()}</div>}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {(i.status === 'shortlisted' || i.status === 'selected') ? (
-                                                        <div className="text-sm">
-                                                            <div className="flex items-center gap-1"><User className="size-3" /> {i.contact_name ?? '—'}</div>
-                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground"><Phone className="size-3" /> {i.contact_phone ?? '—'}</div>
-                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground"><Mail className="size-3" /> {i.contact_email ?? '—'}</div>
+                                                    <div className="text-sm">
+                                                        <div className="flex items-center gap-1">
+                                                            <User className="size-3" /> {i.transporter?.display_name ?? '—'}
                                                         </div>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">Hidden until shortlisted</span>
-                                                    )}
+                                                        {revealedContacts?.[String(i.id)] ? (
+                                                            <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                                                                <div className="flex items-center gap-1">
+                                                                    <Phone className="size-3" /> {revealedContacts[String(i.id)]?.phone ?? '—'}
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <Mail className="size-3" /> {revealedContacts[String(i.id)]?.email ?? '—'}
+                                                                </div>
+                                                            </div>
+                                                        ) : canReveal?.[String(i.id)] ? (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="mt-1 h-7 text-xs"
+                                                                onClick={() => router.post(`/interests/${i.id}/reveal`)}
+                                                            >
+                                                                Reveal contact
+                                                            </Button>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground">Not available</span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant="secondary" className={`${statusColor(i.status)} capitalize`}>{i.status}</Badge>
@@ -160,24 +198,26 @@ export default function FreightInterests({ interests, post }: Props) {
 
                         {/* Mobile Cards */}
                         <div className="grid gap-3 md:hidden">
-                            {interests.data.map((i) => (
+                            {interests.map((i) => (
                                 <Card key={i.id} className="p-4">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex items-center gap-3">
                                             <Avatar className="size-8">
-                                                <AvatarFallback>{i.user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                                <AvatarFallback>{(i.transporter?.display_name ?? '?').slice(0, 2).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <div className="font-medium">{i.user.name}</div>
+                                                <div className="font-medium">{i.transporter?.display_name ?? '—'}</div>
                                                 <div className="text-xs text-muted-foreground">{i.message ?? '—'}</div>
                                             </div>
                                         </div>
                                         <Badge variant="secondary" className={`${statusColor(i.status)} capitalize text-xs`}>{i.status}</Badge>
                                     </div>
-                                    {(i.status === 'shortlisted' || i.status === 'selected') && (
+                                    {revealedContacts?.[String(i.id)] && (
                                         <div className="mt-3 rounded-md border bg-muted/20 p-2 text-sm">
-                                            <div className="font-medium">{i.contact_name}</div>
-                                            <div className="text-xs text-muted-foreground">{i.contact_phone} • {i.contact_email}</div>
+                                            <div className="font-medium">{revealedContacts[String(i.id)]?.name}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {revealedContacts[String(i.id)]?.phone ?? '—'} • {revealedContacts[String(i.id)]?.email ?? '—'}
+                                            </div>
                                         </div>
                                     )}
                                     <div className="mt-3 flex gap-2">
@@ -189,9 +229,9 @@ export default function FreightInterests({ interests, post }: Props) {
                             ))}
                         </div>
 
-                        {interests.links && (interests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.length > 3 && (
+                        {links && links.length > 3 && (
                             <div className="flex flex-wrap gap-1">
-                                {(interests as unknown as { links: Array<{ url: string | null; label: string; active: boolean }> }).links.map((link, idx) => (
+                                {links.map((link, idx) => (
                                     <Button key={idx} variant={link.active ? 'default' : 'outline'} size="sm" disabled={!link.url} onClick={() => link.url && router.get(link.url, {}, { preserveState: true })} className="h-7 px-2.5 text-xs">
                                         <span dangerouslySetInnerHTML={{ __html: link.label }} />
                                     </Button>

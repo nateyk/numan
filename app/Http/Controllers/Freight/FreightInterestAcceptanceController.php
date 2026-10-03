@@ -84,7 +84,9 @@ class FreightInterestAcceptanceController extends Controller
             Notification::send([$post->user, $interest->user], new MarketplaceConnectionCreated($connection));
         }
 
+        // Accepting creates the connection but does NOT reveal contact details.
+        // Reveal is a separate, explicit action the user takes afterwards.
         return redirect()->route('connections.show', ['public_id' => $connection->public_id])
-            ->with('success', 'Interest accepted. Connection created.');
+            ->with('success', 'Interest accepted. You can now reveal contact details if you need them.');
     }
 }

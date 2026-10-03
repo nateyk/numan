@@ -69,15 +69,9 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
 
     const { data: interestData, setData: setInterestData, post: postInterest, processing: interestProcessing, errors: interestErrors, reset: resetInterest } = useForm<{
         message: string;
-        contact_name: string;
-        contact_phone: string;
-        contact_email: string;
         interest?: string;
     }>({
         message: '',
-        contact_name: auth?.user?.name ?? '',
-        contact_phone: '',
-        contact_email: auth?.user?.email ?? '',
     });
 
     const handleExpressInterest = () => {
@@ -184,7 +178,7 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                                             </div>
                                             <Separator />
                                             <div className="space-y-2 text-sm">
-                                                <p className="flex items-center gap-2"><Package className="size-4 text-muted-foreground" /> <span className="font-medium">{cargoType?.name ?? 'General Cargo'}</span> — {post.cargo_description ?? 'No description'}</p>
+                                                <p className="flex items-center gap-2"><Package className="size-4 text-muted-foreground" /> <span className="font-medium">{cargoType?.name ?? 'General Cargo'}</span> — {post.item_name ?? 'No description'}</p>
                                                 <p className="flex items-center gap-2"><Truck className="size-4 text-muted-foreground" /> {truckType?.name ?? 'Any truck'} {post.truck_count ? `×${post.truck_count}` : ''}</p>
                                                 <p className="flex items-center gap-2"><Calendar className="size-4 text-muted-foreground" /> Pickup: {post.pickup_date ? String(post.pickup_date).slice(0, 10) : 'Flexible'} {post.pickup_time ? String(post.pickup_time).slice(0,5) : ''} {post.pickup_date_flexibility_days ? `±${post.pickup_date_flexibility_days}d` : ''}</p>
                                                 <p className="flex items-center gap-2"><Clock className="size-4 text-muted-foreground" /> Schedule: {post.schedule_type ?? 'One-time'}</p>
@@ -241,28 +235,10 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                                                                     <Label>Message (optional)</Label>
                                                                     <Textarea value={interestData.message} onChange={(e) => setInterestData('message', e.target.value)} placeholder="Why are you interested? e.g., Available truck, experience on this route" rows={2} />
                                                                 </div>
-                                                                <div>
-                                                                    <Label>Contact Name *</Label>
-                                                                    <Input value={interestData.contact_name} onChange={(e) => setInterestData('contact_name', e.target.value)} placeholder="Your full name" />
-                                                                    {interestErrors.contact_name && <p className="text-xs text-destructive">{interestErrors.contact_name}</p>}
-                                                                </div>
-                                                                <div>
-                                                                    <Label>Phone *</Label>
-                                                                    <Input
-                                                                        id="phone"
-                                                                        value={interestData.contact_phone}
-                                                                        onChange={(e) => setInterestData('contact_phone', e.target.value)}
-                                                                        placeholder="+251 91 123 4567"
-                                                                        inputMode="tel"
-                                                                        autoComplete="tel"
-                                                                    />
-                                                                    {interestErrors.contact_phone && <p className="text-xs text-destructive">{interestErrors.contact_phone}</p>}
-                                                                </div>
-                                                                <div>
-                                                                    <Label>Email *</Label>
-                                                                    <Input type="email" value={interestData.contact_email} onChange={(e) => setInterestData('contact_email', e.target.value)} placeholder="you@example.com" />
-                                                                    {interestErrors.contact_email && <p className="text-xs text-destructive">{interestErrors.contact_email}</p>}
-                                                                </div>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Your name, phone and email come from your profile and are
+                                                                    shared only when you choose to reveal them.
+                                                                </p>
                                                                 <DialogFooter>
                                                                     <Button type="button" variant="outline" onClick={() => setInterestOpen(false)}>Cancel</Button>
                                                                     <Button type="submit" disabled={interestProcessing}>Submit Interest</Button>
@@ -288,7 +264,7 @@ export default function FreightShow({ post, hasInterest, interestStatus, interes
                                             <div className="flex justify-between"><span className="text-muted-foreground">Weight</span><span>{post.actual_weight ? `${post.actual_weight} ${post.weight_unit ?? 'ton'}` : '—'}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Tariff</span><span>{post.tariff_amount ? `${post.tariff_amount} ${post.tariff_currency ?? 'ETB'}` : '—'}</span></div>
                                             <Separator />
-                                            <div className="flex justify-between"><span className="text-muted-foreground">Cargo</span><span className="truncate max-w-[160px]">{post.cargo_description ?? '—'}</span></div>
+                                            <div className="flex justify-between"><span className="text-muted-foreground">Cargo</span><span className="truncate max-w-[160px]">{post.item_name ?? '—'}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Truck</span><span>{truckType?.name ?? '—'} {post.truck_count ? `×${post.truck_count}` : ''}</span></div>
                                             <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant="outline" className="capitalize">{post.status}</Badge></div>
                                         </CardContent>

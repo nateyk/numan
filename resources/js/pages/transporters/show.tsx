@@ -42,22 +42,28 @@ interface Profile {
     id: number;
     slug: string;
     display_name: string;
-    legal_name: string;
-    phone: string;
-    whatsapp: string;
-    email: string;
     business_description: string;
     is_company: boolean;
     status: string;
     verification_level: string;
+    is_verified: boolean;
     completion_score: number;
-    phone_visible: boolean;
-    whatsapp_visible: boolean;
-    email_visible: boolean;
+    rating: number | null;
+    total_routes: number;
+    // No phone, whatsapp, email, legal_name or *_visible flags. Contact
+    // details are released only through the reveal action, which requires an
+    // existing interest or connection.
     primary_location: PrimaryLocation | null;
     truck_types: TruckType[];
     routes: Route[];
-    documents: Document[];
+    // Name and type only. No file URL: a public page must not offer a direct
+    // download link to somebody's licence or ID.
+    documents: Array<{
+        id: number;
+        name: string;
+        type: string;
+        uploaded_at: string | null;
+    }>;
 }
 
 interface Props {
@@ -87,7 +93,9 @@ export default function TransporterShow({ profile, truckTypes }: Props) {
                             {verificationBadge}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            {profile.legal_name}
+                            {profile.total_routes} route
+                            {profile.total_routes === 1 ? '' : 's'}
+                            {profile.rating !== null && ` \u00b7 rated ${profile.rating}`}
                         </p>
                     </div>
                     <Badge variant="outline">{profile.status}</Badge>
@@ -135,47 +143,13 @@ export default function TransporterShow({ profile, truckTypes }: Props) {
                                 </div>
                             )}
 
-                            <div className="space-y-3">
-                                {profile.phone && profile.phone_visible && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <a
-                                            href={`tel:${profile.phone}`}
-                                            className="text-primary hover:underline"
-                                        >
-                                            {profile.phone}
-                                        </a>
-                                    </div>
-                                )}
-                                {profile.whatsapp && profile.whatsapp_visible && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <a
-                                            href={`https://wa.me/${profile.whatsapp}`}
-                                            className="text-primary hover:underline"
-                                        >
-                                            {profile.whatsapp}
-                                        </a>
-                                    </div>
-                                )}
-                                {profile.email && profile.email_visible && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Mail className="h-4 w-4 text-muted-foreground" />
-                                        <a
-                                            href={`mailto:${profile.email}`}
-                                            className="text-primary hover:underline"
-                                        >
-                                            {profile.email}
-                                        </a>
-                                    </div>
-                                )}
-                                {!profile.phone_visible &&
-                                    !profile.whatsapp_visible &&
-                                    !profile.email_visible && (
-                                        <p className="text-sm text-muted-foreground">
-                                            Contact details are hidden
-                                        </p>
-                                    )}
+                            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                                <p className="text-sm text-muted-foreground">
+                                    Contact details are never published on this
+                                    page. Express interest in a freight post, or
+                                    accept an interest, and then reveal them from
+                                    your interest list.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
@@ -290,21 +264,17 @@ export default function TransporterShow({ profile, truckTypes }: Props) {
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
                                                     {doc.type} •{' '}
-                                                    {new Date(
-                                                        doc.uploaded_at,
-                                                    ).toLocaleDateString()}
+                                                    {doc.uploaded_at
+                                                        ? new Date(
+                                                              doc.uploaded_at,
+                                                          ).toLocaleDateString()
+                                                        : '—'}
                                                 </p>
                                             </div>
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            asChild
-                                        >
-                                            <a href={doc.url} download>
-                                                Download
-                                            </a>
-                                        </Button>
+                                        <Badge variant="outline" className="text-[10px]">
+                                            On file
+                                        </Badge>
                                     </div>
                                 ))}
                             </div>

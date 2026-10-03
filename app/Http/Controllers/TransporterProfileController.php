@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\TransporterStatus;
 use App\Http\Requests\StoreTransporterProfileRequest;
+use App\Http\Resources\TransporterPublicResource;
 use App\Models\CargoType;
 use App\Models\Location;
 use App\Models\TransporterDocument;
@@ -138,8 +139,14 @@ class TransporterProfileController extends Controller
 
         $profiles = $query->paginate(12)->withQueryString();
 
+        // Explicit columns only. The raw model carries phone, whatsapp, email
+        // and legal_name, which are released solely through the reveal action.
         return Inertia::render('transporters/index', [
-            'profiles' => $profiles,
+            'profiles' => TransporterPublicResource::collection(
+                $profiles->getCollection()
+            )->resolve(),
+            'total' => $profiles->total(),
+            'links' => $profiles->links(),
             'truckTypes' => TruckType::active()->ordered()->get(['id', 'name', 'slug']),
             'filters' => [
                 'q' => $request->query('q'),
@@ -157,11 +164,10 @@ class TransporterProfileController extends Controller
             ->approved()
             ->firstOrFail();
 
-        // Respect visibility flags — never expose private phone if flag false
-        $safeProfile = $this->formatProfile($profile, true);
-
+        // Explicit columns only. Contact details are released through the reveal
+        // action, never on the public profile page.
         return Inertia::render('transporters/show', [
-            'profile' => $safeProfile,
+            'profile' => (new TransporterPublicResource($profile))->resolve(),
         ]);
     }
 

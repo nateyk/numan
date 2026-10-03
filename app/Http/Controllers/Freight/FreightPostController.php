@@ -68,6 +68,17 @@ class FreightPostController extends Controller
     {
         Gate::authorize('create', FreightPost::class);
 
+        // A phone number on the profile is required to post. Carriers need a
+        // way to reach a consignor, and contact details are only ever released
+        // from the profile through the reveal action.
+        $profile = $request->user()->profile()->first();
+
+        if (! $profile || blank($profile->phone)) {
+            return back()->withErrors([
+                'freight' => 'Add a phone number to your profile before posting freight, so carriers can reach you.',
+            ])->withInput();
+        }
+
         $workspace = $request->user()->currentWorkspace;
 
         $post = FreightPost::create([

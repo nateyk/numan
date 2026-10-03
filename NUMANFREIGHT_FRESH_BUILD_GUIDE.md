@@ -446,7 +446,17 @@ $entitlementService->consume($user, 'new_posts_this_month'); // atomic
 
 **Quotas (examples, configurable):** `active_freight_posts`, `new_posts_per_month`, `real_time_alerts`, `saved_templates`, `company_users`, `branches`, `bulk_creation`, `reports/exports`.
 
-**What plans MUST NEVER restrict** (even Free can do): browsing freight, viewing detail, expressing genuine interest, transporter responses, tender posting/responses, controlled contact reveal after acceptance, profile creation, verification review. Abuse rate limits are separate from plans.
+**What plans MUST NEVER restrict** (even Free can do): browsing freight, viewing detail, expressing genuine interest, transporter responses, tender posting/responses, profile creation, verification review. Abuse rate limits are separate from plans.
+
+**Contact reveal is metered by plan.** Contact details are never inlined into a page. They are released only by the explicit reveal action, which:
+
+- requires a real relationship first — a live interest (not `rejected`/`withdrawn`) or an existing connection between the two users. Anyone else gets a 403.
+- reads phone/email/whatsapp from the user's **profile** and **transporter profile**, never from per-interest fields. The transporter's own `phone_visible` / `email_visible` / `whatsapp_visible` flags still apply.
+- counts once per `(revealer, revealed)` user pair against the plan limit `contact_reveals_per_week`, over a rolling window of `free_contact_reveal_window_days`. Re-revealing a partner you have already revealed is free and unlimited — that pairing is recorded permanently in the `contact_reveals` ledger.
+- is unlimited (`-1`) for an active paid subscription.
+- must not leak through any other surface. Every public and counterparty-facing page uses an explicit API resource, never a whole Eloquent model, so contact and bank columns cannot ride along under an unexpected key.
+
+**The Free cap is a product decision.** It is set by the admin in `marketplace_settings` (`contact_reveals_per_week`) with a config fallback, and is enforced on the backend: a blocked reveal returns no contact keys at all and a Subscribe link, never a partial or degraded payload.
 
 **Admin:** `AdminMarketplacePlanController` (create/edit/duplicate/archive/set-default) + `AdminMarketplaceSubscriptionController` (assign/cancel/suspend/restore) — permission `plans.manage`, `subscriptions.manage`.
 

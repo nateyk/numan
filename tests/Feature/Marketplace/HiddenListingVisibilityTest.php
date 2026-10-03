@@ -89,7 +89,8 @@ it('a hidden post is absent from public discovery', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('discover/index')
-            ->where('freight.data', fn ($rows) => collect($rows)->every(fn ($r) => $r['id'] !== $hidden->id))
+            // freight is now an explicit resource array, not a paginator.
+            ->where('freight', fn ($rows) => collect($rows)->every(fn ($r) => $r['id'] !== $hidden->id))
         );
 });
 

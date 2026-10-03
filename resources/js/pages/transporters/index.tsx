@@ -23,15 +23,14 @@ interface TransporterProfile {
     id: number;
     slug: string;
     display_name: string;
-    legal_name: string;
-    phone: string;
-    whatsapp: string;
-    email: string;
     business_description: string;
     is_company: boolean;
     status: string;
     verification_level: string;
+    is_verified: boolean;
     completion_score: number;
+    rating: number | null;
+    total_routes: number;
     primary_location: {
         name: string;
         region_name: string;
@@ -52,12 +51,10 @@ interface Filters {
 }
 
 interface Props {
-    profiles: {
-        data: TransporterProfile[];
-        links: PaginationLink[];
-        total: number;
-        last_page: number;
-    };
+    // Explicit resource array: no phone, whatsapp, email or legal_name.
+    profiles: TransporterProfile[];
+    total: number;
+    links: PaginationLink[];
     truckTypes: { id: number; name: string; slug: string }[];
     filters: Filters;
 }
@@ -95,7 +92,7 @@ function decodePaginationLabel(label: string): string {
         .replace(/&amp;/g, '&');
 }
 
-export default function TransportersIndex({ profiles, truckTypes, filters }: Props) {
+export default function TransportersIndex({ profiles, total, links, truckTypes, filters }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [truckTypeFilter, setTruckTypeFilter] = useState(filters.truck_type ?? '');
     const [locationFilter, setLocationFilter] = useState(filters.location ?? '');
@@ -200,7 +197,7 @@ export default function TransportersIndex({ profiles, truckTypes, filters }: Pro
                 </div>
 
                 {/* Transporters Grid */}
-                {profiles.data.length === 0 ? (
+                {profiles.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center rounded-md border bg-card p-12 text-center text-muted-foreground">
                         <Package className="mb-4 h-12 w-12 text-muted-foreground" />
                         <p className="text-lg font-medium">No transporters found</p>
@@ -211,7 +208,7 @@ export default function TransportersIndex({ profiles, truckTypes, filters }: Pro
                 ) : (
                     <>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {profiles.data.map((profile) => {
+                            {profiles.map((profile) => {
                                 const statusConfig =
                                     STATUS_CONFIG[profile.status] ||
                                     STATUS_CONFIG.pending;
@@ -226,7 +223,8 @@ export default function TransportersIndex({ profiles, truckTypes, filters }: Pro
                                                     {profile.display_name}
                                                 </h3>
                                                 <p className="mt-0.5 text-sm text-muted-foreground">
-                                                    {profile.legal_name}
+                                                    {profile.total_routes} route
+                                                    {profile.total_routes === 1 ? '' : 's'}
                                                 </p>
                                             </div>
                                             <Badge
@@ -307,9 +305,9 @@ export default function TransportersIndex({ profiles, truckTypes, filters }: Pro
                         </div>
 
                         {/* Pagination */}
-                        {profiles.last_page > 1 && (
+                        {total > 12 && (
                             <div className="mt-6 flex items-center justify-center gap-1">
-                                {profiles.links.map((link, i) => (
+                                {links.map((link, i) => (
                                     <Button
                                         key={i}
                                         variant={

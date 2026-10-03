@@ -6,10 +6,13 @@ use App\Enums\FreightInterestStatus;
 use App\Enums\FreightPostStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreFreightInterestRequest;
+use App\Http\Resources\FreightPostResource;
+use App\Http\Resources\InterestResource;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Notifications\FreightInterestSubmitted;
 use App\Policies\FreightInterestPolicy;
+use App\Services\ContactRevealService;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -29,14 +32,33 @@ class FreightInterestController extends Controller
             abort(403);
         }
 
+        // Explicit columns only. The interest row carries contact and bank
+        // fields that must never reach the consignor's browser.
         $interests = FreightInterest::where('freight_post_id', $post->id)
-            ->with(['user'])
+            ->with([
+                'user.profile',
+                'user.transporterProfile.routes.originLocation',
+                'user.transporterProfile.routes.destinationLocation',
+            ])
             ->latest()
             ->paginate(12);
 
+        $revealService = app(ContactRevealService::class);
+        $viewer = auth()->user();
+
+        // Tell the page which rows offer a reveal button, but never the
+        // contact data itself. That comes only from the explicit reveal
+        // endpoint.
+        $canReveal = [];
+
+        foreach ($interests as $interest) {
+            $canReveal[$interest->id] = $revealService->canReveal($viewer, $interest->user);
+        }
+
         return Inertia::render('freight/interests', [
-            'post' => $post,
-            'interests' => $interests,
+            'post' => (new FreightPostResource($post))->resolve(),
+            'interests' => InterestResource::collection($interests)->resolve(),
+            'canReveal' => $canReveal,
         ]);
     }
 
@@ -100,22 +122,25 @@ class FreightInterestController extends Controller
             return back()->withErrors(['interest' => 'You are not authorized to express interest on this freight.']);
         }
 
+        // A phone number on the profile is required. Contact details are
+        // released from the profile through the reveal action, so an interest
+        // cannot be expressed by someone we could never contact.
         $profile = $user->profile()->first();
-        $transporter = $user->transporterProfile()->first();
+
+        if (! $profile || blank($profile->phone)) {
+            return back()->withErrors([
+                'interest' => 'Add a phone number to your profile before expressing interest, so carriers can reach you.',
+            ]);
+        }
 
         $interest = FreightInterest::create([
             'freight_post_id' => $post->id,
             'user_id' => $user->id,
             'status' => FreightInterestStatus::Submitted->value,
             'message' => $request->input('message'),
-            'contact_name' => $request->input('contact_name') ?: $user->name,
-            'contact_phone' => $request->input('contact_phone') ?: ($profile?->phone ?? $transporter?->phone ?? ''),
-            'contact_email' => $request->input('contact_email') ?: $user->email,
-            'bank_account_name' => $request->input('bank_account_name'),
-            'bank_name' => $request->input('bank_name'),
-            'bank_account_number' => $request->input('bank_account_number'),
-            'bank_iban' => $request->input('bank_iban'),
-            'bank_swift' => $request->input('bank_swift'),
+            // No per-interest contact or bank fields. The columns remain in the
+            // database but are never written or shown. NumanFreight handles no
+            // payments, so bank details have no place on an interest.
         ]);
 
         $interest->statusHistories()->create([

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Freight;
 
 use App\Enums\FreightInterestStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\FreightInterestForTransporterResource;
 use App\Models\FreightInterest;
 use App\Notifications\FreightInterestStatusChanged;
 use App\Policies\FreightInterestPolicy;
+use App\Services\ContactRevealService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -20,7 +22,9 @@ class TransporterMyInterestsController extends Controller
         $sort = $request->query('sort', 'latest');
 
         $query = FreightInterest::where('user_id', $request->user()->id)
-            ->with(['freightPost.user', 'freightPost.originLocation', 'freightPost.destinationLocation', 'freightPost.cargoType', 'freightPost.truckType']);
+            // Explicit relations: freightPost.user.profile rather than
+            // freightPost.user, so the consignor's email is never loaded.
+            ->with(['freightPost.user.profile', 'freightPost.originLocation', 'freightPost.destinationLocation', 'freightPost.cargoType', 'freightPost.truckType']);
 
         switch ($sort) {
             case 'status':
@@ -42,8 +46,25 @@ class TransporterMyInterestsController extends Controller
             'selected' => FreightInterest::where('user_id', $request->user()->id)->where('status', 'selected')->count(),
         ];
 
+        // Explicit columns only. The interest row must not carry the consignor's
+        // contact or bank fields to the transporter's browser, and the reveal
+        // endpoint is the only place contact data is returned.
+        $revealService = app(ContactRevealService::class);
+        $viewer = $request->user();
+
+        $canReveal = [];
+
+        foreach ($interests->getCollection() as $interest) {
+            $consignor = $interest->freightPost?->user;
+            $canReveal[$interest->id] = $consignor !== null
+                && $revealService->canReveal($viewer, $consignor);
+        }
+
         return Inertia::render('freight/my-interests', [
-            'interests' => $interests,
+            'interests' => FreightInterestForTransporterResource::collection($interests->getCollection())->resolve(),
+            'total' => $interests->total(),
+            'links' => $interests->links(),
+            'canReveal' => $canReveal,
             'sort' => $sort,
             'counts' => $counts,
         ]);
