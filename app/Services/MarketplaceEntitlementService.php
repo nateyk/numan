@@ -135,6 +135,7 @@ class MarketplaceEntitlementService
             'active_freight_posts', 'free_active_posts' => 'free_active_posts',
             'interests_per_week', 'interests_per_month', 'free_interests_per_week' => 'free_interests_per_week',
             'contact_reveals_per_week', 'free_contact_reveals_per_week' => 'free_contact_reveals_per_week',
+            'interest_window_days', 'free_interest_window_days' => 'free_interest_window_days',
             default => null,
         };
     }
@@ -190,19 +191,22 @@ class MarketplaceEntitlementService
     }
 
     /**
-     * The rolling window depends on the plan:
-     *   - legacy plans carry interests_per_month -> 30 days
-     *   - the standard plan carries interests_per_week -> 7 days
+     * The rolling interest window, read from an explicit limit key.
+     *
+     * Never inferred from which limit keys a plan happens to carry: adding an
+     * interests_per_month key to a plan must not silently change its window.
      */
     public function interestWindowDays(?Workspace $workspace): int
     {
         $limits = $this->getLimits($workspace);
 
-        if (array_key_exists('interests_per_month', $limits)) {
-            return 30;
+        $window = $limits['interest_window_days'] ?? null;
+
+        if ($window === null) {
+            return $this->settings->get('free_interest_window_days');
         }
 
-        return 7;
+        return (int) $window;
     }
 
     public function canExpressInterest(?Workspace $workspace): bool

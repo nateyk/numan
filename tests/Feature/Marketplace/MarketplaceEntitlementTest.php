@@ -217,6 +217,9 @@ it('uses a 30 day interest window for archived plans carrying interests_per_mont
         'limits' => [
             'active_freight_posts' => 25,
             'interests_per_month' => 10,
+            // The archive migration stamps this onto retired plans so the
+            // 30 day window is explicit rather than inferred.
+            'interest_window_days' => 30,
         ],
     ]);
 

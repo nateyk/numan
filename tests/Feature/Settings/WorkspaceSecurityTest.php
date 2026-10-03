@@ -67,7 +67,7 @@ it('redirects members without 2FA to the enforcement wall when required', functi
 
     actingAs($member)
         ->get('/dashboard')
-        ->assertRedirect(route('workspace.2fa-required'));
+        ->assertRedirect(route('workspace.two-factor-required'));
 });
 
 it('allows members with 2FA to pass through when enforcement is on', function () {

@@ -15,7 +15,9 @@ class MarketplacePlanController extends Controller
     /**
      * Limit keys an admin may edit on a plan. Team, workspace, API key and
      * webhook quotas belong to the Stripe PlanLimitService, not to
-     * marketplace plans.
+     * marketplace plans. interest_window_days is deliberately absent: the
+     * rolling interest window must not be editable, because changing it
+     * silently changes how far back existing interests are counted.
      */
     private const EDITABLE_LIMIT_KEYS = [
         'active_freight_posts',
@@ -62,11 +64,14 @@ class MarketplacePlanController extends Controller
     {
         $data = $this->validated($request, $marketplacePlan);
 
-        // Limits are stored as JSON; only the editable keys are accepted.
+        // Limits are stored as JSON. Only the editable keys are accepted from the
+        // request; keys that are not editable (interest_window_days) are
+        // preserved from the existing row rather than dropped, so an admin
+        // cannot break interest counting by editing other limits.
         if (array_key_exists('limits', $data)) {
-            $data['limits'] = array_intersect_key(
-                $data['limits'] ?? [],
-                array_flip(self::EDITABLE_LIMIT_KEYS)
+            $data['limits'] = array_merge(
+                $marketplacePlan->limits ?? [],
+                array_intersect_key($data['limits'] ?? [], array_flip(self::EDITABLE_LIMIT_KEYS))
             );
         }
 

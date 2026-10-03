@@ -28,6 +28,7 @@ it('gives every duration identical features and unlimited limits', function () {
         'active_freight_posts' => -1,
         'interests_per_week' => -1,
         'contact_reveals_per_week' => -1,
+        'interest_window_days' => 7,
     ]);
 });
 

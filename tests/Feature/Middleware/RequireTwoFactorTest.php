@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     // Register a named route so redirect()->route() doesn't fail
-    Route::get('/workspace/2fa-required', fn () => 'required')->name('workspace.2fa-required');
+    Route::get('/workspace/2fa-required', fn () => 'required')->name('workspace.two-factor-required');
 });
 
 it('passes through when no user is authenticated', function () {

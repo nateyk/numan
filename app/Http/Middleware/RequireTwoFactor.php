@@ -37,7 +37,7 @@ class RequireTwoFactor
         }
 
         // Allow access to 2FA setup and enforcement notice routes
-        if ($request->routeIs('two-factor.*', 'workspace.2fa-required', 'logout')) {
+        if ($request->routeIs('two-factor.*', 'workspace.two-factor-required', 'logout')) {
             return $next($request);
         }
 
@@ -47,7 +47,7 @@ class RequireTwoFactor
         }
 
         if (! $user->hasEnabledTwoFactorAuthentication()) {
-            return redirect()->route('workspace.2fa-required');
+            return redirect()->route('workspace.two-factor-required');
         }
 
         return $next($request);

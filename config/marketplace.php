@@ -21,6 +21,7 @@ return [
         'free_active_posts' => 1,
         'free_interests_per_week' => 3,
         'free_contact_reveals_per_week' => 3,
+        'free_interest_window_days' => 7,
     ],
 
     /*
@@ -47,6 +48,10 @@ return [
                 'active_freight_posts' => -1,
                 'interests_per_week' => -1,
                 'contact_reveals_per_week' => -1,
+                // Rolling window for the interest counter. Explicit rather than
+                // inferred from which limit keys exist, so adding an
+                // interests_per_month key can never change the window.
+                'interest_window_days' => 7,
             ],
             'features' => [
                 'Unlimited active freight posts',

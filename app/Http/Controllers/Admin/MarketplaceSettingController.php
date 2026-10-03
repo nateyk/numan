@@ -23,7 +23,10 @@ class MarketplaceSettingController extends Controller
             'free_active_posts' => ['required', 'integer', 'min:-1'],
             'free_interests_per_week' => ['required', 'integer', 'min:-1'],
             'free_contact_reveals_per_week' => ['required', 'integer', 'min:-1'],
+            'free_interest_window_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
+
+        $data = array_filter($data, fn ($value) => $value !== null);
 
         $this->settings->setMany($data);
 
