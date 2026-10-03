@@ -58,6 +58,9 @@ class FreightPostController extends Controller
             'posts' => $posts,
             'filters' => ['status' => $status, 'search' => $search],
             'counts' => $counts,
+            // Hidden posts stay listed here for the owner; only public
+            // visibility is withdrawn.
+            'hiddenCount' => (clone $base)->hidden()->count(),
         ]);
     }
 

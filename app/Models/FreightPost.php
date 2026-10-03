@@ -38,6 +38,8 @@ class FreightPost extends Model
         'item_name',
         'actual_weight',
         'weight_unit',
+        'tariff_weight',
+        'tariff_weight_unit',
         'tariff_amount',
         'tariff_currency',
         'insurance_required',
@@ -50,6 +52,7 @@ class FreightPost extends Model
         'pickup_time',
         'pickup_date_flexibility_days',
         'status',
+        'hidden_at',
         'completion_score',
     ];
 
@@ -62,6 +65,7 @@ class FreightPost extends Model
             'destination_exact_lng' => 'decimal:7',
             'origin_point_confirmed_at' => 'datetime',
             'destination_point_confirmed_at' => 'datetime',
+            'hidden_at' => 'datetime',
             'pickup_date' => 'date',
             'truck_count' => 'integer',
             'pickup_date_flexibility_days' => 'integer',
@@ -149,6 +153,35 @@ class FreightPost extends Model
     }
 
     /**
+     * Posts that are publicly visible.
+     *
+     * This is a LOCAL scope, deliberately not a global scope: the owner and
+     * superadmin must keep seeing their hidden posts. Every public surface
+     * applies it explicitly.
+     *
+     * @param  Builder<FreightPost>  $query
+     */
+    public function scopeVisible(Builder $query): Builder
+    {
+        return $query->whereNull('hidden_at');
+    }
+
+    /**
+     * Posts that are hidden because a paid plan lapsed.
+     *
+     * @param  Builder<FreightPost>  $query
+     */
+    public function scopeHidden(Builder $query): Builder
+    {
+        return $query->whereNotNull('hidden_at');
+    }
+
+    public function isHidden(): bool
+    {
+        return $this->hidden_at !== null;
+    }
+
+    /**
      * @param  Builder<FreightPost>  $query
      */
     public function scopeExpired(Builder $query): Builder
@@ -185,7 +218,8 @@ class FreightPost extends Model
         }
 
         return $query->where(function ($q) use ($term): void {
-            $q->where('cargo_description', 'like', "%{$term}%")
+            $q->where('item_name', 'like', "%{$term}%")
+                ->orWhere('cargo_description', 'like', "%{$term}%")
                 ->orWhere('ulid', 'like', "%{$term}%");
         });
     }

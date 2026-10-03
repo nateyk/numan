@@ -72,6 +72,12 @@ class FreightInterestController extends Controller
             return back()->withErrors(['interest' => 'This freight is not active (status: '.$post->status.'). You can only express interest on active freights.']);
         }
 
+        // A listing hidden by a lapsed plan no longer accepts new interests.
+        // Interests and connections that already exist keep working.
+        if ($post->isHidden()) {
+            return back()->withErrors(['interest' => 'This freight is no longer listed publicly.']);
+        }
+
         $exists = FreightInterest::where('freight_post_id', $post->id)
             ->where('user_id', $user->id)
             ->whereNotIn('status', [FreightInterestStatus::Rejected->value, FreightInterestStatus::Withdrawn->value])

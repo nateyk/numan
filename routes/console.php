@@ -28,3 +28,8 @@ Schedule::command('freight:expire')->dailyAt('02:00')->withoutOverlapping();
 
 // Reconcile pending Chapa payments every 5 minutes
 Schedule::command('chapa:reconcile')->everyFiveMinutes()->withoutOverlapping();
+
+// Expire lapsed marketplace subscriptions and hide their excess listings.
+// Hourly because entitlement is already enforced immediately on ends_at; this
+// only maintains the status column and listing visibility.
+Schedule::command('marketplace:expire-subscriptions')->hourly()->withoutOverlapping();

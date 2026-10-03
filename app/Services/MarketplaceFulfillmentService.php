@@ -94,6 +94,12 @@ class MarketplaceFulfillmentService
                 'invoice_number' => $invoiceNumber,
                 'issued_at' => now(),
             ]);
+
+            // Inside the same transaction, so a failure here rolls the whole
+            // grant back and listings stay hidden. This is the only thing that
+            // ever clears hidden_at.
+            app(MarketplaceListingVisibilityService::class)
+                ->restoreHiddenPosts($workspace);
         });
     }
 }

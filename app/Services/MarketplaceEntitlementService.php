@@ -179,6 +179,12 @@ class MarketplaceEntitlementService
         return $this->remainingLivePosts($workspace);
     }
 
+    /**
+     * Live posts that count against the limit.
+     *
+     * Hidden posts are excluded: they are not visible publicly, so a lapsed
+     * subscriber can still publish up to the free allowance of new posts.
+     */
     public function livePostCount(?Workspace $workspace): int
     {
         if (! $workspace) {
@@ -187,6 +193,7 @@ class MarketplaceEntitlementService
 
         return FreightPost::where('workspace_id', $workspace->id)
             ->whereIn('status', self::LIVE_POST_STATUSES)
+            ->visible()
             ->count();
     }
 
@@ -196,6 +203,21 @@ class MarketplaceEntitlementService
      * Never inferred from which limit keys a plan happens to carry: adding an
      * interests_per_month key to a plan must not silently change its window.
      */
+    /**
+     * Posts hidden because a paid plan lapsed. Shown to the owner so they
+     * know why a listing vanished.
+     */
+    public function hiddenPostCount(?Workspace $workspace): int
+    {
+        if (! $workspace) {
+            return 0;
+        }
+
+        return FreightPost::where('workspace_id', $workspace->id)
+            ->hidden()
+            ->count();
+    }
+
     public function interestWindowDays(?Workspace $workspace): int
     {
         $limits = $this->getLimits($workspace);
@@ -255,9 +277,10 @@ class MarketplaceEntitlementService
 
         $rows = [
             'active_freight_posts' => [
-                'label' => 'Live Freight Posts',
+                'label' => 'Visible Freight Posts',
                 'count' => $postCount,
                 'limit' => $postLimit,
+                'hidden_count' => $this->hiddenPostCount($workspace),
             ],
             'interests_per_week' => [
                 'label' => "Interests ({$interestWindow}d)",

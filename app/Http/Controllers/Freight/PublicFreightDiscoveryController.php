@@ -22,6 +22,7 @@ class PublicFreightDiscoveryController extends Controller
         $query = FreightPost::query()
             ->with(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
             ->active()
+            ->visible()
             ->when($request->query('origin'), function ($q, $origin) {
                 $q->where('origin_location_id', $origin);
             })
@@ -108,9 +109,16 @@ class PublicFreightDiscoveryController extends Controller
 
     public function show(Request $request, string $ulid): Response
     {
-        $post = FreightPost::where('ulid', $ulid)
-            ->with(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
-            ->firstOrFail();
+        // A post hidden because a paid plan lapsed 404s for everyone except the
+        // owner and a superadmin. Existing interests and connections still
+        // resolve, so only the public listing disappears.
+        $post = FreightPost::where('ulid', $ulid)->firstOrFail();
+
+        if ($post->isHidden() && ! $this->mayManageHidden($request, $post)) {
+            abort(404);
+        }
+
+        $post->load(['user', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
         Gate::authorize('view', $post);
 
@@ -147,6 +155,24 @@ class PublicFreightDiscoveryController extends Controller
             'interestStatus' => $interestStatus,
             'interestsCount' => $interestsCount,
             'marketplaceEntitlement' => $marketplaceEntitlement,
+            // Lets the owner page render the "hidden, subscribe to restore"
+            // badge and the link back to billing.
+            'isHiddenListing' => $post->isHidden(),
+            'canRestoreListing' => $this->mayManageHidden($request, $post),
         ]);
+    }
+
+    /**
+     * Owners and superadmins keep full control of a hidden listing.
+     */
+    private function mayManageHidden(Request $request, FreightPost $post): bool
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return (bool) $user->is_superadmin || $user->id === $post->user_id;
     }
 }
