@@ -37,3 +37,5 @@ frankenphp-worker.php
 /public/vendor/scribe
 /resources/views/scribe
 /storage/app/private/scribe
+
+.worktrees/
