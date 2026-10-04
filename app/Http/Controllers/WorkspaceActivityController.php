@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\ActivityPropertyScrubber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -14,6 +15,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class WorkspaceActivityController extends Controller
 {
+    public function __construct(
+        protected ActivityPropertyScrubber $scrubber,
+    ) {}
+
     /**
      * Return the last 5 activity log entries for the current workspace (dashboard widget).
      */
@@ -79,7 +84,12 @@ class WorkspaceActivityController extends Controller
             'event' => $a->event,
             'subject_type' => class_basename($a->subject_type ?? ''),
             'causer_name' => $a->causer?->name ?? 'System',
-            'properties' => $a->properties->toArray(),
+            // Scrubbed on the way out as well as on the way in. The models no
+            // longer write contact data here, but the log is append-only
+            // history and a workspace member is not an administrator: whatever
+            // an earlier bug put in a properties bag must not reach their
+            // browser now.
+            'properties' => $this->scrubber->scrub($a->properties->toArray())[0],
             'created_at' => $a->created_at?->toISOString(),
         ]);
 

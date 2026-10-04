@@ -535,10 +535,40 @@ class User extends Authenticatable implements MustVerifyEmail
         return $longest;
     }
 
+    /**
+     * An explicit allowlist, never logFillable().
+     *
+     * User was fillable with both email and password, and logFillable() logs
+     * the value of every fillable attribute, so 63 bcrypt hashes and 63 email
+     * addresses had been written into the audit trail. The hash is not
+     * plaintext, but it is offline-crackable material and the log is both
+     * rendered to workspace members and exportable to CSV.
+     *
+     * Neither is in this list. There is no way to make Spatie log "the
+     * password changed" without also logging the new hash, so the fact is not
+     * recorded at all; `password_updated_at` on the user row carries it instead.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logFillable()
+            ->logOnly([
+                'name',
+                'is_superadmin',
+                'current_workspace_id',
+                'locale',
+                'onboarded_at',
+                'avatar_url',
+                'bio',
+                'timezone',
+                'date_format',
+                'notification_preferences',
+                'onboarding_checklist_dismissed_at',
+                'tour_completed_at',
+                'changelog_read_at',
+                'experience_feedback_at',
+                'password_updated_at',
+                'last_seen_at',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('user');
