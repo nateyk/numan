@@ -8,16 +8,18 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Package, Truck, Calendar, Route, Edit } from 'lucide-react';
+import { MapPin, Package, Truck, Calendar, Route, Edit, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
-    post: { ulid: string; origin_location_id: number | null; destination_location_id: number | null; cargo_description: string | null; truck_count: number | null; pickup_date: string | null; origin_exact_lat: string | null; origin_exact_lng: string | null; destination_exact_lat: string | null; destination_exact_lng: string | null; originLocation?: { name: string; region_name: string }; destinationLocation?: { name: string; region_name: string }; origin_location?: { name: string; region_name: string }; destination_location?: { name: string; region_name: string }; cargoType?: { name: string }; cargo_type?: { name: string }; truckType?: { name: string }; truck_type?: { name: string }; routeSnapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null; route_snapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null };
+    post: { ulid: string; origin_location_id: number | null; destination_location_id: number | null; cargo_description: string | null; item_name: string | null; truck_count: number | null; pickup_date: string | null; origin_exact_lat: string | null; origin_exact_lng: string | null; destination_exact_lat: string | null; destination_exact_lng: string | null; originLocation?: { name: string; region_name: string }; destinationLocation?: { name: string; region_name: string }; origin_location?: { name: string; region_name: string }; destination_location?: { name: string; region_name: string }; cargoType?: { name: string }; cargo_type?: { name: string }; truckType?: { name: string }; truck_type?: { name: string }; routeSnapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null; route_snapshot?: { distance_meters: number; duration_seconds: number; geometry: unknown } | null };
     completionScore: number;
 }
 
 export default function FreightReview({ post, completionScore }: Props) {
     const [confirmed, setConfirmed] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const form = useForm<{ confirm?: string }>({});
 
     const origin = (post as unknown as Record<string, unknown>).originLocation as { name: string; region_name: string } | undefined ?? (post as unknown as Record<string, unknown>).origin_location as { name: string; region_name: string } | undefined;
@@ -29,7 +31,11 @@ export default function FreightReview({ post, completionScore }: Props) {
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!confirmed) return;
-        form.post(`/my-freight/${post.ulid}/submit`);
+        form.post(`/my-freight/${post.ulid}/submit`, {
+            onSuccess: () => {
+                setShowSuccessModal(true);
+            },
+        });
     };
 
     return (
@@ -47,7 +53,7 @@ export default function FreightReview({ post, completionScore }: Props) {
                                 <div className="mt-2 space-y-1 text-sm">
                                     <p>{origin?.name ?? 'Origin'} → {destination?.name ?? 'Destination'}</p>
                                     <p className="text-muted-foreground">{origin?.region_name ?? ''} → {destination?.region_name ?? ''}</p>
-                                    <p className="mt-2 flex items-center gap-2"><Package className="size-3.5" /> {cargoType?.name ?? '—'} — {post.cargo_description ?? '—'}</p>
+                                    <p className="mt-2 flex items-center gap-2"><Package className="size-3.5" /> {cargoType?.name ?? '—'} — {post.item_name ?? '—'}</p>
                                     <p className="flex items-center gap-2"><Truck className="size-3.5" /> {truckType?.name ?? '—'} × {post.truck_count ?? '—'}</p>
                                     <p className="flex items-center gap-2"><Calendar className="size-3.5" /> {post.pickup_date ? String(post.pickup_date).slice(0, 10) : '—'}</p>
                                     {routeSnapshot && <p className="flex items-center gap-2"><Route className="size-3.5" /> {(routeSnapshot.distance_meters / 1000).toFixed(1)} km • {Math.round(routeSnapshot.duration_seconds / 60)} min</p>}
@@ -79,6 +85,51 @@ export default function FreightReview({ post, completionScore }: Props) {
                     </div>
                 </div>
             </FreightWizardShell>
+
+            {/* Success Modal */}
+            <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3">
+                            <div className="flex size-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-950">
+                                <CheckCircle className="size-6 text-green-600 dark:text-green-400" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-lg">Freight Post Submitted!</DialogTitle>
+                                <DialogDescription>Your freight post has been submitted for review and is now visible to transporters.</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="space-y-3 rounded-lg bg-muted/50 p-4">
+                        <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="size-4 text-muted-foreground" />
+                            <span className="font-medium">{origin?.name ?? 'Origin'}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className="font-medium">{destination?.name ?? 'Destination'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                            <Package className="size-4 text-muted-foreground" />
+                            <span>{cargoType?.name ?? '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                            <Truck className="size-4 text-muted-foreground" />
+                            <span>{truckType?.name ?? '—'} × {post.truck_count ?? '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="size-4 text-muted-foreground" />
+                            <span>{post.pickup_date ? String(post.pickup_date).slice(0, 10) : '—'}</span>
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setShowSuccessModal(false)}>
+                            Close
+                        </Button>
+                        <Button asChild>
+                            <Link href={`/my-freight/${post.ulid}`}>View Post</Link>
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
