@@ -462,6 +462,49 @@ $entitlementService->consume($user, 'new_posts_this_month'); // atomic
 
 **Before enabling metering on a live database:** `php artisan migrate` then `php artisan marketplace:backfill-contact-reveals`. The ledger starts empty, so without the backfill people who already had a contact through an accepted interest would be locked out of it. Backfilled rows carry the original relationship's timestamp so they consume no fresh quota. The command is idempotent. See `docs/deploy-notes.md`.
 
+**Payment methods: Chapa and manual.** Two rails, one fulfilment path. Both write
+`marketplace_payment_transactions` and both are granted by
+`MarketplaceFulfillmentService::fulfill()`, so renewal-extends, `ends_at`,
+`hidden_at` restore and the receipt behave identically. `provider` distinguishes
+them (`chapa` / `manual`) and is **load-bearing**: `chapa:reconcile` must filter
+on it, or a manual row is sent to the payment gateway.
+
+- **Chapa** is the primary path and needs no configuration.
+- **Manual** (Telebirr / CBE Birr / bank transfer) is off until an admin
+  configures an account per method in `marketplace_text_settings`. A method is
+  offered only when every field it needs is filled in *and* enabled, and the
+  "Pay manually" entry point does not appear at all until one method qualifies.
+  A half-configured account is worse than no account.
+- A pending manual request **grants nothing**: no subscription, no receipt, no
+  change to entitlements.
+- Two references, deliberately distinct. `tx_ref` is the `NF-` code we generate
+  and the payer types into the transfer note; `manual_reference` is the bank or
+  Telebirr transaction id and is what the unique `(manual_method,
+  manual_reference)` index dedupes on. Normalised to upper case first.
+- `open_manual_workspace_id` holds the workspace id while a request is pending and
+  is null otherwise, so a unique index enforces one open request per workspace in
+  the database rather than in a controller check.
+- Every transition — confirm, reject, expire, reopen — locks the row and requires
+  it to be `pending_confirmation`. Confirming twice is a no-op. An admin cannot
+  confirm their own payment.
+- A confirmed request ends up `verified`, because `fulfill()` writes that and is
+  shared with Chapa. Inventing a manual-specific status would have forced the
+  fulfilment path to know which rail it was serving.
+- Proof screenshots go on an explicit `private` disk under a random name, and are
+  served through an authorised route with `X-Content-Type-Options: nosniff`.
+- Text settings live in `marketplace_text_settings`, not `marketplace_settings`,
+  whose `value` column is an integer and whose service casts.
+
+**Revenue is counted from verified transactions only**, split by provider and by
+interval. The existing `RevenueAnalyticsController` is Stripe-only and has no ETB
+totals at all.
+
+**Not built, deliberately:** refunds and reversal of a wrongly confirmed payment
+(the manual fix is to set the subscription's `ends_at` to now and mark the
+transaction), and any defence against a fabricated screenshot. Manual payment is
+trust-based; the confirm dialog exists to make the admin check the banking app
+rather than the uploaded image.
+
 **Admin:** `AdminMarketplacePlanController` (create/edit/duplicate/archive/set-default) + `AdminMarketplaceSubscriptionController` (assign/cancel/suspend/restore) — permission `plans.manage`, `subscriptions.manage`.
 
 > **Phase 0 note:** `docs/NUMANFREIGHT_PROJECT_RULES.md` says “Do not implement subscriptions or plan enforcement in Phase 0.” Keep entitlement enforcement behind Pennant flags or simple bypass until marketplace core loop works.

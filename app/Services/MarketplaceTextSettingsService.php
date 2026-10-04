@@ -95,12 +95,18 @@ class MarketplaceTextSettingsService
         foreach ($values as $key => $value) {
             $row = MarketplaceTextSetting::query()->firstOrNew(['key' => $key]);
 
-            if (isset($value['value'])) {
+            if (array_key_exists('value', $value)) {
                 // Blank means "not configured", not "an empty string to show".
+                // An empty value also switches the row off, because leaving it
+                // enabled with nothing in it is a state no consumer wants.
                 $row->value = filled($value['value']) ? (string) $value['value'] : null;
+
+                if ($row->value === null) {
+                    $row->is_enabled = false;
+                }
             }
 
-            if (isset($value['label'])) {
+            if (array_key_exists('label', $value)) {
                 $row->label = $value['label'];
             }
 

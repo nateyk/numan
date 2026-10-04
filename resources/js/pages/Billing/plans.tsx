@@ -16,7 +16,7 @@ import AppLayout from '@/layouts/app-layout';
 import WorkspaceLayout from '@/layouts/settings/workspace-layout';
 import http from '@/lib/http';
 import { type BreadcrumbItem, type WorkspaceRole } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Check, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
@@ -57,6 +57,16 @@ interface PlansPageProps {
             { label: string; count: number; limit: number; percentage: number }
         >;
     };
+    /**
+     * Manual payment sits beside Chapa rather than replacing it. Absent means
+     * nothing is configured, in which case the entry point stays hidden.
+     */
+    manualPayment?: {
+        enabled: boolean;
+        methods: Record<string, { label: string; fields: Record<string, string> }>;
+        index_url: string;
+        expiry_days: number;
+    };
 }
 
 const formatLimit = (value: number): string =>
@@ -71,6 +81,7 @@ export default function PlansPage({
     fromOnboarding,
     userRole,
     marketplaceEntitlement,
+    manualPayment,
 }: PlansPageProps) {
     const { t } = useTranslations();
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>(
@@ -391,11 +402,46 @@ export default function PlansPage({
                                                   ? 'Renew'
                                                   : `Subscribe — ${price.toLocaleString()} ETB`}
                                         </Button>
+                                        {manualPayment?.enabled && (
+                                            <Button
+                                                variant="outline"
+                                                className="w-full"
+                                                disabled={!isOwner || processing !== null}
+                                                onClick={() =>
+                                                    router.visit(
+                                                        `/marketplace/manual/${plan.slug}/${billingPeriod}`,
+                                                    )
+                                                }
+                                            >
+                                                Pay manually
+                                            </Button>
+                                        )}
                                     </CardFooter>
                                 </Card>
                             );
                         })}
                     </div>
+
+                    {manualPayment?.enabled && (
+                        <div className="mx-auto max-w-3xl rounded-md border bg-muted/20 p-4 text-sm">
+                            <p className="font-medium">Prefer to transfer?</p>
+                            <p className="mt-1 text-muted-foreground">
+                                Pay by{' '}
+                                {Object.values(manualPayment.methods)
+                                    .map((m) => m.label)
+                                    .join(', ')}
+                                . You will get the account details and a reference to put in
+                                the transfer note. We confirm within{' '}
+                                {manualPayment.expiry_days} days, and nothing is activated until
+                                an administrator confirms your payment.
+                            </p>
+                            <Button asChild variant="link" className="mt-2 h-auto p-0">
+                                <Link href={manualPayment.index_url}>
+                                    See your manual payment requests
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
 
                     {marketplaceEntitlement && (
                         <p className="text-center text-xs text-muted-foreground">

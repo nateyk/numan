@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
+use App\Services\ManualPaymentExpiryService;
 use App\Services\MarketplaceEntitlementService;
 use App\Services\MarketplaceSettingsService;
+use App\Services\MarketplaceTextSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -152,6 +154,16 @@ class BillingController extends Controller
             'recommendedBillingPeriod' => $recommendedBillingPeriod,
             'fromOnboarding' => $request->query('onboarding') === '1',
             'userRole' => $workspace->getUserRole($user),
+
+            // Manual payment sits beside Chapa rather than replacing it. Hidden
+            // entirely unless at least one method is fully configured and
+            // enabled, so nobody starts a transfer they cannot complete.
+            'manualPayment' => [
+                'enabled' => app(MarketplaceTextSettingsService::class)->manualPaymentEnabled(),
+                'methods' => app(MarketplaceTextSettingsService::class)->availableMethods(),
+                'index_url' => route('marketplace.manual.index'),
+                'expiry_days' => app(ManualPaymentExpiryService::class)->windowDays(),
+            ],
             'marketplaceEntitlement' => [
                 'can_post' => $marketplaceEntitlement->canCreateFreightPost($workspace),
                 'remaining_posts' => $marketplaceEntitlement->remainingActivePosts($workspace),

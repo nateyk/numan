@@ -102,6 +102,65 @@ php artisan tinker --execute="echo DB::table('contact_reveals')->whereDate('crea
 The second number should be `0` immediately after a backfill of historical
 relationships. Anything else means rows were written with the current timestamp.
 
+## Queue worker is a deployment requirement
+
+The marketplace notifications -- manual payment submitted, confirmed, rejected,
+expired -- are queued (`ShouldQueue`). A queue worker must be running for them to
+be delivered. Without one they sit in the `jobs` table and nothing is lost, but
+nobody is told a payment arrived.
+
+```bash
+php artisan queue:work --tries=3 --timeout=90
+```
+
+Supervised, restart-on-failure, on every environment that has real payments.
+For local development, `composer run dev` starts a worker.
+
+**Order on deploy:** migrate, run the reveal backfill, configure the payment
+instructions, then enable the scheduler. Manual payment stays hidden from payers
+until at least one method is fully configured and enabled, so there is no window
+where somebody can start a transfer with nothing to transfer to.
+
+## Manual payment
+
+Off by default, because the text settings table ships empty and the "Pay
+manually" button only appears when at least one method is fully configured.
+
+1. An admin opens **Admin → Marketplace → Payment Instructions**.
+2. Fill in the account details for each method that should be offered and tick
+   its **Enabled** switch.
+3. Save. The method appears on the plans page immediately; no restart.
+
+A method is offered only when *every* field it needs is filled in and enabled. A
+half-configured account is worse than no account, because somebody will transfer
+money to it.
+
+Nothing secret lives in that table. It holds the account details a payer is
+meant to read off the screen, and there is deliberately nowhere to put an API key
+or a webhook secret.
+
+### Expiry
+
+Unreviewed manual requests lapse after `free_manual_payment_expiry_days` (default
+14), which frees the workspace's single open slot and tells the payer. It grants
+nothing. Like the subscription expiry sweep, the command is not scheduled unless
+`MARKETPLACE_EXPIRY_ENABLED` is truthy:
+
+```bash
+MARKETPLACE_EXPIRY_ENABLED=true php artisan marketplace:expire-manual-payments --dry-run
+```
+
+### What is NOT built
+
+- **No refunds or reversal.** A wrongly confirmed payment has to be undone by
+  hand: set the subscription's `ends_at` to now and mark the transaction. There
+  is no automated path and no receipt cancellation.
+- **No defence against a fabricated screenshot.** Manual payment is trust-based.
+  The confirm dialog tells the admin to verify the amount in the banking app
+  rather than the screenshot, and the payer phone plus bank reference are recorded
+  so a real transfer can be matched, but nothing here can tell a genuine proof
+  from a forged one.
+
 ## Scheduler requirement
 
 The scheduler only runs if something invokes it. On a server that means cron:
