@@ -34,7 +34,8 @@ class AdminFreightController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search): void {
-                $q->where('cargo_description', 'like', "%{$search}%")
+                $q->where('item_name', 'like', "%{$search}%")
+                    ->orWhere('cargo_description', 'like', "%{$search}%")
                     ->orWhere('ulid', 'like', "%{$search}%")
                     ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
                     ->orWhereHas('originLocation', fn ($oq) => $oq->where('name', 'like', "%{$search}%"))
@@ -74,10 +75,17 @@ class AdminFreightController extends Controller
             'post' => [
                 'ulid' => $post->ulid,
                 'status' => $post->status,
+                'item_name' => $post->item_name,
                 'cargo_description' => $post->cargo_description,
                 'cargo_type' => $post->cargoType,
                 'truck_type' => $post->truckType,
                 'truck_count' => $post->truck_count,
+                'actual_weight' => $post->actual_weight,
+                'weight_unit' => $post->weight_unit,
+                'tariff_weight' => $post->tariff_weight,
+                'tariff_weight_unit' => $post->tariff_weight_unit,
+                'tariff_amount' => $post->tariff_amount,
+                'tariff_currency' => $post->tariff_currency,
                 'schedule_type' => $post->schedule_type,
                 'pickup_date' => $post->pickup_date,
                 'pickup_time' => $post->pickup_time,

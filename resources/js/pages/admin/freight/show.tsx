@@ -10,12 +10,19 @@ interface Props {
     post: {
         ulid: string;
         status: string;
+        item_name: string | null;
         cargo_description: string | null;
         cargo_type?: { name: string } | null;
         cargoType?: { name: string } | null;
         truck_type?: { name: string } | null;
         truckType?: { name: string } | null;
         truck_count?: number | null;
+        actual_weight?: string | null;
+        weight_unit?: string | null;
+        tariff_weight?: string | null;
+        tariff_weight_unit?: string | null;
+        tariff_amount?: string | null;
+        tariff_currency?: string | null;
         schedule_type?: string | null;
         pickup_date: string | null;
         pickup_time?: string | null;
@@ -35,6 +42,15 @@ interface Props {
     };
 }
 
+function formatDuration(seconds: number): string {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+    if (hours > 0) {
+        return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`;
+    }
+    return `${minutes} min`;
+}
+
 export default function AdminFreightShow({ post }: Props) {
     const form = useForm({ to_status: 'active', reason: '' });
 
@@ -47,7 +63,6 @@ export default function AdminFreightShow({ post }: Props) {
     const canReject = post.status === 'submitted' || post.status === 'under_review';
     const canUnderReview = post.status === 'submitted';
 
-    // Handle both snake_case and camelCase (Eloquent vs Inertia)
     const originLocation = (post as unknown as Record<string, unknown>).originLocation as Props['post']['origin_location'] ?? (post as unknown as Record<string, unknown>).origin_location as Props['post']['origin_location'] ?? post.originLocation ?? post.origin_location;
     const destinationLocation = (post as unknown as Record<string, unknown>).destinationLocation as Props['post']['destination_location'] ?? (post as unknown as Record<string, unknown>).destination_location as Props['post']['destination_location'] ?? post.destinationLocation ?? post.destination_location;
     const cargoType = (post as unknown as Record<string, unknown>).cargoType as Props['post']['cargo_type'] ?? (post as unknown as Record<string, unknown>).cargo_type as Props['post']['cargo_type'] ?? post.cargoType ?? post.cargo_type;
@@ -76,7 +91,7 @@ export default function AdminFreightShow({ post }: Props) {
                 {post.route_snapshot && (
                     <p className="text-sm text-muted-foreground">
                         {(post.route_snapshot as { distance_meters: number; duration_seconds: number }).distance_meters / 1000 > 0
-                            ? `${((post.route_snapshot as { distance_meters: number }).distance_meters / 1000).toFixed(1)} km — approx. ${Math.round((post.route_snapshot as { duration_seconds: number }).duration_seconds / 60)} min`
+                            ? `${((post.route_snapshot as { distance_meters: number }).distance_meters / 1000).toFixed(1)} km — approx. ${formatDuration((post.route_snapshot as { duration_seconds: number }).duration_seconds)}`
                             : 'Route snapshot available'}
                     </p>
                 )}
@@ -90,7 +105,7 @@ export default function AdminFreightShow({ post }: Props) {
                                 {originLocation ? (
                                     <span className="font-medium">{originLocation.name} <span className="text-muted-foreground">({originLocation.region_name})</span></span>
                                 ) : (
-                                    <span className="text-amber-600 dark:text-amber-400">Not set — complete route step</span>
+                                    <span className="text-amber-600 dark:text-amber-400">Not set</span>
                                 )}
                             </p>
                             <p>
@@ -98,18 +113,12 @@ export default function AdminFreightShow({ post }: Props) {
                                 {destinationLocation ? (
                                     <span className="font-medium">{destinationLocation.name} <span className="text-muted-foreground">({destinationLocation.region_name})</span></span>
                                 ) : (
-                                    <span className="text-amber-600 dark:text-amber-400">Not set — complete route step</span>
+                                    <span className="text-amber-600 dark:text-amber-400">Not set</span>
                                 )}
                             </p>
                             <p>
-                                <span className="text-muted-foreground">Exact:</span>{' '}
-                                {hasExact ? (
-                                    <span>{Number(post.origin_exact_lat).toFixed(4)},{Number(post.origin_exact_lng).toFixed(4)} → {Number(post.destination_exact_lat).toFixed(4)},{Number(post.destination_exact_lng).toFixed(4)}</span>
-                                ) : (
-                                    <span className="text-muted-foreground">— No precise points</span>
-                                )}
+                                <span className="text-muted-foreground">Schedule:</span> {post.schedule_type ?? '—'} • {post.pickup_date ? String(post.pickup_date).slice(0, 10) : <span className="text-amber-600">Not set</span>} {post.pickup_time ?? ''}
                             </p>
-                            <p><span className="text-muted-foreground">Schedule:</span> {post.schedule_type ?? '—'} • {post.pickup_date ? String(post.pickup_date).slice(0, 10) : <span className="text-amber-600">Not set</span>} {post.pickup_time ?? ''}</p>
                             <p><span className="text-muted-foreground">Created:</span> {post.created_at ? new Date(post.created_at).toLocaleString() : '—'}</p>
                             {!hasRoute && (
                                 <p className="pt-2 text-xs font-medium text-amber-600 dark:text-amber-400">⚠ Route incomplete — draft cannot be submitted until origin & destination are set.</p>
@@ -119,7 +128,32 @@ export default function AdminFreightShow({ post }: Props) {
                     <Card>
                         <CardHeader><CardTitle className="text-base">Cargo & Truck</CardTitle></CardHeader>
                         <CardContent className="space-y-1 text-sm">
-                            <p><span className="text-muted-foreground">Cargo:</span> {cargoType?.name ?? <span className="text-amber-600">Not set</span>} — {post.cargo_description ?? <span className="text-muted-foreground">—</span>}</p>
+                            <p><span className="text-muted-foreground">Item:</span> {post.item_name ?? <span className="text-amber-600">Not set</span>}</p>
+                            <p><span className="text-muted-foreground">Cargo Type:</span> {cargoType?.name ?? <span className="text-amber-600">Not set</span>}</p>
+                            <p>
+                                <span className="text-muted-foreground">Actual Weight:</span>{' '}
+                                {post.actual_weight ? (
+                                    <span>{post.actual_weight} {post.weight_unit ?? 'ton'}</span>
+                                ) : (
+                                    <span className="text-amber-600">Not set</span>
+                                )}
+                            </p>
+                            <p>
+                                <span className="text-muted-foreground">Tariff Weight:</span>{' '}
+                                {post.tariff_weight ? (
+                                    <span>{post.tariff_weight} {post.tariff_weight_unit ?? 'ton'}</span>
+                                ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                )}
+                            </p>
+                            <p>
+                                <span className="text-muted-foreground">Tariff Rate:</span>{' '}
+                                {post.tariff_amount ? (
+                                    <span>{post.tariff_amount} {post.tariff_currency ?? 'ETB'}</span>
+                                ) : (
+                                    <span className="text-amber-600">Not set</span>
+                                )}
+                            </p>
                             <p><span className="text-muted-foreground">Truck:</span> {truckType?.name ?? <span className="text-amber-600">Not set</span>} × {post.truck_count ?? '—'}</p>
                             <p><span className="text-muted-foreground">Consignor:</span> {post.user?.name ?? '—'} ({post.user?.email ?? '—'})</p>
                         </CardContent>
