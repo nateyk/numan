@@ -8,6 +8,11 @@ interface NavItem {
     href: string;
     icon?: LucideIcon;
     feature?: string;
+    /**
+     * A count shown beside the title, e.g. how many manual payments are waiting.
+     * Only rendered when greater than zero, so a zero badge never appears.
+     */
+    badge?: number;
 }
 
 interface AdminSidebarGroupProps {
@@ -123,7 +128,12 @@ export function AdminSidebarGroup({
                                 {item.icon && (
                                     <item.icon className="size-3.5" />
                                 )}
-                                <span>{item.title}</span>
+                                <span className="flex-1">{item.title}</span>
+                                {item.badge !== undefined && item.badge > 0 && (
+                                    <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                                        {item.badge}
+                                    </span>
+                                )}
                             </a>
                         );
                     })}

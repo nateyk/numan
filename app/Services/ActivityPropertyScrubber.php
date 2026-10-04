@@ -38,6 +38,13 @@ class ActivityPropertyScrubber
         'contact_phone',
         'contact_email',
 
+        // Manual payment proof. A payer phone number is personal data and a bank
+        // or Telebirr transaction reference is somebody else's financial
+        // identifier. Neither belongs in a permanent, exportable audit trail.
+        'manual_payer_phone',
+        'manual_reference',
+        'manual_proof_path',
+
         // User is also logged with logFillable() and its password column is
         // fillable, so 63 bcrypt hashes were written into the audit trail. A
         // hash is not plaintext, but it is offline-crackable material and it

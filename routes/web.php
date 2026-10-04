@@ -686,6 +686,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
 
         // Marketplace Plans & Payments (admin)
         Route::get('/marketplace-reveals', [MarketplaceRevealAnalyticsController::class, 'index'])->name('marketplace-reveals.index');
+        Route::get('/marketplace-revenue', [MarketplaceRevealAnalyticsController::class, 'revenue'])->name('marketplace-revenue.index');
 
         // Manual payment queue. Confirm and reject both reach
         // MarketplaceFulfillmentService::fulfill(), the same path Chapa uses.

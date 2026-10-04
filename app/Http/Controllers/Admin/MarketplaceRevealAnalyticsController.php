@@ -26,4 +26,14 @@ class MarketplaceRevealAnalyticsController extends Controller
             'summary' => $this->analytics->revealSummary(),
         ]);
     }
+
+    /**
+     * ETB revenue, which the application had no totals for before this.
+     */
+    public function revenue(): Response
+    {
+        return Inertia::render('admin/marketplace/revenue', [
+            'summary' => $this->analytics->revenueSummary(),
+        ]);
+    }
 }

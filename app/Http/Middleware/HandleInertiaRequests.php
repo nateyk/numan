@@ -7,6 +7,8 @@ use App\Models\SeoMetadata;
 use App\Services\FeatureService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 use Laravel\Pennant\Feature;
 
@@ -38,6 +40,25 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
+    /**
+     * Manual payments awaiting a decision.
+     */
+    private function pendingManualPayments(Request $request): int
+    {
+        if (! $request->user()?->is_superadmin) {
+            return 0;
+        }
+
+        if (! Schema::hasTable('marketplace_payment_transactions')) {
+            return 0;
+        }
+
+        return DB::table('marketplace_payment_transactions')
+            ->where('provider', 'manual')
+            ->where('status', 'pending_confirmation')
+            ->count();
+    }
+
     public function share(Request $request): array
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
@@ -130,6 +151,11 @@ class HandleInertiaRequests extends Middleware
             // The contact released by the action the user just took, so it
             // survives the redirect back.
             'revealed_contact' => $request->session()->get('revealed_contact'),
+
+            // The admin sidebar badge. Counted only for a superadmin, because
+            // resolving the count for an ordinary user would be a query on every
+            // page of the application to answer a question they cannot act on.
+            'pending_manual_payments' => fn () => $this->pendingManualPayments($request),
             'announcement' => Announcement::currentlyActive()->latest()->first()?->only('id', 'title', 'body', 'type', 'link_text', 'link_url', 'is_dismissible'),
             'seo' => fn () => SeoMetadata::forPath($request->path())?->only('title', 'description', 'keywords', 'og_title', 'og_description', 'og_image', 'og_type', 'twitter_card', 'twitter_site', 'twitter_creator', 'twitter_image'),
             'features' => FeatureService::forFrontend(),

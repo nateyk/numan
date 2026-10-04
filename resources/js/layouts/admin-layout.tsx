@@ -2,7 +2,7 @@ import { AdminSidebarGroup } from '@/components/admin/admin-sidebar-group';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { FeatureProvider } from '@/contexts/feature-context';
 import { cn } from '@/lib/utils';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     Activity,
     AlertTriangle,
@@ -16,6 +16,7 @@ import {
     DollarSign,
     Globe,
     Grid3X3,
+    HandCoins,
     KeyRound,
     LayoutDashboard,
     ListChecks,
@@ -30,9 +31,9 @@ import {
     Search,
     ShieldCheck,
     Terminal,
+    TrendingUp,
     Ticket,
     ToggleLeft,
-    TrendingUp,
     Truck,
     Users,
     X,
@@ -136,8 +137,22 @@ function AdminQuickStatsWidget() {
     );
 }
 
+interface AdminNavGroup {
+    title: string;
+    icon: typeof LayoutDashboard;
+    storageKey: string;
+    defaultExpanded: boolean;
+    items: Array<{
+        title: string;
+        href: string;
+        icon?: typeof LayoutDashboard;
+        feature?: string;
+        badge?: number;
+    }>;
+}
+
 // Navigation groups configuration
-const adminNavGroups = [
+const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => [
     {
         title: 'Dashboard',
         icon: LayoutDashboard,
@@ -319,6 +334,16 @@ const adminNavGroups = [
         items: [
             { title: 'Marketplace Plans', href: '/admin/marketplace-plans', icon: Package },
             { title: 'Payments (Chapa)', href: '/admin/marketplace-payments', icon: DollarSign },
+            {
+                title: 'Manual Payments',
+                href: '/admin/marketplace-manual-payments',
+                icon: HandCoins,
+                // How many requests are waiting for a decision. Hidden entirely
+                // at zero, so the sidebar is quiet until there is work.
+                badge: pendingManualPayments,
+            },
+            { title: 'Revenue (ETB)', href: '/admin/marketplace-revenue', icon: TrendingUp },
+            { title: 'Reveal Analytics', href: '/admin/marketplace-reveals', icon: BarChart3 },
         ],
     },
     {
@@ -545,10 +570,12 @@ function MobileAdminDrawer({
     currentPath,
     isOpen,
     onClose,
+    groups,
 }: {
     currentPath: string;
     isOpen: boolean;
     onClose: () => void;
+    groups: AdminNavGroup[];
 }) {
     if (!isOpen) return null;
 
@@ -578,7 +605,7 @@ function MobileAdminDrawer({
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3">
-                    {adminNavGroups.map((group) => (
+                    {groups.map((group) => (
                         <AdminSidebarGroup
                             key={group.title}
                             title={group.title}
@@ -606,12 +633,18 @@ function MobileAdminDrawer({
 }
 
 // Breadcrumb component
-function AdminBreadcrumb({ currentPath }: { currentPath: string }) {
+function AdminBreadcrumb({
+    currentPath,
+    groups,
+}: {
+    currentPath: string;
+    groups: AdminNavGroup[];
+}) {
     // Find the current group and item
     let currentGroup = '';
     let currentItem = '';
 
-    for (const group of adminNavGroups) {
+    for (const group of groups) {
         const item = group.items.find(
             (i) =>
                 currentPath === i.href || currentPath.startsWith(i.href + '/'),
@@ -652,6 +685,14 @@ export default function AdminLayout({ children }: PropsWithChildren) {
     const currentPath =
         typeof window !== 'undefined' ? window.location.pathname : '';
 
+    // How many manual payments are waiting for a decision. Shared by the
+    // middleware, so the badge costs no extra request on every admin page.
+    const pendingManualPayments =
+        (usePage().props as { pending_manual_payments?: number })
+            .pending_manual_payments ?? 0;
+
+    const groups = buildAdminNavGroups(pendingManualPayments);
+
     return (
         <FeatureProvider>
             <div className="flex min-h-screen">
@@ -669,7 +710,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                     <AdminSearchBar />
 
                     <nav className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
-                        {adminNavGroups.map((group) => (
+                        {groups.map((group) => (
                             <AdminSidebarGroup
                                 key={group.title}
                                 title={group.title}
@@ -699,6 +740,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                     currentPath={currentPath}
                     isOpen={mobileDrawerOpen}
                     onClose={() => setMobileDrawerOpen(false)}
+                    groups={groups}
                 />
 
                 {/* Main Content */}
@@ -723,7 +765,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
 
                     <main className="flex-1 overflow-y-auto p-4 lg:p-8">
                         <div className="mx-auto max-w-7xl">
-                            <AdminBreadcrumb currentPath={currentPath} />
+                            <AdminBreadcrumb currentPath={currentPath} groups={groups} />
                             {children}
                         </div>
                     </main>

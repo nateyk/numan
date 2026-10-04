@@ -16,7 +16,26 @@ class MarketplaceAdminAnalyticsService
 {
     public function __construct(
         protected ContactRevealAnalyticsService $reveals,
+        protected MarketplaceRevenueAnalyticsService $revenue,
     ) {}
+
+    /**
+     * ETB revenue, split by provider and interval.
+     *
+     * Counted from verified transactions only. A pending manual request is not
+     * revenue and grants nothing.
+     *
+     * @return array<string, mixed>
+     */
+    public function revenueSummary(): array
+    {
+        return [
+            'totals' => $this->revenue->totals(),
+            'daily' => $this->revenue->daily(30),
+            'monthly' => $this->revenue->monthly(12),
+            'by_plan' => $this->revenue->byPlan(),
+        ];
+    }
 
     /**
      * @return array<string, mixed>

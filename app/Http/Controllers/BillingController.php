@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MarketplacePaymentReceipt;
+use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Services\MarketplaceEntitlementService;
 use App\Services\MarketplaceSettingsService;
@@ -192,6 +193,31 @@ class BillingController extends Controller
         $user = $request->user();
         $workspace = $user->currentWorkspace;
 
+        // Marketplace payments sit in their own table and were invisible here,
+        // so a workspace that had paid for a plan in ETB saw an empty history.
+        // Both rails are listed together, distinguished by provider, because
+        // from the payer's side they are the same decision to make.
+        $marketplacePayments = MarketplacePaymentTransaction::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereNotNull('verified_at')
+            ->with(['plan:id,name,slug'])
+            ->latest('verified_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($t): array => [
+                'id' => $t->id,
+                'provider' => $t->provider,
+                'status' => $t->status,
+                'plan_name' => $t->plan?->name,
+                'billing_interval' => $t->billing_interval,
+                'amount_etb' => (string) $t->amount_etb,
+                'currency' => $t->currency,
+                'date' => $t->verified_at?->format('F j, Y'),
+                'reference' => $t->manual_reference ?? $t->chapa_ref ?? $t->tx_ref,
+                'has_receipt' => $t->receipt !== null,
+            ])
+            ->values();
+
         return Inertia::render('Billing/history', [
             'invoices' => $workspace->invoices()->map(fn ($invoice) => [
                 'id' => $invoice->id,
@@ -199,6 +225,8 @@ class BillingController extends Controller
                 'total' => $invoice->total(),
                 'pdf_url' => route('billing.invoice.download', $invoice->id),
             ])->values(),
+            'marketplacePayments' => $marketplacePayments,
+            'manualPaymentIndex' => route('marketplace.manual.index'),
         ]);
     }
 
