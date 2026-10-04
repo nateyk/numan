@@ -23,7 +23,12 @@ class ReconcileChapaPayments extends Command
 
     public function handle(): int
     {
-        $pendingTxs = MarketplacePaymentTransaction::whereIn('status', ['pending', 'initialized'])
+        // provider = 'chapa' is load-bearing, not a nicety. Without it a manual
+        // payment sitting in pending_confirmation with an NF reference would be
+        // sent to Chapa's verify API, which either fails noisily or, worse,
+        // matches something it should not.
+        $pendingTxs = MarketplacePaymentTransaction::where('provider', 'chapa')
+            ->whereIn('status', ['pending', 'initialized'])
             ->where('created_at', '>', now()->subDays(2))
             ->get();
 
