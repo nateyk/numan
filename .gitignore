@@ -39,3 +39,7 @@ frankenphp-worker.php
 /storage/app/private/scribe
 
 .worktrees/
+
+# Local deploy helpers. The cPanel script is committed; this one is not, because
+# it seeds demo accounts whose password is published in the repository.
+/deploy-seed.sh
