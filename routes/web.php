@@ -77,6 +77,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PhoneNumberController;
+use App\Http\Controllers\ResolveOsmLocationController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Settings\WorkspaceLogoController;
 use App\Http\Controllers\Settings\WorkspaceSecurityController;
@@ -422,6 +423,15 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace'])->group(functio
 
 // Reference data search (public for location search, OSM autocomplete)
 Route::get('/locations/search', [LocationSearchController::class, '__invoke'])->name('locations.search');
+
+// Materialise a picked OSM result as a real locations row.
+//
+// Behind auth because it writes. Throttled because it writes a row per distinct
+// feature, and a script hitting it with a list of place ids would otherwise fill
+// the locations table with places nobody asked for.
+Route::post('/locations/resolve-osm', ResolveOsmLocationController::class)
+    ->middleware(['auth', 'throttle:30,60'])
+    ->name('locations.resolve-osm');
 
 Route::middleware(['auth'])->group(function () {
 

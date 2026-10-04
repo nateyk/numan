@@ -1,22 +1,34 @@
-import { useEffect, useRef, useState } from 'react';
-import { Search, X, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { router } from '@inertiajs/react';
+import { MapPin, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-interface Location {
-    id: number;
+/**
+ * A search result, from either source.
+ *
+ * Exported so consumers type their handlers against this rather than writing
+ * their own inline copy, which is how the two drifted apart and produced a type
+ * error on every handler.
+ *
+ * An OSM result has a string id of the form "osm_<id>" and no slug; a local row
+ * has a numeric id and a slug. Callers that need a real database id must resolve
+ * an OSM result first -- see resolveOsmLocation.
+ */
+export interface Location {
+    id: string | number;
     name: string;
     region_name: string;
-    slug: string;
+    slug?: string;
     type: string;
-    latitude: string | null;
-    longitude: string | null;
+    latitude?: string | number | null;
+    longitude?: string | number | null;
     population?: number | null;
     elevation?: number | null;
     wereda?: string | null;
     zone?: string | null;
     is_major_town?: boolean;
+    osm_type?: string | null;
+    osm_id?: string | number | null;
 }
 
 interface LocationSearchInputProps {
@@ -29,6 +41,17 @@ interface LocationSearchInputProps {
     debounceMs?: number;
     id?: string;
     ariaLabel?: string;
+    /** Narrows the result set. 'freight' biases towards major towns and terminals. */
+    type?: 'all' | 'freight' | 'city' | 'town';
+    /** ISO 3166-1 alpha-2. Neighbouring countries are included for border towns. */
+    country?: string;
+    /**
+     * Ask the server for local rows only, so no OSM results come back.
+     *
+     * Required by any consumer that stores the id: a discovery filter matches on
+     * location_id, and an "osm_1234" would silently match nothing.
+     */
+    localOnly?: boolean;
 }
 
 export default function LocationSearchInput({
@@ -41,11 +64,18 @@ export default function LocationSearchInput({
     debounceMs = 300,
     id,
     ariaLabel,
+    type = 'all',
+    country = 'ET',
+    localOnly = false,
 }: LocationSearchInputProps) {
     const [query, setQuery] = useState(initialName ?? '');
     const [results, setResults] = useState<Location[]>([]);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    // True once a search has come back empty, so the "nothing found" box can
+    // appear. Without it the dropdown would either never open on an empty result
+    // or flash open on every keystroke.
+    const [noResultsYet, setNoResultsYet] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,6 +100,8 @@ export default function LocationSearchInput({
     const search = (q: string) => {
         setQuery(q);
         if (timerRef.current) clearTimeout(timerRef.current);
+        setNoResultsYet(false);
+
         if (q.length < 2) {
             setResults([]);
             setOpen(false);
@@ -78,10 +110,41 @@ export default function LocationSearchInput({
         timerRef.current = setTimeout(async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/locations/search?q=${encodeURIComponent(q)}`);
+                const params = new URLSearchParams({
+                    q: q,
+                    type: type,
+                    country: country,
+                });
+
+                if (localOnly) {
+                    params.set('local_only', '1');
+                }
+
+                const res = await fetch(
+                    `/locations/search?${params.toString()}`,
+                );
+
                 if (res.ok) {
                     const data = await res.json();
-                    setResults(data.locations ?? []);
+
+                    const seen = new Set<string>();
+                    const deduplicated = (data.locations ?? []).filter(
+                        (loc: Location) => {
+                            // Two OSM features can share a display name, so key on the
+                            // feature id when there is one.
+                            const key =
+                                loc.osm_id != null
+                                    ? `osm:${loc.osm_type}:${loc.osm_id}`
+                                    : `name:${loc.name.toLowerCase().trim()}|${loc.region_name.toLowerCase().trim()}`;
+
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                        },
+                    );
+
+                    setResults(deduplicated);
+                    setNoResultsYet(deduplicated.length === 0);
                     setOpen(true);
                 }
             } catch {
@@ -96,6 +159,19 @@ export default function LocationSearchInput({
         setQuery(`${loc.name}, ${loc.region_name}`);
         setOpen(false);
         setResults([]);
+
+        if (typeof loc.id === 'string') {
+            // An OSM result has no database id yet. onChange is deliberately not
+            // called for it: it used to be called with 0, which any consumer
+            // storing the number would have persisted as a real, wrong id.
+            //
+            // A consumer that offers OSM results must use onSelectLocation and
+            // resolve the feature to a row first. Consumers that only need an id
+            // should pass localOnly.
+            onSelectLocation?.(loc);
+            return;
+        }
+
         onChange?.(loc.id);
         onSelectLocation?.(loc);
     };
@@ -111,14 +187,14 @@ export default function LocationSearchInput({
     return (
         <div ref={containerRef} className={cn('relative', className)}>
             <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <MapPin className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                     id={id}
                     value={query}
                     onChange={(e) => search(e.target.value)}
                     onFocus={() => query.length >= 2 && setOpen(true)}
                     placeholder={placeholder}
-                    className="pl-9 pr-9"
+                    className="pr-9 pl-9"
                     aria-label={ariaLabel ?? placeholder}
                     aria-expanded={open}
                     aria-haspopup="listbox"
@@ -129,14 +205,18 @@ export default function LocationSearchInput({
                         type="button"
                         onClick={clear}
                         aria-label={`Clear ${ariaLabel ?? placeholder}`}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring rounded"
+                        className="absolute top-1/2 right-3 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <X className="size-4" aria-hidden="true" />
                     </button>
                 )}
             </div>
-            {open && (results.length > 0 || loading) && (
-                <div role="listbox" aria-label={ariaLabel ?? 'Location results'} className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+            {open && (results.length > 0 || loading || !noResultsYet) && (
+                <div
+                    role="listbox"
+                    aria-label={ariaLabel ?? 'Location results'}
+                    className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg"
+                >
                     {loading ? (
                         <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                             Searching…
@@ -149,29 +229,17 @@ export default function LocationSearchInput({
                                 role="option"
                                 aria-selected={false}
                                 onClick={() => selectLocation(loc)}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent focus:outline-none"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent focus:outline-none"
                             >
-                                <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
-                                <div className="flex-1">
-                                    <div>
-                                        <span className="font-medium">{loc.name}</span>
-                                        <span className="mx-1 text-muted-foreground">·</span>
-                                        <span className="text-muted-foreground">{loc.region_name}</span>
-                                        <span className="mx-1 text-muted-foreground">·</span>
-                                        <span className="text-xs text-muted-foreground capitalize">{loc.type}</span>
-                                        {loc.is_major_town && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">Major Town</span>}
-                                    </div>
-                                    {(loc.population || loc.elevation || loc.wereda) && (
-                                        <div className="mt-0.5 flex gap-2 text-xs text-muted-foreground">
-                                            {loc.population && <span>{loc.population.toLocaleString()} inh.</span>}
-                                            {loc.elevation && <span>{loc.elevation} m</span>}
-                                            {loc.wereda && <span>{loc.wereda}</span>}
-                                        </div>
-                                    )}
+                                <div className="font-medium">{loc.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                    {loc.region_name}{' '}
+                                    {loc.type && `• ${loc.type}`}
                                 </div>
                             </button>
                         ))
                     )}
+
                     {!loading && results.length === 0 && (
                         <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                             No locations found.

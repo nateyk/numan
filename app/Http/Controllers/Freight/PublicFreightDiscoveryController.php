@@ -7,6 +7,7 @@ use App\Http\Resources\FreightPostResource;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Services\MarketplaceEntitlementService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -25,10 +26,10 @@ class PublicFreightDiscoveryController extends Controller
             ->active()
             ->visible()
             ->when($request->query('origin'), function ($q, $origin) {
-                $q->where('origin_location_id', $origin);
+                $this->whereLocationId($q, 'origin_location_id', $origin);
             })
             ->when($request->query('destination'), function ($q, $destination) {
-                $q->where('destination_location_id', $destination);
+                $this->whereLocationId($q, 'destination_location_id', $destination);
             })
             ->when($request->query('cargo_type'), function ($q, $cargoType) {
                 $q->where('cargo_type_id', $cargoType);
@@ -180,5 +181,27 @@ class PublicFreightDiscoveryController extends Controller
         }
 
         return (bool) $user->is_superadmin || $user->id === $post->user_id;
+    }
+
+    /**
+     * Filter by a location id, treating anything non-numeric as matching nothing.
+     *
+     * A non-numeric value is an OpenStreetMap id, which has no locations row.
+     * Passing it straight to where() coerces it to 0 on MySQL -- silently
+     * matching rows with a 0 foreign key -- and raises a type error on Postgres.
+     * Matching nothing is the honest answer, and the search box asks for local
+     * rows only so this should not be reachable in the first place.
+     *
+     * @param  Builder<FreightPost>  $query
+     */
+    private function whereLocationId(Builder $query, string $column, mixed $value): void
+    {
+        if (is_numeric($value)) {
+            $query->where($column, $value);
+
+            return;
+        }
+
+        $query->whereRaw('1 = 0');
     }
 }

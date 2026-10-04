@@ -203,6 +203,7 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                         onSelectLocation={(loc) => setOrigin(loc ? String(loc.id) : '')}
                                                         placeholder="Addis Ababa…"
                                                         className="w-48"
+                                                        localOnly
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
@@ -215,6 +216,7 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                         onSelectLocation={(loc) => setDestination(loc ? String(loc.id) : '')}
                                                         placeholder="Hawassa…"
                                                         className="w-48"
+                                                        localOnly
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">

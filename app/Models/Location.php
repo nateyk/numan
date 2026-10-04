@@ -16,6 +16,7 @@ class Location extends Model
 
     protected $fillable = [
         'name',
+        'slug',
         'type',
         'region_name',
         'latitude',
@@ -26,6 +27,8 @@ class Location extends Model
         'wereda',
         'zone',
         'is_major_town',
+        'osm_id',
+        'source',
     ];
 
     protected function casts(): array
