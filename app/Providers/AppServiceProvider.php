@@ -118,6 +118,20 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Submitting a manual payment creates a row an admin has to review, so
+        // it is the expensive direction: five an hour per user is generous and
+        // still stops a script filling the queue.
+        RateLimiter::for('manual-payment-submit', function (Request $request) {
+            return Limit::perHour(5)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Issuing an instructions token writes nothing, but each one is an NF
+        // code and an encrypted blob, and the page is not a thing to hammer.
+        // Twenty an hour is well above what a person needs.
+        RateLimiter::for('manual-payment-instructions', function (Request $request) {
+            return Limit::perHour(20)->by($request->user()?->id ?: $request->ip());
+        });
+
         self::registerFeatureFlags();
     }
 }

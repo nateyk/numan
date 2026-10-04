@@ -72,6 +72,16 @@ class ManualPaymentService
      */
     public function issueInstructions(User $user, string $planSlug, string $interval): array
     {
+        // The workspace is what the token is bound to, so it has to be resolved
+        // before the token is minted rather than looked up at submit time.
+        $workspace = $user->currentWorkspace;
+
+        if ($workspace === null) {
+            throw ValidationException::withMessages([
+                'manual_payment' => 'No active workspace.',
+            ]);
+        }
+
         $plan = MarketplacePlan::where('slug', $planSlug)
             ->where('is_active', true)
             ->first();
@@ -119,7 +129,11 @@ class ManualPaymentService
         ];
 
         return [
-            'token' => $this->tokens->issue($terms),
+            'token' => $this->tokens->issue(
+                $terms,
+                $user->id,
+                (int) $workspace->id,
+            ),
             'terms' => $terms,
         ];
     }
@@ -147,7 +161,18 @@ class ManualPaymentService
      */
     public function submit(User $user, string $token, array $input): MarketplacePaymentTransaction
     {
-        $terms = $this->tokens->read($token);
+        $workspace = $user->currentWorkspace;
+
+        if ($workspace === null) {
+            throw ValidationException::withMessages([
+                'manual_payment' => 'No active workspace.',
+            ]);
+        }
+
+        // Read bound to this user and workspace. A token issued to somebody
+        // else, or for another workspace, is refused here rather than creating
+        // a row in the wrong place.
+        $terms = $this->tokens->read($token, (int) $user->id, (int) $workspace->id);
 
         if ($terms === null) {
             throw ValidationException::withMessages([
@@ -178,14 +203,6 @@ class ManualPaymentService
         if ($payerPhone === null) {
             throw ValidationException::withMessages([
                 'payer_phone' => PhoneNumberService::INVALID_MESSAGE,
-            ]);
-        }
-
-        $workspace = $user->currentWorkspace;
-
-        if ($workspace === null) {
-            throw ValidationException::withMessages([
-                'manual_payment' => 'No active workspace.',
             ]);
         }
 

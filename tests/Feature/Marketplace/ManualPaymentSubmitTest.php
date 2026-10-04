@@ -366,7 +366,31 @@ it('refuses a second open request from the same workspace', function () {
     expect(MarketplacePaymentTransaction::first()->open_manual_workspace_id)->toBe($workspace->id);
 });
 
-it('refuses a second open request even when the reference differs and is valid', function () {
+it('will not even mint a second token while a request is open', function () {
+    // The guard is the reachable behaviour: the instructions page refuses
+    // outright rather than letting the payer fill in a form that cannot
+    // succeed. The database index behind it is what holds under concurrency,
+    // and that is proved by inserting directly in
+    // ManualPaymentFoundationTest.
+    [$user] = submitUser();
+
+    $first = app(ManualPaymentService::class)->issueInstructions($user, 'standard', 'monthly');
+
+    $this->actingAs($user)
+        ->post(route('marketplace.manual.store'), submitPayload([
+            'token' => $first['token'],
+            'reference' => 'FT-AAA',
+        ]))
+        ->assertRedirect();
+
+    // A second instructions page for the same workspace is refused.
+    $this->actingAs($user)
+        ->get(route('marketplace.manual.create', ['plan' => 'standard', 'interval' => 'yearly']))
+        ->assertRedirect()
+        ->assertSessionHasErrors('manual_payment');
+});
+
+it('lets a second token be minted once the first request is closed', function () {
     [$user] = submitUser();
 
     $first = app(ManualPaymentService::class)->issueInstructions($user, 'standard', 'monthly');
@@ -377,21 +401,26 @@ it('refuses a second open request even when the reference differs and is valid',
             'reference' => 'FT-AAA',
         ]));
 
-    // Force a second instructions token despite the open-request guard, to prove
-    // the submit-time constraint is what stops it.
-    [$other] = submitUser();
-    $second = app(ManualPaymentService::class)->issueInstructions($other, 'standard', 'monthly');
+    // Close the first request the way an admin rejection would.
+    MarketplacePaymentTransaction::query()->update([
+        'status' => MarketplacePaymentTransaction::MANUAL_REJECTED,
+        'open_manual_workspace_id' => null,
+    ]);
 
-    $workspaceId = $other->current_workspace_id;
+    $second = app(ManualPaymentService::class)->issueInstructions(
+        $user->fresh(),
+        'standard',
+        'yearly',
+    );
 
     $this->actingAs($user)
         ->post(route('marketplace.manual.store'), submitPayload([
             'token' => $second['token'],
             'reference' => 'FT-BBB',
         ]))
-        ->assertSessionHasErrors('manual_payment');
+        ->assertRedirect();
 
-    expect(MarketplacePaymentTransaction::where('workspace_id', $workspaceId)->count())->toBe(0);
+    expect(MarketplacePaymentTransaction::count())->toBe(2);
 });
 
 it('claims the open slot on the row', function () {
@@ -705,4 +734,120 @@ it('uses the phone service for the payer number', function () {
     // The same normalisation every other phone goes through.
     expect(app(PhoneNumberService::class)->normalize('0911223344'))->toBe('+251911223344');
     expect(app(PhoneNumberService::class)->normalize(PhoneNumberService::INVALID_MESSAGE))->toBeNull();
+});
+
+// ── H: rate limits ────────────────────────────────────────────────────────
+
+it('refuses the sixth manual payment submission in an hour', function () {
+    [$user] = submitUser();
+
+    // Five requests that reach the controller. Each is stopped earlier by the
+    // one-open-request or token rules, which is fine: the limiter counts
+    // attempts, not successes.
+    for ($i = 0; $i < 5; $i++) {
+        $this->actingAs($user)
+            ->post(route('marketplace.manual.store'), submitPayload(['token' => 'forged-'.$i]));
+    }
+
+    $this->actingAs($user)
+        ->post(route('marketplace.manual.store'), submitPayload(['token' => 'forged-6']))
+        ->assertStatus(429);
+});
+
+it('the submit limit is per user, not global', function () {
+    [$user] = submitUser();
+    [$other] = submitUser();
+
+    for ($i = 0; $i < 6; $i++) {
+        $this->actingAs($user)
+            ->post(route('marketplace.manual.store'), submitPayload(['token' => 'forged-a-'.$i]));
+    }
+
+    $this->actingAs($user)
+        ->post(route('marketplace.manual.store'), submitPayload(['token' => 'forged-a-7']))
+        ->assertStatus(429);
+
+    // A different user has their own budget.
+    $this->actingAs($other)
+        ->post(route('marketplace.manual.store'), submitPayload(['token' => 'forged-b-0']))
+        ->assertRedirect();
+});
+
+it('refuses the twenty-first instructions page in an hour', function () {
+    [$user] = submitUser();
+
+    for ($i = 0; $i < 20; $i++) {
+        $this->actingAs($user)
+            ->get(route('marketplace.manual.create', ['plan' => 'standard', 'interval' => 'monthly']));
+    }
+
+    $this->actingAs($user)
+        ->get(route('marketplace.manual.create', ['plan' => 'standard', 'interval' => 'monthly']))
+        ->assertStatus(429);
+});
+
+it('the instructions limit is separate from the submit limit', function () {
+    [$user] = submitUser();
+
+    for ($i = 0; $i < 20; $i++) {
+        $this->actingAs($user)
+            ->get(route('marketplace.manual.create', ['plan' => 'standard', 'interval' => 'monthly']));
+    }
+
+    // The instructions budget is spent, but submitting is a different limiter
+    // with its own budget.
+    $this->actingAs($user)
+        ->get(route('marketplace.manual.create', ['plan' => 'standard', 'interval' => 'monthly']))
+        ->assertStatus(429);
+
+    $this->actingAs($user)
+        ->post(route('marketplace.manual.store'), submitPayload(['token' => 'forged']))
+        ->assertRedirect()
+        ->assertSessionHasErrors('token');
+});
+
+// ── 3: the token is bound to its issuer ───────────────────────────────────
+
+it('refuses a token issued to another user', function () {
+    [$owner] = submitUser();
+    [$stranger] = submitUser();
+
+    $issued = app(ManualPaymentService::class)->issueInstructions($owner, 'standard', 'monthly');
+
+    // The stranger presents the owner's perfectly valid token.
+    $this->actingAs($stranger)
+        ->post(route('marketplace.manual.store'), submitPayload(['token' => $issued['token']]))
+        ->assertSessionHasErrors('token');
+
+    // Nothing was created for either workspace.
+    expect(MarketplacePaymentTransaction::count())->toBe(0);
+});
+
+it('refuses a token issued for another workspace', function () {
+    [$owner] = submitUser();
+    [$colleague] = submitUser();
+
+    $issued = app(ManualPaymentService::class)->issueInstructions($owner, 'standard', 'monthly');
+
+    // Same user, different workspace. The token names the workspace it was
+    // issued for, so it cannot be replayed into another one.
+    $otherWorkspace = app(WorkspaceService::class)->createPersonalWorkspace($colleague);
+    $colleague->update(['current_workspace_id' => $otherWorkspace->id]);
+    $colleague->refresh();
+
+    $this->actingAs($colleague)
+        ->post(route('marketplace.manual.store'), submitPayload(['token' => $issued['token']]))
+        ->assertSessionHasErrors('token');
+
+    expect(MarketplacePaymentTransaction::count())->toBe(0);
+});
+
+it('a token still works for the user and workspace it was issued to', function () {
+    [$user, $workspace, $token] = submitReady();
+
+    $this->actingAs($user)
+        ->post(route('marketplace.manual.store'), submitPayload(['token' => $token]))
+        ->assertRedirect();
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(1);
 });

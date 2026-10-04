@@ -3,6 +3,7 @@
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\ManualPaymentTokenService;
 use App\Services\MarketplaceTextSettingsService;
 use App\Services\PaymentReferenceGenerator;
@@ -59,7 +60,7 @@ it('round-trips the agreed terms', function () {
     $service = app(ManualPaymentTokenService::class);
     $terms = tokenTerms('yearly');
 
-    $read = $service->read($service->issue($terms));
+    $read = $service->read($service->issue($terms, 1, 1));
 
     expect($read)->not->toBeNull();
     expect($read['plan'])->toBe('standard');
@@ -74,13 +75,13 @@ it('produces a different token for the same terms', function () {
     $terms = tokenTerms();
 
     // Encrypted, so the same terms twice must not produce the same ciphertext.
-    expect($service->issue($terms))->not->toBe($service->issue($terms));
+    expect($service->issue($terms, 1, 1))->not->toBe($service->issue($terms, 1, 1));
 });
 
 it('the amount does not appear in plaintext', function () {
     $service = app(ManualPaymentTokenService::class);
 
-    $token = $service->issue(tokenTerms('yearly'));
+    $token = $service->issue(tokenTerms('yearly'), 1, 1);
 
     // 3999 must not be readable in the blob, or the token is obfuscation not
     // protection.
@@ -89,7 +90,7 @@ it('the amount does not appear in plaintext', function () {
 
 it('refuses a tampered token', function () {
     $service = app(ManualPaymentTokenService::class);
-    $token = $service->issue(tokenTerms());
+    $token = $service->issue(tokenTerms(), 1, 1);
 
     // Flip a character in the ciphertext.
     $tampered = substr($token, 0, -4).strrev(substr($token, -4));
@@ -127,7 +128,7 @@ it('refuses a token whose ciphertext was re-encoded with a doctored amount', fun
 
     // Take the real token and try to alter the decrypted payload while keeping
     // the original ciphertext. The MAC covers the ciphertext, so this fails.
-    $token = $service->issue($terms);
+    $token = $service->issue($terms, 1, 1);
 
     $decoded = json_decode(Crypt::decryptString($token), true);
     $decoded['amount_etb'] = '1';
@@ -174,7 +175,7 @@ it('refuses an expired token', function () {
 
     // Issue first, then move the clock. Issuing after travelling would mint a
     // fresh token and prove nothing.
-    $token = $service->issue(tokenTerms());
+    $token = $service->issue(tokenTerms(), 1, 1);
 
     expect($service->read($token))->not->toBeNull();
 
@@ -200,7 +201,7 @@ it('refuses a token with an unparseable expiry', function () {
 
 it('accepts a token inside its window', function () {
     $service = app(ManualPaymentTokenService::class);
-    $token = $service->issue(tokenTerms());
+    $token = $service->issue(tokenTerms(), 1, 1);
 
     $this->travel(ManualPaymentTokenService::TTL_HOURS - 1)->hours();
 
@@ -211,7 +212,7 @@ it('refuses a token whose NF code has since been claimed', function () {
     $service = app(ManualPaymentTokenService::class);
     $terms = tokenTerms();
 
-    $token = $service->issue($terms);
+    $token = $service->issue($terms, 1, 1);
 
     // Somebody submitted with this code in the meantime.
     [$user, $workspace] = tokenUser();
@@ -289,26 +290,28 @@ it('carries only the five agreed fields, nothing more', function () {
     $service = app(ManualPaymentTokenService::class);
 
     $decoded = json_decode(
-        Crypt::decryptString($service->issue(tokenTerms())),
+        Crypt::decryptString($service->issue(tokenTerms(), 1, 1)),
         true
     );
 
     expect(array_keys($decoded))->toEqualCanonicalizing([
         'plan', 'plan_id', 'billing_interval', 'amount_etb', 'tx_ref',
-        'issued_at', 'expires_at',
+        'user_id', 'workspace_id', 'issued_at', 'expires_at',
     ]);
 
-    // No workspace, no user, no email: the token is not an identity carrier.
-    expect($decoded)->not->toHaveKey('user_id');
-    expect($decoded)->not->toHaveKey('workspace_id');
+    // Bound to the issuer, but carrying no identity of its own: no email, no
+    // name, no phone. Those are looked up from the bound ids at submit time.
     expect($decoded)->not->toHaveKey('email');
+    expect($decoded)->not->toHaveKey('name');
+    expect($decoded)->not->toHaveKey('phone');
+    expect($decoded)->not->toHaveKey('payer_phone');
 });
 
 it('keeps the frozen amount independent of the live plan price', function () {
     $service = app(ManualPaymentTokenService::class);
     $terms = tokenTerms('monthly');
 
-    $token = $service->issue($terms);
+    $token = $service->issue($terms, 1, 1);
 
     // The admin raises the price after the payer saw the page.
     MarketplacePlan::where('slug', 'standard')->update(['price_monthly_etb' => 999]);
@@ -328,8 +331,112 @@ it('never writes a row', function () {
 
     $before = MarketplacePaymentTransaction::count();
 
-    $service->issue(tokenTerms());
-    $service->read($service->issue(tokenTerms()));
+    $service->issue(tokenTerms(), 1, 1);
+    $service->read($service->issue(tokenTerms(), 1, 1));
 
     expect(MarketplacePaymentTransaction::count())->toBe($before);
+});
+
+// ── the token is bound to its issuer ──────────────────────────────────────
+
+/**
+ * @return array{0: User, 1: Workspace}
+ */
+function boundUser(): array
+{
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+        'onboarded_at' => now(),
+    ]);
+
+    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    return [$user->fresh(), $workspace];
+}
+
+it('carries the user and workspace it was issued to', function () {
+    [$user, $workspace] = boundUser();
+    $service = app(ManualPaymentTokenService::class);
+
+    $decoded = json_decode(
+        Crypt::decryptString($service->issue(tokenTerms(), $user->id, $workspace->id)),
+        true
+    );
+
+    expect($decoded['user_id'])->toBe($user->id);
+    expect($decoded['workspace_id'])->toBe($workspace->id);
+});
+
+it('refuses a token presented by a different user', function () {
+    [$user, $workspace] = boundUser();
+    [$other] = boundUser();
+
+    $service = app(ManualPaymentTokenService::class);
+    $token = $service->issue(tokenTerms(), $user->id, $workspace->id);
+
+    // Unbound read still works, which is how the token can be inspected.
+    expect($service->read($token))->not->toBeNull();
+
+    // Bound to the wrong user, it is refused.
+    expect($service->read($token, $other->id, $workspace->id))->toBeNull();
+});
+
+it('refuses a token presented against a different workspace', function () {
+    [$user, $workspace] = boundUser();
+    [, $otherWorkspace] = boundUser();
+
+    $service = app(ManualPaymentTokenService::class);
+    $token = $service->issue(tokenTerms(), $user->id, $workspace->id);
+
+    expect($service->read($token, $user->id, $otherWorkspace->id))->toBeNull();
+});
+
+it('accepts a token for the right user and workspace', function () {
+    [$user, $workspace] = boundUser();
+    $service = app(ManualPaymentTokenService::class);
+
+    $token = $service->issue(tokenTerms(), $user->id, $workspace->id);
+
+    expect($service->read($token, $user->id, $workspace->id))->not->toBeNull();
+});
+
+it('refuses a token with no binding fields at all', function () {
+    $terms = tokenTerms();
+
+    // An unbound payload, encrypted with the real key, as a forgery attempt
+    // that skipped the binding fields would.
+    $unbound = Crypt::encryptString(json_encode([
+        'plan' => 'standard',
+        'plan_id' => $terms['plan_id'],
+        'billing_interval' => 'monthly',
+        'amount_etb' => '449',
+        'tx_ref' => $terms['tx_ref'],
+    ]));
+
+    expect(app(ManualPaymentTokenService::class)->read($unbound, 1, 1))->toBeNull();
+});
+
+it('refuses a tampered token when bound', function () {
+    [$user, $workspace] = boundUser();
+    $service = app(ManualPaymentTokenService::class);
+
+    $token = $service->issue(tokenTerms(), $user->id, $workspace->id);
+
+    $tampered = substr($token, 0, -4).strrev(substr($token, -4));
+
+    expect($service->read($tampered, $user->id, $workspace->id))->toBeNull();
+});
+
+it('refuses an expired token when bound', function () {
+    [$user, $workspace] = boundUser();
+    $service = app(ManualPaymentTokenService::class);
+
+    $token = $service->issue(tokenTerms(), $user->id, $workspace->id);
+
+    expect($service->read($token, $user->id, $workspace->id))->not->toBeNull();
+
+    $this->travel(ManualPaymentTokenService::TTL_HOURS + 1)->hours();
+
+    expect($service->read($token, $user->id, $workspace->id))->toBeNull();
 });

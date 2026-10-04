@@ -33,9 +33,15 @@ class ManualPaymentTokenService
     /**
      * Build the token for an instructions page.
      *
+     * Carries the user and workspace it was issued to. Without that, a token is
+     * a bearer credential: it appears in a browser history, in a shared link and
+     * in a screenshot of the page, and anyone holding it could submit on
+     * somebody else's behalf. The amount would be right but the workspace
+     * wrong.
+     *
      * @param  array{plan: string, plan_id: int, billing_interval: string, amount_etb: string, tx_ref: string}  $terms
      */
-    public function issue(array $terms): string
+    public function issue(array $terms, int $userId, int $workspaceId): string
     {
         return Crypt::encryptString(json_encode([
             'plan' => $terms['plan'],
@@ -46,6 +52,9 @@ class ManualPaymentTokenService
             // payer agreed to this number.
             'amount_etb' => (string) $terms['amount_etb'],
             'tx_ref' => $terms['tx_ref'],
+            // Bound to the issuer. Read() takes these and refuses a mismatch.
+            'user_id' => $userId,
+            'workspace_id' => $workspaceId,
             'issued_at' => now()->toIso8601String(),
             'expires_at' => now()->addHours(self::TTL_HOURS)->toIso8601String(),
         ], JSON_THROW_ON_ERROR));
@@ -57,9 +66,12 @@ class ManualPaymentTokenService
      * Every failure mode returns null rather than throwing, because they are all
      * the same thing to a payer: your instructions page went stale, look again.
      *
-     * @return array{plan: string, plan_id: int, billing_interval: string, amount_etb: string, tx_ref: string}|null
+     * The issuer is required, so a token cannot be replayed by another user or
+     * against another workspace. Pass null to inspect a token without binding.
+     *
+     * @return array{plan: string, plan_id: int, billing_interval: string, amount_etb: string, tx_ref: string, user_id: int, workspace_id: int}|null
      */
-    public function read(?string $token): ?array
+    public function read(?string $token, ?int $userId = null, ?int $workspaceId = null): ?array
     {
         if (blank($token)) {
             return null;
@@ -76,10 +88,20 @@ class ManualPaymentTokenService
             return null;
         }
 
-        foreach (['plan', 'plan_id', 'billing_interval', 'amount_etb', 'tx_ref'] as $key) {
+        foreach (['plan', 'plan_id', 'billing_interval', 'amount_etb', 'tx_ref', 'user_id', 'workspace_id'] as $key) {
             if (! array_key_exists($key, $decoded)) {
                 return null;
             }
+        }
+
+        // Binding. A token issued to one user must not submit against another,
+        // even though the amounts and terms are perfectly valid.
+        if ($userId !== null && (int) $decoded['user_id'] !== $userId) {
+            return null;
+        }
+
+        if ($workspaceId !== null && (int) $decoded['workspace_id'] !== $workspaceId) {
+            return null;
         }
 
         if (! in_array($decoded['billing_interval'], ['weekly', 'monthly', 'yearly'], true)) {
@@ -109,6 +131,8 @@ class ManualPaymentTokenService
             'billing_interval' => (string) $decoded['billing_interval'],
             'amount_etb' => (string) $decoded['amount_etb'],
             'tx_ref' => (string) $decoded['tx_ref'],
+            'user_id' => (int) $decoded['user_id'],
+            'workspace_id' => (int) $decoded['workspace_id'],
         ];
     }
 

@@ -283,8 +283,12 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     // a branch inside CheckoutController: the two rails share a fulfilment path
     // but nothing else, and merging them would put a manual reference through
     // code that talks to a payment gateway.
-    Route::get('/marketplace/manual/{plan}/{interval}', [ManualPaymentController::class, 'create'])->name('marketplace.manual.create');
-    Route::post('/marketplace/manual', [ManualPaymentController::class, 'store'])->name('marketplace.manual.store');
+    Route::get('/marketplace/manual/{plan}/{interval}', [ManualPaymentController::class, 'create'])
+        ->middleware('throttle:manual-payment-instructions')
+        ->name('marketplace.manual.create');
+    Route::post('/marketplace/manual', [ManualPaymentController::class, 'store'])
+        ->middleware('throttle:manual-payment-submit')
+        ->name('marketplace.manual.store');
     Route::get('/marketplace/manual', [ManualPaymentController::class, 'index'])->name('marketplace.manual.index');
     Route::get('/marketplace/manual/{transaction}', [ManualPaymentController::class, 'show'])->name('marketplace.manual.show');
     Route::get('/chapa/callback/{tx_ref}', [ChapaCallbackController::class, 'show'])->name('chapa.callback');
