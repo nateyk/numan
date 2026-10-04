@@ -130,6 +130,25 @@ class ContactRevealService
         $contextIds = $this->contextIds($context);
 
         $outcome = DB::transaction(function () use ($viewer, $counterparty, $windowDays, $limit, $contextIds): array {
+            // Lock the REVEALER'S user row for the duration of this
+            // transaction. Every reveal by this user serialises behind it, so
+            // two concurrent requests cannot both read the same window count
+            // and both decide there is room. Locking the contact_reveals rows
+            // instead would not work: the rows being counted may not exist yet,
+            // and a row lock cannot be taken on an absence.
+            //
+            // This is a no-op on SQLite, which is what the test suite runs on,
+            // so the tests below prove the arithmetic and the uniqueness, not
+            // the concurrency. On MySQL and PostgreSQL the lock is real.
+            //
+            // The unique (revealer_id, revealed_id) key remains the backstop:
+            // two requests for the SAME pair both want the same outcome, and
+            // the loser is treated as "already revealed", which is correct.
+            User::query()
+                ->whereKey($viewer->id)
+                ->lockForUpdate()
+                ->first();
+
             // Re-revealing a partner is free, forever. Checked first and inside
             // the transaction so it cannot race with the quota check below.
             $existing = ContactReveal::query()

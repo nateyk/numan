@@ -18,6 +18,7 @@ use App\Services\ContactRevealService;
 use App\Services\MarketplaceEntitlementService;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -910,4 +911,97 @@ it('the analytics page never carries contact data', function () {
     expect($summary)->not->toContain('email');
     expect($summary)->not->toContain('revealed_id');
     expect($summary)->not->toContain('user_id');
+});
+
+// ── the window arithmetic at the boundary ──────────────────────────────────
+
+it('blocks the last remaining slot exactly once, for two different pairs', function () {
+    // The boundary case: the user is one reveal short of the limit, so two
+    // DIFFERENT partners are requested and only one can be satisfied.
+    //
+    // Run sequentially on purpose. The suite runs on SQLite, where
+    // lockForUpdate is a no-op, so this cannot and does not test concurrency.
+    // What it tests is that the count-then-compare happens against committed
+    // state: the second request must observe the first one's ledger row. Under
+    // real concurrency the user-row lock in ContactRevealService::reveal()
+    // serialises them, and the unique (revealer_id, revealed_id) key makes the
+    // same-pair case idempotent regardless.
+    [$user] = meterUser(true);
+
+    // Spend two of the three slots.
+    meterSpendQuota($this, $user);
+
+    ContactReveal::query()->where('revealer_id', $user->id)->limit(1)->delete();
+    ContactRevealBlock::query()->delete();
+
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(2);
+
+    // Two fresh partners, neither revealed yet.
+    [$first] = meterUser();
+    [$second] = meterUser();
+
+    $firstInterest = meterInterest($first, $user);
+    $secondInterest = meterInterest($second, $user);
+
+    // The last slot goes to the first.
+    meterReveal($this, $user, $firstInterest)->assertOk()->assertJsonPath('status', 'allowed');
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+
+    // The second finds the window full, because it can see the row above.
+    meterReveal($this, $user, $secondInterest)
+        ->assertStatus(402)
+        ->assertJsonPath('used', 3)
+        ->assertJsonPath('limit', 3);
+
+    // And the refusal was recorded rather than swallowed.
+    expect(ContactRevealBlock::where('user_id', $user->id)->count())->toBe(1);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+});
+
+it('two different pairs cannot both take the last slot, whichever order they arrive', function () {
+    // The mirror of the above, to show the arithmetic is not order-dependent.
+    [$user] = meterUser(true);
+
+    meterSpendQuota($this, $user);
+    ContactReveal::query()->where('revealer_id', $user->id)->limit(1)->delete();
+
+    [$a] = meterUser();
+    [$b] = meterUser();
+
+    $aInterest = meterInterest($a, $user);
+    $bInterest = meterInterest($b, $user);
+
+    $first = meterReveal($this, $user, $aInterest);
+    $second = meterReveal($this, $user, $bInterest);
+
+    $statuses = [$first->getStatusCode(), $second->getStatusCode()];
+
+    expect($statuses)->toContain(200);
+    expect($statuses)->toContain(402);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+});
+
+it('the ledger cannot hold the same pair twice, whatever the code path', function () {
+    [$user] = meterUser(true);
+    [$consignor] = meterUser();
+
+    $interest = meterInterest($consignor, $user);
+
+    meterReveal($this, $user, $interest)->assertOk();
+    meterReveal($this, $user, $interest)->assertOk();
+    meterReveal($this, $user, $interest)->assertOk();
+
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(1);
+});
+
+it('a direct duplicate insert is rejected by the unique key', function () {
+    [$user] = meterUser(true);
+    [$consignor] = meterUser();
+
+    ContactReveal::create(['revealer_id' => $user->id, 'revealed_id' => $consignor->id]);
+
+    expect(fn () => ContactReveal::create([
+        'revealer_id' => $user->id,
+        'revealed_id' => $consignor->id,
+    ]))->toThrow(UniqueConstraintViolationException::class);
 });
