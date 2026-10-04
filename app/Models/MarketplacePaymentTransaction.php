@@ -33,7 +33,17 @@ class MarketplacePaymentTransaction extends Model
      */
     public const MANUAL_OPEN_STATUS = 'pending_confirmation';
 
-    public const MANUAL_CONFIRMED = 'confirmed';
+    /**
+     * The status a confirmed manual request ends up in.
+     *
+     * This is 'verified', not something manual-specific, because
+     * MarketplaceFulfillmentService::fulfill() writes it and that service is
+     * shared with Chapa. Inventing a 'confirmed' status here would have meant
+     * the fulfilment path had to know which rail it was serving, which is
+     * exactly the coupling this table exists to avoid -- and a double-click
+     * would have fallen through to "not open" instead of "already done".
+     */
+    public const MANUAL_CONFIRMED = 'verified';
 
     public const MANUAL_REJECTED = 'rejected';
 
@@ -124,6 +134,14 @@ class MarketplacePaymentTransaction extends Model
     public function isOpenManual(): bool
     {
         return $this->isManual() && $this->status === self::MANUAL_OPEN_STATUS;
+    }
+
+    /**
+     * Has this manual request already been granted?
+     */
+    public function isConfirmedManual(): bool
+    {
+        return $this->isManual() && $this->status === self::MANUAL_CONFIRMED;
     }
 
     /**

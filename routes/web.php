@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\ImpersonationLogController;
 use App\Http\Controllers\Admin\LogViewerController;
 use App\Http\Controllers\Admin\MailTemplateController;
 use App\Http\Controllers\Admin\MaintenanceController;
+use App\Http\Controllers\Admin\MarketplaceManualPaymentController;
 use App\Http\Controllers\Admin\MarketplacePaymentController;
 use App\Http\Controllers\Admin\MarketplacePlanController;
 use App\Http\Controllers\Admin\MarketplaceRevealAnalyticsController;
@@ -685,6 +686,16 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
 
         // Marketplace Plans & Payments (admin)
         Route::get('/marketplace-reveals', [MarketplaceRevealAnalyticsController::class, 'index'])->name('marketplace-reveals.index');
+
+        // Manual payment queue. Confirm and reject both reach
+        // MarketplaceFulfillmentService::fulfill(), the same path Chapa uses.
+        Route::controller(MarketplaceManualPaymentController::class)->name('marketplace.manual.')->group(function () {
+            Route::get('/marketplace-manual-payments', 'index')->name('index');
+            Route::post('/marketplace-manual-payments/{transaction}/confirm', 'confirm')->name('confirm');
+            Route::post('/marketplace-manual-payments/{transaction}/reject', 'reject')->name('reject');
+            Route::post('/marketplace-manual-payments/{transaction}/reopen', 'reopen')->name('reopen');
+            Route::get('/marketplace-manual-payments/{transaction}/proof', 'proof')->name('proof');
+        });
         Route::get('/marketplace-plans', [MarketplacePlanController::class, 'index'])->name('marketplace-plans.index');
         Route::post('/marketplace-plans', [MarketplacePlanController::class, 'store'])->name('marketplace-plans.store');
         Route::put('/marketplace-plans/{marketplacePlan}', [MarketplacePlanController::class, 'update'])->name('marketplace-plans.update');

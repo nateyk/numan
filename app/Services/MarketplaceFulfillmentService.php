@@ -81,7 +81,11 @@ class MarketplaceFulfillmentService
                 'ends_at' => $periodEnd,
                 'trial_ends_at' => null,
                 'chapa_tx_ref' => $transaction->tx_ref,
-                'provider' => 'chapa',
+                // From the transaction, not hardcoded: a manual grant must not be
+                // labelled as Chapa, or the revenue split by provider is wrong.
+                // The column keeps its historical name because the unique index
+                // on it is what stops a double grant.
+                'provider' => $transaction->provider ?: MarketplacePaymentTransaction::PROVIDER_CHAPA,
             ]);
 
             $invoiceNumber = 'NF-'.now()->format('Ymd').'-'.strtoupper(Str::random(6));
