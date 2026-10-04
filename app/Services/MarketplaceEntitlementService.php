@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\FreightPostStatus;
+use App\Models\ContactReveal;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\MarketplaceSubscription;
@@ -136,6 +137,7 @@ class MarketplaceEntitlementService
             'interests_per_week', 'interests_per_month', 'free_interests_per_week' => 'free_interests_per_week',
             'contact_reveals_per_week', 'free_contact_reveals_per_week' => 'free_contact_reveals_per_week',
             'interest_window_days', 'free_interest_window_days' => 'free_interest_window_days',
+            'contact_reveal_window_days', 'free_contact_reveal_window_days' => 'free_contact_reveal_window_days',
             default => null,
         };
     }
@@ -231,6 +233,24 @@ class MarketplaceEntitlementService
         return (int) $window;
     }
 
+    /**
+     * The rolling window, in days, over which reveals count against the quota.
+     *
+     * Its own setting, never interest_window_days: that is how long an interest
+     * stays open, and coupling the two would make an unrelated admin change
+     * silently alter how often someone could look at a contact.
+     */
+    public function revealWindowDays(?Workspace $workspace): int
+    {
+        $window = $this->getLimitValue($workspace, 'contact_reveal_window_days');
+
+        if ($window === -1) {
+            return (int) config('marketplace.free_contact_reveal_window_days', 7);
+        }
+
+        return $window;
+    }
+
     public function canExpressInterest(?Workspace $workspace): bool
     {
         if (! $workspace) {
@@ -258,6 +278,24 @@ class MarketplaceEntitlementService
     }
 
     /**
+     * Distinct counterparties revealed inside the window, for every member of
+     * the workspace.
+     *
+     * Counts revealer/revealed pairs rather than ledger rows, because the
+     * ledger is keyed on the pair and a repeat cannot create a second row.
+     */
+    public function revealCount(?Workspace $workspace, int $days): int
+    {
+        if (! $workspace) {
+            return 0;
+        }
+
+        return ContactReveal::whereIn('revealer_id', $workspace->users()->pluck('users.id'))
+            ->where('created_at', '>=', now()->subDays($days))
+            ->count();
+    }
+
+    /**
      * @return array<string, array{label: string, count: int, limit: int, percentage: int, remaining: int}>
      */
     public function usageOverview(?Workspace $workspace): array
@@ -274,6 +312,8 @@ class MarketplaceEntitlementService
         $interestCount = $this->interestCount($workspace, $interestWindow);
 
         $revealLimit = $this->getLimitValue($workspace, 'contact_reveals_per_week');
+        $revealWindow = $this->revealWindowDays($workspace);
+        $revealCount = $this->revealCount($workspace, $revealWindow);
 
         $rows = [
             'active_freight_posts' => [
@@ -288,8 +328,8 @@ class MarketplaceEntitlementService
                 'limit' => $interestLimit,
             ],
             'contact_reveals_per_week' => [
-                'label' => 'Contact Reveals',
-                'count' => 0,
+                'label' => "Contact Reveals ({$revealWindow}d)",
+                'count' => $revealCount,
                 'limit' => $revealLimit,
             ],
         ];

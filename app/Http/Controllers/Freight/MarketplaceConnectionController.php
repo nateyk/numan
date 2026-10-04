@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ConnectionResource;
 use App\Models\FreightInterest;
 use App\Models\MarketplaceConnection;
+use App\Models\User;
 use App\Services\ContactRevealService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,22 +58,17 @@ class MarketplaceConnectionController extends Controller
 
         Gate::authorize('view', $connection);
 
-        $viewer = $request->user();
-        $counterparty = $viewer->id === $connection->consignor_user_id
-            ? $connection->transporter
-            : $connection->consignor;
-
-        // Accepting an interest creates the connection but does NOT reveal.
-        // Contact data is returned only by the explicit reveal endpoint, never
-        // in this page payload. Including it here would make page load an
-        // automatic reveal.
-        $canReveal = $counterparty !== null && $this->reveals->canReveal($viewer, $counterparty);
+        [$counterparty, $canReveal, $revealedContacts] = $this->counterpartyState($request->user(), $connection);
 
         return Inertia::render('connections/show', [
             'connection' => (new ConnectionResource($connection))->resolve(),
-            'contactDetails' => null,
+            // Present only once already revealed. Reading it never records a
+            // reveal, so loading this page cannot consume quota.
+            'revealedContacts' => $revealedContacts,
             'canReveal' => $canReveal,
-            'alreadyRevealed' => false,
+            'alreadyRevealed' => $revealedContacts !== null,
+            // Explicit columns only. The raw User model would carry its email
+            // address and its profile's phone number straight into the page.
             'counterparty' => $counterparty ? [
                 'id' => (int) $counterparty->id,
                 'display_name' => $counterparty->profile?->display_name ?? $counterparty->name,
@@ -81,10 +78,7 @@ class MarketplaceConnectionController extends Controller
     }
 
     /**
-     * The explicit reveal action.
-     *
-     * Unmetered in 4a. Requires a live interest or an existing connection
-     * between the two users; anyone else gets a 403.
+     * The explicit, metered reveal action.
      */
     public function reveal(Request $request, string $public_id): RedirectResponse|JsonResponse
     {
@@ -96,7 +90,7 @@ class MarketplaceConnectionController extends Controller
             ? $connection->transporter
             : $connection->consignor;
 
-        if (! $counterparty || ! $this->reveals->canReveal($viewer, $counterparty)) {
+        if (! $counterparty) {
             abort(403);
         }
 
@@ -104,17 +98,7 @@ class MarketplaceConnectionController extends Controller
             return $missing;
         }
 
-        $contactDetails = $this->reveals->contactDetailsFor($viewer, $counterparty, $connection);
-
-        if (! $contactDetails) {
-            return back()->withErrors(['contact' => 'No contact details are on file for this user.']);
-        }
-
-        if ($request->wantsJson()) {
-            return response()->json(['contact' => $contactDetails]);
-        }
-
-        return back()->with('revealed_contact', $contactDetails);
+        return $this->performReveal($request, $viewer, $counterparty, $connection);
     }
 
     /**
@@ -135,7 +119,7 @@ class MarketplaceConnectionController extends Controller
             ? $interest->freightPost?->user
             : $interest->user;
 
-        if (! $counterparty || ! $this->reveals->canReveal($viewer, $counterparty)) {
+        if (! $counterparty) {
             abort(403);
         }
 
@@ -143,17 +127,79 @@ class MarketplaceConnectionController extends Controller
             return $missing;
         }
 
-        $contactDetails = $this->reveals->contactDetailsFor($viewer, $counterparty, $interest);
+        return $this->performReveal($request, $viewer, $counterparty, $interest);
+    }
 
-        if (! $contactDetails) {
-            return back()->withErrors(['contact' => 'No contact details are on file for this user.']);
+    /**
+     * Run the metered reveal and shape the response.
+     *
+     * A blocked result carries no contact keys at all — not a null phone, not
+     * an empty object — plus the numbers and somewhere to go next.
+     */
+    private function performReveal(
+        Request $request,
+        User $viewer,
+        User $counterparty,
+        ?Model $context,
+    ): RedirectResponse|JsonResponse {
+        $outcome = $this->reveals->reveal($viewer, $counterparty, $context);
+
+        if ($outcome['status'] === 'blocked') {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'blocked' => true,
+                    'message' => "You have used all {$outcome['limit']} contact reveals in the last {$outcome['window_days']} days.",
+                    'limit' => $outcome['limit'],
+                    'used' => $outcome['used'],
+                    'window_days' => $outcome['window_days'],
+                    'subscribe_url' => route('billing.plans'),
+                ], 402);
+            }
+
+            return back()
+                ->with('reveal_blocked', [
+                    'limit' => $outcome['limit'],
+                    'used' => $outcome['used'],
+                    'window_days' => $outcome['window_days'],
+                ])
+                ->withErrors(['contact' => 'You have used all your contact reveals for now.']);
         }
 
         if ($request->wantsJson()) {
-            return response()->json(['contact' => $contactDetails]);
+            return response()->json([
+                'contact' => $outcome['contact'],
+                'status' => $outcome['status'],
+                'remaining' => $outcome['remaining'],
+                'limit' => $outcome['limit'],
+                'window_days' => $outcome['window_days'],
+            ]);
         }
 
-        return back()->with('revealed_contact', $contactDetails);
+        return back()->with('revealed_contact', $outcome['contact']);
+    }
+
+    /**
+     * The counterparty, whether a reveal is possible, and the contact if it has
+     * already been revealed.
+     *
+     * @return array{0: ?User, 1: bool, 2: ?array<string, string|null>}
+     */
+    private function counterpartyState(User $viewer, MarketplaceConnection $connection): array
+    {
+        $counterparty = $viewer->id === $connection->consignor_user_id
+            ? $connection->transporter
+            : $connection->consignor;
+
+        if (! $counterparty) {
+            return [null, false, null];
+        }
+
+        $canReveal = $this->reveals->canReveal($viewer, $counterparty);
+        $contact = $canReveal
+            ? $this->reveals->contactIfAlreadyRevealed($viewer, $counterparty, $connection)
+            : null;
+
+        return [$counterparty, $canReveal, $contact];
     }
 
     /**
@@ -180,18 +226,5 @@ class MarketplaceConnectionController extends Controller
             ->with('requires_phone', true)
             ->with('requires_phone_reason', 'revealing a contact')
             ->withErrors(['contact' => 'Add your phone number to continue.']);
-    }
-
-    /**
-     * Whether this viewer has already revealed this counterparty.
-     *
-     * There is no ledger yet, so a reveal cannot be remembered across page
-     * loads. "Already revealed, shown again without a new action" arrives with
-     * the contact_reveals ledger in 4b. Until then the page always offers the
-     * button and never inlines contact data.
-     */
-    private function wasRevealed(MarketplaceConnection $connection, $user): bool
-    {
-        return false;
     }
 }

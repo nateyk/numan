@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\ContactReveal;
+use App\Models\ContactRevealBlock;
 use App\Models\FreightInterest;
 use App\Models\MarketplaceConnection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -19,6 +23,10 @@ use Illuminate\Support\Facades\Schema;
  */
 class ContactRevealService
 {
+    public function __construct(
+        protected MarketplaceEntitlementService $entitlements,
+    ) {}
+
     /**
      * Interest statuses that do not entitle either party to contact details.
      *
@@ -82,6 +90,177 @@ class ContactRevealService
 
         return $this->hasConnection($viewer->id, $counterparty->id)
             || $this->hasLiveInterest($viewer->id, $counterparty->id);
+    }
+
+    /**
+     * The metered reveal.
+     *
+     * Three outcomes:
+     *   already  — the pair is in the ledger, so this costs nothing and the
+     *              contact is returned
+     *   allowed  — inside the quota, so a ledger row is written and the contact
+     *              is returned
+     *   blocked  — quota exhausted, a block row is recorded and NO contact data
+     *              of any kind is returned
+     *
+     * The check and the insert share one transaction. Note that lockForUpdate
+     * is a no-op on SQLite — the tests run on SQLite — so under concurrent
+     * requests the guarantee comes from the unique (revealer_id, revealed_id)
+     * key rather than from the lock: the second insert fails on the index and
+     * is treated as "already revealed", which is the correct outcome anyway
+     * because both requests were for the same pair.
+     *
+     * @return array{status: 'already'|'allowed'|'blocked', contact: array<string, string|null>|null, limit: int, used: int, remaining: int, window_days: int}
+     */
+    public function reveal(User $viewer, User $counterparty, ?Model $context = null): array
+    {
+        if ($viewer->id === $counterparty->id) {
+            // Revealing yourself is not a metering event.
+            return $this->result('allowed', $this->contactDetailsFor($viewer, $counterparty, $context), -1, 0, -1, 0);
+        }
+
+        if (! $this->canReveal($viewer, $counterparty)) {
+            abort(403);
+        }
+
+        $workspace = $viewer->currentWorkspace;
+        $limit = $this->entitlements->getLimitValue($workspace, 'contact_reveals_per_week');
+        $windowDays = $this->entitlements->revealWindowDays($workspace);
+
+        $contextIds = $this->contextIds($context);
+
+        $outcome = DB::transaction(function () use ($viewer, $counterparty, $windowDays, $limit, $contextIds): array {
+            // Re-revealing a partner is free, forever. Checked first and inside
+            // the transaction so it cannot race with the quota check below.
+            $existing = ContactReveal::query()
+                ->where('revealer_id', $viewer->id)
+                ->where('revealed_id', $counterparty->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing !== null) {
+                return ['status' => 'already'];
+            }
+
+            if ($limit !== -1) {
+                $used = ContactReveal::query()
+                    ->where('revealer_id', $viewer->id)
+                    ->where('created_at', '>=', now()->subDays($windowDays))
+                    ->count();
+
+                if ($used >= $limit) {
+                    ContactRevealBlock::create(array_merge($contextIds, [
+                        'user_id' => $viewer->id,
+                        'revealed_id' => $counterparty->id,
+                        'limit_at_time' => $limit,
+                    ]));
+
+                    return ['status' => 'blocked', 'used' => $used];
+                }
+            }
+
+            try {
+                ContactReveal::create(array_merge($contextIds, [
+                    'revealer_id' => $viewer->id,
+                    'revealed_id' => $counterparty->id,
+                ]));
+            } catch (UniqueConstraintViolationException) {
+                // Lost the race against a concurrent reveal of the same pair.
+                // Both requests wanted the same thing, so honour it.
+                return ['status' => 'already'];
+            }
+
+            return ['status' => 'allowed'];
+        });
+
+        if ($outcome['status'] === 'blocked') {
+            return $this->result('blocked', null, $limit, $outcome['used'], 0, $windowDays);
+        }
+
+        $contact = $this->contactDetailsFor($viewer, $counterparty, $context);
+
+        $used = $outcome['status'] === 'already'
+            ? $this->usedInWindow($viewer, $windowDays)
+            : $this->usedInWindow($viewer, $windowDays);
+
+        $remaining = $limit === -1 ? -1 : max(0, $limit - $used);
+
+        return $this->result($outcome['status'], $contact, $limit, $used, $remaining, $windowDays);
+    }
+
+    /**
+     * Has this viewer already revealed this user? Used by page loads so a
+     * contact stays on screen without another action.
+     */
+    public function hasRevealed(User $viewer, User $counterparty): bool
+    {
+        return ContactReveal::hasPair($viewer->id, $counterparty->id);
+    }
+
+    /**
+     * The contact for a counterparty if it has already been revealed, else null.
+     *
+     * This is what makes a page load safe to serve the contact on: it never
+     * records a reveal, so simply visiting a page cannot consume quota.
+     */
+    public function contactIfAlreadyRevealed(User $viewer, User $counterparty, ?Model $context = null): ?array
+    {
+        if ($viewer->id === $counterparty->id) {
+            return $this->contactDetailsFor($viewer, $counterparty, $context);
+        }
+
+        if (! $this->hasRevealed($viewer, $counterparty)) {
+            return null;
+        }
+
+        return $this->contactDetailsFor($viewer, $counterparty, $context);
+    }
+
+    /**
+     * Split the reveal/interest/connection ids out of the context model.
+     *
+     * @return array<string, int|null>
+     */
+    private function contextIds(?Model $context): array
+    {
+        $ids = [
+            'freight_post_id' => null,
+            'interest_id' => null,
+            'connection_id' => null,
+        ];
+
+        if ($context instanceof FreightInterest) {
+            $ids['interest_id'] = (int) $context->id;
+            $ids['freight_post_id'] = (int) $context->freight_post_id;
+        } elseif ($context instanceof MarketplaceConnection) {
+            $ids['connection_id'] = (int) $context->id;
+            $ids['freight_post_id'] = (int) $context->freight_post_id;
+        }
+
+        return $ids;
+    }
+
+    private function usedInWindow(User $viewer, int $windowDays): int
+    {
+        return ContactReveal::query()
+            ->where('revealer_id', $viewer->id)
+            ->where('created_at', '>=', now()->subDays($windowDays))
+            ->count();
+    }
+
+    /**
+     * @return array{status: string, contact: array<string, string|null>|null, limit: int, used: int, remaining: int, window_days: int}
+     */
+    private function result(string $status, ?array $contact, int $limit, int $used, int $remaining, int $windowDays): array
+    {
+        return [
+            'status' => $status,
+            'contact' => $contact,
+            'limit' => $limit,
+            'used' => $used,
+            'remaining' => $remaining,
+            'window_days' => $windowDays,
+        ];
     }
 
     /**

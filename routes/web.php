@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\MailTemplateController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\MarketplacePaymentController;
 use App\Http\Controllers\Admin\MarketplacePlanController;
+use App\Http\Controllers\Admin\MarketplaceRevealAnalyticsController;
 use App\Http\Controllers\Admin\MarketplaceSettingController;
 use App\Http\Controllers\Admin\NotificationAnalyticsController;
 use App\Http\Controllers\Admin\OnboardingInsightsController;
@@ -661,6 +662,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
         });
 
         // Marketplace Plans & Payments (admin)
+        Route::get('/marketplace-reveals', [MarketplaceRevealAnalyticsController::class, 'index'])->name('marketplace-reveals.index');
         Route::get('/marketplace-plans', [MarketplacePlanController::class, 'index'])->name('marketplace-plans.index');
         Route::post('/marketplace-plans', [MarketplacePlanController::class, 'store'])->name('marketplace-plans.store');
         Route::put('/marketplace-plans/{marketplacePlan}', [MarketplacePlanController::class, 'update'])->name('marketplace-plans.update');

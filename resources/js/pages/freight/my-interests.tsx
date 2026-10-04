@@ -26,6 +26,7 @@ interface Props {
     links?: Array<{ url: string | null; label: string; active: boolean }>;
     canReveal?: Record<string, boolean>;
     revealedContacts?: Record<string, { name: string; phone: string | null; email: string | null; whatsapp: string | null }>;
+    reveal_blocked?: { limit: number; used: number; window_days: number } | null;
     sort: string;
     counts: Record<string, number>;
 }
@@ -44,7 +45,7 @@ const statusColor = (status: string) => {
     }
 };
 
-export default function MyInterests({ interests, links, canReveal, revealedContacts, sort, counts }: Props) {
+export default function MyInterests({ interests, links, canReveal, revealedContacts, reveal_blocked, sort, counts }: Props) {
     const safeCounts = (counts && typeof counts === 'object' && !Array.isArray(counts) ? counts : {}) as Record<string, number>;
     const safeSort = typeof sort === 'string' && sort ? sort : 'latest';
     const interestData = Array.isArray(interests) ? interests : [];
@@ -59,6 +60,20 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                 </div>
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    {reveal_blocked && (
+                        <div className="flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
+                            <p className="text-sm">
+                                You have used all {reveal_blocked.limit} contact reveals in the last{' '}
+                                {reveal_blocked.window_days} days. Subscribing makes them unlimited.
+                            </p>
+                            <div>
+                                <Button size="sm" asChild>
+                                    <Link href="/billing/plans">Subscribe for unlimited reveals</Link>
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex flex-wrap gap-2">
                         <Badge variant="secondary" className="px-2.5 py-1">All: {safeCounts.all ?? interestData.length}</Badge>
                         <Badge variant="outline" className={statusColor('submitted')}>Submitted: {safeCounts.submitted ?? 0}</Badge>

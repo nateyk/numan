@@ -121,6 +121,15 @@ class HandleInertiaRequests extends Middleware
             // rather than blocking them.
             'requires_phone' => (bool) $request->session()->get('requires_phone', false),
             'requires_phone_reason' => $request->session()->get('requires_phone_reason'),
+
+            // Set when a contact reveal was refused for quota. Carries only the
+            // numbers needed to explain it -- never any contact data, because
+            // there is none to give.
+            'reveal_blocked' => $request->session()->get('reveal_blocked'),
+
+            // The contact released by the action the user just took, so it
+            // survives the redirect back.
+            'revealed_contact' => $request->session()->get('revealed_contact'),
             'announcement' => Announcement::currentlyActive()->latest()->first()?->only('id', 'title', 'body', 'type', 'link_text', 'link_url', 'is_dismissible'),
             'seo' => fn () => SeoMetadata::forPath($request->path())?->only('title', 'description', 'keywords', 'og_title', 'og_description', 'og_image', 'og_type', 'twitter_card', 'twitter_site', 'twitter_creator', 'twitter_image'),
             'features' => FeatureService::forFrontend(),

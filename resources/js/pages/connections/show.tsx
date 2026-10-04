@@ -34,23 +34,27 @@ interface Counterparty {
 
 interface Props {
     connection: Connection;
-    contactDetails: ContactDetails | null;
     canReveal: boolean;
     alreadyRevealed: boolean;
     counterparty: Counterparty | null;
+    // Included only once the reveal has already happened, so a later page load
+    // shows the contact without another action.
+    revealedContacts?: ContactDetails | null;
+    // Flash from the reveal action, so a fresh reveal survives the redirect.
     revealed_contact?: ContactDetails | null;
+    reveal_blocked?: { limit: number; used: number; window_days: number } | null;
 }
 
 export default function ConnectionShow({
     connection,
-    contactDetails,
     canReveal,
     alreadyRevealed,
     counterparty,
+    revealedContacts,
     revealed_contact,
+    reveal_blocked,
 }: Props) {
-    // Flash from the reveal action, so the details survive the redirect back.
-    const contact = contactDetails ?? revealed_contact ?? null;
+    const contact = revealedContacts ?? revealed_contact ?? null;
 
     return (
         <AppLayout>
@@ -102,6 +106,16 @@ export default function ConnectionShow({
                         {contact.phone && <div>Phone: {contact.phone}</div>}
                         {contact.whatsapp && <div>WhatsApp: {contact.whatsapp}</div>}
                         {contact.email && <div>Email: {contact.email}</div>}
+                    </div>
+                ) : reveal_blocked ? (
+                    <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
+                        <p className="text-sm">
+                            You have used all {reveal_blocked.limit} contact reveals in the
+                            last {reveal_blocked.window_days} days.
+                        </p>
+                        <Button asChild>
+                            <Link href="/billing/plans">Subscribe for unlimited reveals</Link>
+                        </Button>
                     </div>
                 ) : canReveal ? (
                     <div className="space-y-2 rounded-md border p-4">

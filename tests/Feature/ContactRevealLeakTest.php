@@ -302,7 +302,9 @@ it('leak 5: the connection page carries no contact data before reveal', function
 
     $response->assertOk();
     assertPayloadOmits($response, transporterStrings());
-    expect($response->viewData('page')['props']['contactDetails'])->toBeNull();
+    // Nothing contact-shaped in the payload at all before a reveal.
+    expect($response->viewData('page')['props']['revealedContacts'])->toBeNull();
+    expect($response->viewData('page')['props']['alreadyRevealed'])->toBeFalse();
 });
 
 it('leak 5b: the connection index carries no contact data', function () {

@@ -9,31 +9,55 @@ use Throwable;
 class MarketplaceSettingsService
 {
     /**
-     * All admin-editable Free limits, keyed by setting name.
+     * Every admin-editable Free setting, keyed by setting name.
+     *
+     * The union of the free_limits quotas and the free_settings periods. The
+     * reveal window is a period rather than a quota, so it lives outside
+     * free_limits — but it is still admin-editable and still stored here, so it
+     * has to be included explicitly or its row would be read but never written
+     * back, and an admin change to it would silently do nothing.
      *
      * @return array<string, int>
      */
     public function all(): array
     {
-        $defaults = config('marketplace.free_limits', []);
+        $defaults = $this->defaults();
 
         if (! Schema::hasTable('marketplace_settings')) {
-            return array_map('intval', $defaults);
+            return $defaults;
         }
 
         try {
             $rows = MarketplaceSetting::query()->pluck('value', 'key');
         } catch (Throwable) {
-            return array_map('intval', $defaults);
+            return $defaults;
         }
 
         $settings = [];
 
         foreach ($defaults as $key => $default) {
-            $settings[$key] = $rows->has($key) ? (int) $rows->get($key) : (int) $default;
+            $settings[$key] = $rows->has($key) ? (int) $rows->get($key) : $default;
         }
 
         return $settings;
+    }
+
+    /**
+     * The config fallback for every editable setting.
+     *
+     * @return array<string, int>
+     */
+    private function defaults(): array
+    {
+        $limits = array_map('intval', config('marketplace.free_limits', []));
+
+        $periods = [];
+
+        foreach ((array) config('marketplace.free_settings', []) as $key) {
+            $periods[$key] = (int) config('marketplace.'.$key);
+        }
+
+        return array_merge($limits, $periods);
     }
 
     public function get(string $key): int

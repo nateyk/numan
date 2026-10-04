@@ -55,6 +55,53 @@ The DDEV scheduler runs `schedule:work` continuously. Before this flag existed,
 the hourly command ran unattended against the development database and flipped
 the demo subscription to `expired`. The flag prevents that recurring.
 
+## Contact reveal — run the backfill before enabling metering
+
+Contact reveals are metered against a ledger, `contact_reveals`. A pair being
+present in that ledger is what makes a re-reveal free.
+
+The table is new, so it starts empty. Without a backfill, everyone who already
+had a counterparty's contact — because they had accepted an interest, and the old
+accept flow released it — would find themselves locked out of a number they
+already had. That is a regression dressed as a feature.
+
+```bash
+# 1. migrate
+php artisan migrate --force
+
+# 2. inspect
+php artisan marketplace:backfill-contact-reveals --dry-run
+
+# 3. seed
+php artisan marketplace:backfill-contact-reveals
+```
+
+The command is idempotent: the unique `(revealer_id, revealed_id)` key means a
+pair that already exists is skipped rather than duplicated, so running it twice
+writes nothing the second time.
+
+Backfilled rows carry the **original** relationship's `created_at`, not the time
+of the backfill. A reveal written today would consume quota for a window that has
+already partly elapsed; a reveal written at the moment the connection was made
+does not. So the backfill adds no quota pressure on anybody.
+
+### Order of operations
+
+The backfill must run before any paid subscriber uses a reveal. It is safe to
+run at any point after the migration, and safe to run again later, but a paying
+user who reveals a partner before the backfill records that pair will have it
+counted against their weekly limit.
+
+### Verifying
+
+```bash
+php artisan tinker --execute="echo DB::table('contact_reveals')->count();"
+php artisan tinker --execute="echo DB::table('contact_reveals')->whereDate('created_at', now()->toDateString())->count();"
+```
+
+The second number should be `0` immediately after a backfill of historical
+relationships. Anything else means rows were written with the current timestamp.
+
 ## Scheduler requirement
 
 The scheduler only runs if something invokes it. On a server that means cron:

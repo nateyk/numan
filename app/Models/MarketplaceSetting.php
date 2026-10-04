@@ -20,7 +20,17 @@ class MarketplaceSetting extends Model
 
     public static function defaultFor(string $key): int
     {
-        return (int) (config('marketplace.free_limits.'.$key) ?? -1);
+        // The reveal window lives at the top level of the config rather than
+        // inside free_limits, because it is a period rather than a quota.
+        $fallback = config('marketplace.'.$key);
+
+        if (is_int($fallback)) {
+            return $fallback;
+        }
+
+        $limit = config('marketplace.free_limits.'.$key);
+
+        return is_int($limit) ? $limit : -1;
     }
 
     /**

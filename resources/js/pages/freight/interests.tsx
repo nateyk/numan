@@ -37,6 +37,13 @@ interface FreightPost {
     destinationLocation?: { name: string; region_name: string } | null;
     destination_location?: { name: string; region_name: string } | null;
     cargo_description: string | null;
+    item_name: string | null;
+}
+
+interface BlockedReveal {
+    limit: number;
+    used: number;
+    window_days: number;
 }
 
 interface Props {
@@ -45,6 +52,7 @@ interface Props {
     links?: Array<{ url: string | null; label: string; active: boolean }>;
     canReveal?: Record<string, boolean>;
     revealedContacts?: Record<string, RevealedContact>;
+    reveal_blocked?: BlockedReveal | null;
     post: FreightPost;
 }
 
@@ -62,7 +70,7 @@ const statusColor = (status: string) => {
     }
 };
 
-export default function FreightInterests({ interests, links, canReveal, revealedContacts, post }: Props) {
+export default function FreightInterests({ interests, links, canReveal, revealedContacts, reveal_blocked, post }: Props) {
     const origin = (post as unknown as Record<string, unknown>).originLocation as FreightPost['originLocation'] ?? (post as unknown as Record<string, unknown>).origin_location as FreightPost['originLocation'];
     const destination = (post as unknown as Record<string, unknown>).destinationLocation as FreightPost['destinationLocation'] ?? (post as unknown as Record<string, unknown>).destination_location as FreightPost['destinationLocation'];
 
@@ -86,6 +94,20 @@ export default function FreightInterests({ interests, links, canReveal, revealed
                         <p className="text-sm text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.item_name ?? 'General cargo'} • {counts.all} total</p>
                     </div>
                 </div>
+
+                {reveal_blocked && (
+                    <div className="flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
+                        <p className="text-sm">
+                            You have used all {reveal_blocked.limit} contact reveals in the last{' '}
+                            {reveal_blocked.window_days} days. Subscribing makes them unlimited.
+                        </p>
+                        <div>
+                            <Button size="sm" asChild>
+                                <Link href="/billing/plans">Subscribe for unlimited reveals</Link>
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="px-2.5 py-1">All: {counts.all}</Badge>

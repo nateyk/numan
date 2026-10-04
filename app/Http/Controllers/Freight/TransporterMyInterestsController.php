@@ -53,11 +53,22 @@ class TransporterMyInterestsController extends Controller
         $viewer = $request->user();
 
         $canReveal = [];
+        $revealedContacts = [];
 
         foreach ($interests->getCollection() as $interest) {
             $consignor = $interest->freightPost?->user;
             $canReveal[$interest->id] = $consignor !== null
                 && $revealService->canReveal($viewer, $consignor);
+
+            if ($consignor === null) {
+                continue;
+            }
+
+            $contact = $revealService->contactIfAlreadyRevealed($viewer, $consignor, $interest);
+
+            if ($contact !== null) {
+                $revealedContacts[$interest->id] = $contact;
+            }
         }
 
         return Inertia::render('freight/my-interests', [
@@ -65,6 +76,7 @@ class TransporterMyInterestsController extends Controller
             'total' => $interests->total(),
             'links' => $interests->links(),
             'canReveal' => $canReveal,
+            'revealedContacts' => $revealedContacts,
             'sort' => $sort,
             'counts' => $counts,
         ]);

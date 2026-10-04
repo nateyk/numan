@@ -452,11 +452,15 @@ $entitlementService->consume($user, 'new_posts_this_month'); // atomic
 
 - requires a real relationship first — a live interest (not `rejected`/`withdrawn`) or an existing connection between the two users. Anyone else gets a 403.
 - reads phone/email/whatsapp from the user's **profile** and **transporter profile**, never from per-interest fields. The transporter's own `phone_visible` / `email_visible` / `whatsapp_visible` flags still apply.
-- counts once per `(revealer, revealed)` user pair against the plan limit `contact_reveals_per_week`, over a rolling window of `free_contact_reveal_window_days`. Re-revealing a partner you have already revealed is free and unlimited — that pairing is recorded permanently in the `contact_reveals` ledger.
+- counts once per `(revealer, revealed)` user pair against the plan limit `contact_reveals_per_week`, over a rolling window of `free_contact_reveal_window_days` — deliberately **not** `interest_window_days`, since that is how long an interest stays open and coupling them would let an unrelated admin change silently alter reveal frequency. Re-revealing a partner you have already revealed is free and unlimited — that pairing is recorded permanently in the `contact_reveals` ledger.
 - is unlimited (`-1`) for an active paid subscription.
+- requires the **viewer** to have a phone number on their own profile, because a reveal hands over a number and a phone-less viewer could never be called back. This is an inline one-field step, never a hard block.
+- returns the contact on every later page load once revealed, so nobody has to press the button twice. Reading it never records a reveal, so simply visiting a page cannot consume quota.
 - must not leak through any other surface. Every public and counterparty-facing page uses an explicit API resource, never a whole Eloquent model, so contact and bank columns cannot ride along under an unexpected key.
 
-**The Free cap is a product decision.** It is set by the admin in `marketplace_settings` (`contact_reveals_per_week`) with a config fallback, and is enforced on the backend: a blocked reveal returns no contact keys at all and a Subscribe link, never a partial or degraded payload.
+**The Free cap is a product decision.** It is set by the admin in `marketplace_settings` (`free_contact_reveals_per_week`, `free_contact_reveal_window_days`) with a config fallback, and is enforced on the backend: a blocked reveal returns no contact keys at all and a Subscribe link, never a partial or degraded payload.
+
+**Before enabling metering on a live database:** `php artisan migrate` then `php artisan marketplace:backfill-contact-reveals`. The ledger starts empty, so without the backfill people who already had a contact through an accepted interest would be locked out of it. Backfilled rows carry the original relationship's timestamp so they consume no fresh quota. The command is idempotent. See `docs/deploy-notes.md`.
 
 **Admin:** `AdminMarketplacePlanController` (create/edit/duplicate/archive/set-default) + `AdminMarketplaceSubscriptionController` (assign/cancel/suspend/restore) — permission `plans.manage`, `subscriptions.manage`.
 

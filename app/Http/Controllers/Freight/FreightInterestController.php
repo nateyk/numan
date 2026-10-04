@@ -46,19 +46,27 @@ class FreightInterestController extends Controller
         $revealService = app(ContactRevealService::class);
         $viewer = auth()->user();
 
-        // Tell the page which rows offer a reveal button, but never the
-        // contact data itself. That comes only from the explicit reveal
-        // endpoint.
+        // Tell the page which rows offer a reveal button, and include the
+        // contact only where it has already been revealed. Reading it never
+        // records a reveal, so loading this page cannot consume quota.
         $canReveal = [];
+        $revealedContacts = [];
 
         foreach ($interests as $interest) {
             $canReveal[$interest->id] = $revealService->canReveal($viewer, $interest->user);
+
+            $contact = $revealService->contactIfAlreadyRevealed($viewer, $interest->user, $interest);
+
+            if ($contact !== null) {
+                $revealedContacts[$interest->id] = $contact;
+            }
         }
 
         return Inertia::render('freight/interests', [
             'post' => (new FreightPostResource($post))->resolve(),
             'interests' => InterestResource::collection($interests)->resolve(),
             'canReveal' => $canReveal,
+            'revealedContacts' => $revealedContacts,
         ]);
     }
 
