@@ -73,7 +73,22 @@ return [
     'free_settings' => [
         'free_interest_window_days',
         'free_contact_reveal_window_days',
+        'free_manual_payment_expiry_days',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Manual payment expiry
+    |--------------------------------------------------------------------------
+    |
+    | How long an admin has to review a manual payment before it lapses. An
+    | expired request grants nothing and is never fulfilled; the payer has to
+    | start again. Deliberately generous, because a confirmation is a human
+    | decision and some of them take a week.
+    |
+    */
+
+    'free_manual_payment_expiry_days' => 14,
 
     /*
     |--------------------------------------------------------------------------

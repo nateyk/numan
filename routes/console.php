@@ -42,4 +42,8 @@ Schedule::command('chapa:reconcile')->everyFiveMinutes()->withoutOverlapping();
 //   MARKETPLACE_EXPIRY_ENABLED=true php artisan marketplace:expire-subscriptions
 if (config('marketplace.expiry_enabled')) {
     Schedule::command('marketplace:expire-subscriptions')->hourly()->withoutOverlapping();
+
+    // Daily rather than hourly: a request is reviewed by a human, so a shorter
+    // cadence would only re-examine the same queue more often.
+    Schedule::command('marketplace:expire-manual-payments')->dailyAt('03:30')->withoutOverlapping();
 }
