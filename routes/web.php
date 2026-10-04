@@ -69,6 +69,7 @@ use App\Http\Controllers\Marketplace\ChapaCallbackController;
 use App\Http\Controllers\Marketplace\ChapaWebhookController;
 use App\Http\Controllers\Marketplace\CheckoutController;
 use App\Http\Controllers\MemberActivityController;
+use App\Http\Controllers\MyTransporterDocumentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
 use App\Http\Controllers\OnboardingController;
@@ -334,6 +335,14 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::get('/my-transporter-profile', [TransporterProfileController::class, 'index'])->name('transporter.profile.index');
     Route::post('/my-transporter-profile', [TransporterProfileController::class, 'store'])->name('transporter.profile.store');
     Route::put('/my-transporter-profile', [TransporterProfileController::class, 'update'])->name('transporter.profile.update');
+
+    // A transporter downloading a document they uploaded themselves.
+    //
+    // Outside the admin group on purpose: this is self-service, and it
+    // authorises on ownership rather than on privilege. Without it the only
+    // route to a document sat behind the superadmin middleware, so the
+    // owner branch inside it was unreachable.
+    Route::get('/my-transporter-profile/documents/{document}/download', [MyTransporterDocumentController::class, 'download'])->name('transporter.documents.download');
     Route::get('/transporters', [TransporterProfileController::class, 'directory'])->name('transporters.index');
     Route::get('/transporters/{slug}', [TransporterProfileController::class, 'show'])->name('transporters.show');
 
@@ -646,7 +655,10 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
         });
 
         // Transporter Management (admin)
-        Route::controller(AdminTransporterController::class)->name('admin.transporters.')->group(function () {
+        //
+        // Named 'transporters.' not 'admin.transporters.': the enclosing group is
+        // already named 'admin.', which produced admin.admin.transporters.*.
+        Route::controller(AdminTransporterController::class)->name('transporters.')->group(function () {
             Route::get('/transporters', 'index')->name('index');
             Route::get('/transporters/{transporterProfile}', 'show')->name('show');
             Route::patch('/transporters/{transporterProfile}/moderate', 'moderate')->name('moderate');

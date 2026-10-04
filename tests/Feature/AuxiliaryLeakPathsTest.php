@@ -314,7 +314,7 @@ it('an unauthenticated request for a document download never serves the file', f
         'status' => 'pending',
     ]);
 
-    $response = $this->get(route('admin.admin.transporters.documents.download', ['document' => $document->id]));
+    $response = $this->get(route('admin.transporters.documents.download', ['document' => $document->id]));
 
     // Redirected to login. Never the file itself.
     $response->assertRedirect(route('login'));
@@ -344,7 +344,7 @@ it('a signed-in non-owner cannot download a document', function () {
     $other = auditViewer();
 
     $this->actingAs($other)
-        ->get(route('admin.admin.transporters.documents.download', ['document' => $document->id]))
+        ->get(route('admin.transporters.documents.download', ['document' => $document->id]))
         ->assertForbidden();
 });
 
@@ -374,7 +374,7 @@ it('a superadmin can download a document', function () {
     Storage::disk('local')->put($document->stored_path, 'secret document bytes');
 
     $this->actingAs($owner)
-        ->get(route('admin.admin.transporters.documents.download', ['document' => $document->id]))
+        ->get(route('admin.transporters.documents.download', ['document' => $document->id]))
         ->assertOk();
 });
 
@@ -401,7 +401,7 @@ it('a non-superadmin owner cannot download their own document', function () {
     ]);
 
     $this->actingAs($owner)
-        ->get(route('admin.admin.transporters.documents.download', ['document' => $document->id]))
+        ->get(route('admin.transporters.documents.download', ['document' => $document->id]))
         ->assertForbidden();
 });
 
@@ -412,11 +412,11 @@ it('a normal user cannot reach the admin transporter pages', function () {
     auditStranger();
 
     $this->actingAs($user)
-        ->get(route('admin.admin.transporters.index'))
+        ->get(route('admin.transporters.index'))
         ->assertForbidden();
 
     $this->actingAs($user)
-        ->get(route('admin.admin.transporters.show', [
+        ->get(route('admin.transporters.show', [
             'transporterProfile' => TransporterProfile::where('display_name', 'Audit Stranger')->first()->id,
         ]))
         ->assertForbidden();

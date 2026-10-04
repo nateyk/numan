@@ -8,9 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\TransporterDocument;
 use App\Models\TransporterProfile;
 use App\Models\TransporterProfileModeration;
+use App\Services\TransporterDocumentStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,6 +19,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AdminTransporterController extends Controller
 {
+    public function __construct(
+        protected TransporterDocumentStorage $documents,
+    ) {}
+
     public function index(Request $request): Response
     {
         $status = $request->input('status', 'all');
@@ -159,27 +164,13 @@ class AdminTransporterController extends Controller
     {
         $profile = $document->profile;
 
-        // Policy check: only owner or admin can download
-        if ($request->user()->id !== $profile->user_id && ! $request->user()->is_superadmin) {
-            abort(403);
-        }
+        abort_unless($profile !== null, 404);
 
-        if (! Storage::disk('local')->exists($document->stored_path)) {
-            return back()->withErrors(['document' => 'File not found.']);
-        }
+        Gate::forUser($request->user())->authorize('downloadDocument', $profile);
 
-        $safeName = $this->sanitizeFilename($document->original_name);
-
-        return response()->download(Storage::disk('local')->path($document->stored_path), $safeName);
-    }
-
-    private function sanitizeFilename(string $name): string
-    {
-        // Prevent formula injection if filename is used in CSV exports elsewhere
-        if (preg_match('/^[=+\-@]/', $name)) {
-            return "'".$name;
-        }
-
-        return $name;
+        // Same disk, same path handling as the upload, via one service. These
+        // two used to disagree: uploads wrote to disk('private') and downloads
+        // read from disk('local'), and 'private' was not a configured disk.
+        return $this->documents->download($document);
     }
 }

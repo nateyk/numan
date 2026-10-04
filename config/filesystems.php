@@ -30,6 +30,27 @@ return [
 
     'disks' => [
 
+        /*
+        | Documents, licences and identity files.
+        |
+        | Explicitly NOT tied to FILESYSTEM_DISK. Avatars and logos belong on a
+        | public disk because a browser fetches them directly; a transporter's
+        | licence must never be. If the two shared a disk, one env var could
+        | move identity documents onto a web-served path, and the failure would
+        | be silent.
+        |
+        | There is deliberately no 'url' and no 'visibility', so a direct link
+        | to a file on this disk cannot be constructed at all. Every read goes
+        | through an authorised controller.
+        */
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
