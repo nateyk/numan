@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2, Eye, RotateCcw, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,7 +54,21 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
     const [reason, setReason] = useState('');
     const [reasonError, setReasonError] = useState<string | null>(null);
 
+    // Which row has a request in flight, if any. Drives the disabled state.
+    const [submitting, setSubmitting] = useState<number | null>(null);
+
+    // The same guard for the instant before React re-renders. State alone is not
+    // enough: two clicks inside one tick both see submitting === null, because
+    // the re-render has not happened yet. A ref flips synchronously.
+    const inFlight = useRef(false);
+
     const act = (url: string, payload: Record<string, string> = {}) => {
+        if (inFlight.current) return;
+        inFlight.current = true;
+
+        const rowId = Number(url.split('/').pop());
+        setSubmitting(Number.isNaN(rowId) ? -1 : rowId);
+
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = url;
@@ -92,6 +106,11 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
             manual_rejection_reason: reason,
         });
     };
+
+    // One decision per page load. Until the POST navigates, every action button
+    // is closed. The server is idempotent anyway -- this stops an admin finding
+    // out by submitting twice, not by seeing a duplicate grant.
+    const busy = submitting !== null;
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -161,7 +180,7 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                                         )}
                                         <Button
                                             size="sm"
-                                            disabled={!row.can_confirm}
+                                            disabled={!row.can_confirm || busy}
                                             onClick={() => setConfirming(row)}
                                         >
                                             <CheckCircle2 className="size-3.5" /> Confirm
@@ -169,7 +188,7 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            disabled={!row.can_reject}
+                                            disabled={!row.can_reject || busy}
                                             onClick={() => {
                                                 setRejecting(row);
                                                 setReason('');
@@ -241,6 +260,7 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                                         <Button
                                             size="sm"
                                             variant="outline"
+                                            disabled={busy}
                                             onClick={() =>
                                                 act(`/admin/marketplace-manual-payments/${row.id}/reopen`)
                                             }
@@ -290,16 +310,18 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                     )}
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setConfirming(null)}>
+                        <Button variant="outline" disabled={busy} onClick={() => setConfirming(null)}>
                             Cancel
                         </Button>
                         <Button
+                            disabled={busy}
                             onClick={() => {
                                 if (!confirming) return;
                                 act(`/admin/marketplace-manual-payments/${confirming.id}/confirm`);
                             }}
                         >
-                            <CheckCircle2 className="size-4" /> Confirm and activate
+                            <CheckCircle2 className="size-4" />
+                            {submitting === confirming?.id ? 'Confirming\u2026' : 'Confirm and activate'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -328,11 +350,11 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setRejecting(null)}>
+                        <Button variant="outline" disabled={busy} onClick={() => setRejecting(null)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={submitReject}>
-                            Reject and notify
+                        <Button variant="destructive" disabled={busy} onClick={submitReject}>
+                            {submitting === rejecting?.id ? 'Rejecting\u2026' : 'Reject and notify'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
