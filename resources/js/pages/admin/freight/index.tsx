@@ -1,22 +1,19 @@
 import { Head, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/layouts/admin-layout';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { DataTable } from '@/components/freight/freight-data-table';
+import { freightColumns, type FreightPost } from '@/components/freight/freight-columns';
 import { useState } from 'react';
 
-interface Freight {
-    ulid: string;
-    status: string;
-    cargo_description: string | null;
-    pickup_date: string | null;
-    user?: { name: string; email: string };
-    originLocation?: { name: string };
-    destinationLocation?: { name: string };
-}
-
 interface Props {
-    posts: { data: Freight[]; links: Array<{ url: string | null; label: string; active: boolean }>; total: number };
+    posts: { data: FreightPost[]; links: Array<{ url: string | null; label: string; active: boolean }>; total: number };
     filters: { status: string; search?: string | null };
     counts: Record<string, number>;
 }
@@ -53,17 +50,7 @@ export default function AdminFreightIndex({ posts, filters, counts }: Props) {
                 {posts.data.length === 0 ? (
                     <div className="rounded-md border p-12 text-center text-muted-foreground">No freight in this queue.</div>
                 ) : (
-                    <div className="space-y-2">
-                        {posts.data.map((p) => (
-                            <Link key={p.ulid} href={`/admin/freight/${p.ulid}`} className="flex items-center justify-between rounded-md border p-3 hover:bg-muted/50">
-                                <div>
-                                    <div className="font-medium">{p.originLocation?.name ?? '—'} → {p.destinationLocation?.name ?? '—'}</div>
-                                    <div className="text-sm text-muted-foreground">{p.user?.name ?? '—'} • {p.cargo_description ?? '—'}</div>
-                                </div>
-                                <Badge>{p.status}</Badge>
-                            </Link>
-                        ))}
-                    </div>
+                    <DataTable columns={freightColumns} data={posts.data} />
                 )}
             </div>
         </AdminLayout>
