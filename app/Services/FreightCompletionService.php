@@ -23,9 +23,9 @@ class FreightCompletionService
             $score += 10;
         }
 
-        // Cargo & Load 20% — cargo_type/description 10 + item/weight/tariff 10
-        $hasCargo = ! empty($post->cargo_type_id) || ! empty($post->cargo_description);
-        $hasLoad = ! empty($post->item_name) || ! empty($post->actual_weight) || ! empty($post->tariff_amount);
+        // Cargo & Load 20% — cargo_type/item_name 10 + weight/tariff 10
+        $hasCargo = ! empty($post->cargo_type_id) || ! empty($post->item_name);
+        $hasLoad = ! empty($post->actual_weight) || ! empty($post->tariff_amount);
         if ($hasCargo && $hasLoad) {
             $score += 20;
         } elseif ($hasCargo || $hasLoad) {

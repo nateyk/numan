@@ -47,3 +47,50 @@ it('returns a straight-line estimate when OSRM is unreachable', function () {
     expect($result)->not->toBeNull()
         ->and($result['provider'])->toBe('straight_line_estimate');
 });
+
+it('counts item_name as cargo and cargo_description as nothing', function () {
+    // cargo_description is no longer collected, so a post carrying only it is
+    // missing its cargo. cargo_type_id is null on both sides so this isolates
+    // the item_name half of the branch, and the load half is empty on both so
+    // the cargo half is what moves the number.
+    $described = FreightPost::factory()->make([
+        'cargo_type_id' => null,
+        'cargo_description' => '20 tons teff in 40kg bags',
+        'item_name' => null,
+        'actual_weight' => null,
+        'tariff_amount' => null,
+    ]);
+
+    $named = FreightPost::factory()->make([
+        'cargo_type_id' => null,
+        'cargo_description' => null,
+        'item_name' => 'Teff',
+        'actual_weight' => null,
+        'tariff_amount' => null,
+    ]);
+
+    expect(app(FreightCompletionService::class)->score($described))
+        ->toBeLessThan(app(FreightCompletionService::class)->score($named));
+});
+
+it('gives cargo credit for a cargo type with no item name', function () {
+    // The branch is an OR on purpose: picking a cargo type is enough for the
+    // first half on its own. This pins that down so the item_name change cannot
+    // quietly turn it into an AND and cost every typed-cargo post ten points.
+    $typedOnly = FreightPost::factory()->make([
+        'cargo_type_id' => 1,
+        'item_name' => null,
+        'actual_weight' => null,
+        'tariff_amount' => null,
+    ]);
+
+    $named = FreightPost::factory()->make([
+        'cargo_type_id' => 1,
+        'item_name' => 'Teff',
+        'actual_weight' => null,
+        'tariff_amount' => null,
+    ]);
+
+    expect(app(FreightCompletionService::class)->score($typedOnly))
+        ->toBe(app(FreightCompletionService::class)->score($named));
+});
