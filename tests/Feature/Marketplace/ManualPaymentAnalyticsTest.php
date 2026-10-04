@@ -149,9 +149,6 @@ it('the transaction model is not activity-logged', function () {
     // land in the audit trail exactly as the profile models' phone did.
     expect(class_uses_recursive(MarketplacePaymentTransaction::class))
         ->not->toContain(LogsActivity::class);
-
-    expect(class_uses_recursive(MarketplacePaymentTransaction::class))
-        ->not->toContain(LogsActivity::class);
 });
 
 it('no activity row ever holds a manual payer phone or bank reference', function () {

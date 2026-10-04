@@ -20,7 +20,16 @@ class ChapaWebhookController extends Controller
     public function handle(Request $request)
     {
         if (! $this->chapa->validateWebhook($request)) {
-            Log::warning('Chapa webhook signature invalid', ['payload' => $request->getContent()]);
+            // The body is deliberately not logged. A Chapa webhook carries the
+            // payer's first name, last name, email and phone number, and this
+            // branch is reachable by anyone who can send a request. The byte
+            // count is enough to tell an empty body from a probe.
+            Log::warning('Chapa webhook signature invalid', [
+                // The declared length, never the body. Enough to tell an empty
+                // request from a probe.
+                'bytes' => $request->server('CONTENT_LENGTH'),
+                'ip' => $request->ip(),
+            ]);
 
             return response()->json(['message' => 'Invalid signature'], 403);
         }
@@ -31,7 +40,9 @@ class ChapaWebhookController extends Controller
         $chapaRef = $payload['reference'] ?? $payload['data']['reference'] ?? null;
 
         if (! $txRef) {
-            Log::warning('Chapa webhook missing tx_ref', ['payload' => $payload]);
+            // The event name is from a small fixed vocabulary; the rest of the
+            // payload is the payer's contact details and stays out.
+            Log::warning('Chapa webhook missing tx_ref', ['event' => $event]);
 
             return response()->json(['message' => 'Missing tx_ref'], 422);
         }
@@ -63,7 +74,14 @@ class ChapaWebhookController extends Controller
         $verifiedSuccess = ($verified['status'] ?? null) === 'success' && (($data['status'] ?? null) === 'success' || ($data['status'] ?? null) === 'paid');
 
         if (! $verifiedSuccess) {
-            Log::info('Chapa webhook verify not success', ['tx_ref' => $txRef, 'verified' => $verified]);
+            // Only the status fields. The verify response also returns the
+            // payer's name, email and phone number, which have no business in a
+            // log file that outlives the request.
+            Log::info('Chapa webhook verify not success', [
+                'tx_ref' => $txRef,
+                'status' => $verified['status'] ?? null,
+                'payment_status' => $data['status'] ?? null,
+            ]);
             $webhookEvent->update(['status' => 'failed']);
 
             return response()->json(['message' => 'Verification failed'], 200);
