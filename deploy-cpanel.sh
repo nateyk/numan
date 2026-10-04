@@ -71,14 +71,20 @@ if ! grep -qE '^APP_KEY=base64:.+' .env; then
     php artisan key:generate --force
 fi
 
-echo "==> Building assets"
-if command -v pnpm > /dev/null 2>&1; then
-    pnpm install --frozen-lockfile
-    pnpm run build
-else
-    npm ci
-    npm run build
+# pnpm only, and only because package.json declares "packageManager": "pnpm@...".
+# The repository now carries exactly one lockfile, pnpm-lock.yaml, so an npm
+# fallback here would either fail on a missing package-lock.json or silently
+# resolve different versions on the server than in development.
+if ! command -v pnpm > /dev/null 2>&1; then
+    echo "ABORT: pnpm is not installed."
+    echo "package.json pins the package manager as pnpm. Install it with:"
+    echo "  corepack enable && corepack prepare pnpm@10.33.0 --activate"
+    exit 1
 fi
+
+echo "==> Building assets"
+pnpm install --frozen-lockfile
+pnpm run build
 
 # ---------------------------------------------------------------------------
 # 4. Database
