@@ -36,7 +36,14 @@ it('updates completion score on model', function () {
     expect($updated->completion_score)->toBe($service->score($post));
 });
 
-it('returns null when OSRM unreachable', function () {
+// This belongs to RoutePreviewService rather than FreightCompletionService, and
+// the equivalent case is covered properly in RoutePreviewServiceTest. Kept here
+// rather than deleted, but it now asserts the current contract.
+it('returns a straight-line estimate when OSRM is unreachable', function () {
     Http::fake(fn () => Http::response(null, 500));
-    expect(app(RoutePreviewService::class)->preview(9, 38, 7, 38))->toBeNull();
+
+    $result = app(RoutePreviewService::class)->preview(9, 38, 7, 38);
+
+    expect($result)->not->toBeNull()
+        ->and($result['provider'])->toBe('straight_line_estimate');
 });
