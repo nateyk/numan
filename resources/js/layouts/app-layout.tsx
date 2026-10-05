@@ -13,24 +13,38 @@ interface AppLayoutProps {
     breadcrumbs?: BreadcrumbItem[];
 }
 
-export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
-    const { currentWorkspace } = usePage<SharedData>().props;
+const echoConfigured = Boolean(import.meta.env.VITE_REVERB_APP_KEY);
+
+function WorkspaceEchoListener({
+    workspaceId,
+}: {
+    workspaceId: number | null;
+}) {
     const { addToast } = useToast();
 
     useEcho(
-        currentWorkspace
-            ? `workspace.${currentWorkspace.id}`
-            : 'null-workspace',
+        workspaceId ? `workspace.${workspaceId}` : 'null-workspace',
         '.workspace.activity',
         (e: { message: string; type: 'success' | 'error' | 'info' }) => {
             addToast(e.message, e.type);
         },
     );
 
+    return null;
+}
+
+export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
+    const { currentWorkspace } = usePage<SharedData>().props;
+
     const { auth } = usePage<SharedData>().props;
 
     return (
         <>
+            {echoConfigured && (
+                <WorkspaceEchoListener
+                    workspaceId={currentWorkspace?.id ?? null}
+                />
+            )}
             {auth.is_impersonating && (
                 <div className="sticky top-0 z-50 flex items-center justify-center gap-4 bg-destructive px-4 py-2 text-center text-sm font-medium text-destructive-foreground">
                     <span>
