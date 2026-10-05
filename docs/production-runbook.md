@@ -16,7 +16,30 @@ exceed the plan. Most of it is inert until you turn flags on. **Nothing in Steps
 | 3 | One `standard` plan, admin-editable limits, status normalisation, `hidden_at` | deploy |
 | 4 | Contact-reveal ledger and metering; server-side contact stripping | backfill (§4) |
 | 5 | Manual payment (Telebirr / CBE Birr / bank transfer) | configure an account (§7) |
-| 6 | Renewal and expiry reminders | **not built — design only** |
+| 6 | Renewal and expiry reminders | `MARKETPLACE_REMINDERS_ENABLED` (§14) |
+
+## Deploy order
+
+Read this once. Each step is safe to stop after.
+
+| # | Step | Gate before continuing |
+|---|---|---|
+| 1 | Back up the database **and** `storage/app/private` | §1 — a restore you have not tested is a hypothesis |
+| 2 | Deploy the code, **both flags off** | — |
+| 3 | `php artisan migrate --force` | §3 — then read the verify output |
+| 4 | Check `storage/app/reports/` for the CSV | §4 — read **every row**; a wrong-duration row is a customer's access wrong right now |
+| 5 | `php artisan marketplace:install --dry-run`, then for real | §3 — expect `active: standard` |
+| 6 | `marketplace:backfill-contact-reveals --dry-run`, then for real | §5 — `written today` must be `0` |
+| 7 | `marketplace:expire-subscriptions --dry-run`, then for real | §6 — check the keep limit against what an admin set |
+| 8 | `marketplace:expire-manual-payments --dry-run`, then for real | §6 |
+| 9 | Confirm the queue worker is supervised and running | §9 — **hard gate for step 12** |
+| 10 | Configure a payment instruction account if offering manual payment | §7 |
+| 11 | `marketplace:send-reminders --dry-run` | §14 — works with the flag off |
+| 12 | Turn on `MARKETPLACE_EXPIRY_ENABLED`, then `MARKETPLACE_REMINDERS_ENABLED` | §12, §14 — **separately** |
+| 13 | Work through the smoke test | §11 |
+
+Steps 4 through 8 are all idempotent and all safe to re-run. Steps 11 onward are
+the only ones that email anybody.
 
 ---
 
@@ -43,20 +66,23 @@ restored is a hypothesis.
 
 ## 2. Flags that must stay off
 
-There is **one flag, not two.** Worth stating explicitly, because believing a
-command is scheduled when it is not is the failure mode this section exists to
-prevent:
+There are **two flags, and they are independent.**
 
 ```dotenv
-# One flag gates all three scheduled marketplace commands:
+# Gates the two expiry sweeps.
 #   marketplace:expire-subscriptions        (hourly)
 #   marketplace:expire-manual-payments      (daily 03:30)
-#   marketplace:send-reminders              (Step 6, not built yet)
 MARKETPLACE_EXPIRY_ENABLED=false
+
+# Gates the reminder command (see §14).
+#   marketplace:send-reminders              (hourly)
+MARKETPLACE_REMINDERS_ENABLED=false
 ```
 
-There is no separate manual-expiry flag. They were deliberately kept behind a
-single switch so there is exactly one thing to forget.
+Separate on purpose. Expiring a subscription and emailing somebody about it are
+different decisions: a site can do the first without ever doing the second, and
+should be able to try reminders on a pilot before trusting the expiry sweep on live
+data. One flag also means only one thing to forget at a time.
 
 **Keep it `false` through this entire runbook.** With it off:
 
@@ -539,17 +565,37 @@ least one freight listing, before pointing production traffic at the new code.
     something started logging a payload again; `LogHygieneTest` is the standing
     check for that and must be in CI.
 
-**Reminders (Step 6, once built)**
+**Reminders (skip if `MARKETPLACE_REMINDERS_ENABLED` is off)**
 
-20. Not applicable yet. When it lands, `marketplace:send-reminders --dry-run`
-    lists recipients; run it for real twice and confirm the second run sends
-    nothing.
+20. `php artisan marketplace:send-reminders --dry-run` — read the list. Every
+    interval should be plausible; a plan with an interval you do not sell should
+    not appear.
+21. Set the flag, run it for real, then run it again. → the second run reports
+    `Sent 0` and sends nothing.
+22. Check the log table:
+
+```sql
+SELECT reminder_type, status, COUNT(*) FROM marketplace_reminder_logs GROUP BY 1, 2;
+```
+
+→ one `sent` row per reminder, plus `skipped` rows for the windows it passed
+over. A `claimed` row older than an hour means the queue worker is not running —
+go back to §9 before trusting any of this.
+23. Confirm the email arrived, and that the end date is in the reader's timezone
+    rather than UTC. Then check the log file for the address:
+
+```bash
+grep -c "$EMAIL" storage/logs/laravel.log   # expect 0
+```
 
 ## 12. Enabling the flag
 
 Only after §3's seeding step is done, §4's CSV has been read, §5's backfill has
 run, §6's dry runs looked right, §9's **queue worker is supervised and running**,
 and §11 has passed.
+
+`MARKETPLACE_REMINDERS_ENABLED` is a **separate** decision — see §14. Turning on
+the expiry sweep does not turn on reminders.
 
 The worker is a hard gate here, not a nice-to-have: the expiry sweep sends
 `FreightPostsHiddenNotification`, which is queued. Enabling the flag with no worker
@@ -653,10 +699,98 @@ Two test files carry weight disproportionate to their size:
   contact data. Every leak found so far was a "just add the payload while
   debugging" edit, and this is what stops the next one. Do not mute it.
 
-## 14. Step 6 is not built
+## 14. Renewal and expiry reminders
 
-Renewal and expiry reminders are **designed and not implemented.** There is no
-`marketplace:send-reminders` command and no `marketplace_reminder_log` table yet,
-so §11 item 20 cannot be run and nothing in this runbook depends on them. They
-will reuse `MARKETPLACE_EXPIRY_ENABLED` — one flag, as above — which is why §2
-lists three commands against it.
+Disabled by default behind `MARKETPLACE_REMINDERS_ENABLED`, independently of the
+expiry flag.
+
+```dotenv
+MARKETPLACE_REMINDERS_ENABLED=false
+```
+
+With it off, `marketplace:send-reminders` is not registered with the scheduler and
+never runs. **`--dry-run` works with it off**, which is the point of a dry run on a
+command that has never run before.
+
+### Before enabling
+
+**A queue worker must be running.** A reminder claims its row in the log *before*
+the notification is queued, so with no worker the row is claimed, nothing is sent,
+and the claim sits there undelivered. The command reclaims those after an hour, so
+it recovers on its own — but only if the worker comes back. Do not enable this
+before §9's supervisor is confirmed alive.
+
+**`MAIL_MAILER` must not be `log`** (§10).
+
+### Dry run first
+
+```bash
+php artisan marketplace:send-reminders --dry-run
+```
+
+It prints one line per reminder it would send:
+
+```
+  renewal_1d  yearly / Acme Freight  -> would send, new
+  renewal_3d  yearly / Beta Logistics  -> would send, new
+```
+
+`new` means it has never been sent. Read the list and check the intervals and
+plan names are what you expect. Then:
+
+```bash
+MARKETPLACE_REMINDERS_ENABLED=true php artisan marketplace:send-reminders
+```
+
+Read the summary. `Sent` should match what the dry run listed.
+
+### What it will and will not email
+
+| Situation | Sends |
+|---|---|
+| Yearly plan, 20 hours left | `renewal_1d` only — the 3d and 7d windows are recorded as *skipped* so they cannot arrive afterwards |
+| Yearly plan, 5 days left | `renewal_7d` |
+| Monthly plan, 2 days left | `renewal_3d` |
+| Weekly plan, 5 days left | nothing — a "7 days left" warning on a 7-day plan reads as broken |
+| Weekly plan, 20 hours left | `renewal_1d` |
+| Ended 1 day ago | `plan_expired` |
+| **Ended 20 days ago** | **nothing** — the expiry window is 3 days (`marketplace.reminder_expired_window_days`). This is what stops the first run emailing every lapsed row in the database |
+| Renewed | nothing for the old period. A renewal supersedes the prior row and the status alone excludes it |
+| Already sent | nothing, ever. The unique key on the log is the guarantee |
+
+### Recipients
+
+The workspace owner, plus anybody explicitly granted `manage_billing`.
+**Admins are not included by default** — `manage_billing` is absent from what an
+admin gets implicitly, so the reminder follows the same rule as the button that
+would spend the money.
+
+### What the email says
+
+Plan, end date **in the reader's own timezone** (falling back to
+`Africa/Addis_Ababa`), today's price for the same duration, and a link to
+`/billing/plans`. The expiry email mentions hidden listings **only when they would
+actually be hidden**, and that count is derived from the same numbers the My
+Freight banner uses, so the two cannot disagree.
+
+No payer phone, bank reference or proof path, in either channel.
+
+### Locale
+
+`en`, `fr`, `es`, `ar`. **There is no Amharic** — `SetLocale` does not accept it
+and there is no `am.json`. Adding it is a recommended follow-up, not a gap this
+work left open by accident. The other marketplace notifications
+(`ManualPaymentConfirmed` and friends) are still hardcoded English; only the new
+reminders are translated.
+
+### If a queue outage swallowed some
+
+Nothing to do. Run the command again, or wait for the hourly schedule. Claims older
+than 60 minutes are re-dispatched automatically, up to three attempts, then
+abandoned with an id-only warning in the log.
+
+```sql
+-- what is pending, and what has been abandoned
+SELECT status, COUNT(*) FROM marketplace_reminder_logs GROUP BY status;
+```
+

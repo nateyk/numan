@@ -1,5 +1,24 @@
 # Deploy notes
 
+## Marketplace expiry and reminders — disabled by default
+
+Two independent flags. Expiring a subscription and emailing somebody about it are
+different decisions, and a site should be able to do the first without doing the
+second.
+
+| Flag | Gates | Default |
+|---|---|---|
+| `MARKETPLACE_EXPIRY_ENABLED` | `marketplace:expire-subscriptions` (hourly), `marketplace:expire-manual-payments` (daily 03:30) | `false` |
+| `MARKETPLACE_REMINDERS_ENABLED` | `marketplace:send-reminders` (hourly) | `false` |
+
+`--dry-run` works on all three with their flags off. Always run it before running
+anything for real, and see `docs/production-runbook.md` for the full deploy order.
+
+The reminder command additionally needs a running queue worker, and a mailer that
+is not `log`. It claims a row in `marketplace_reminder_logs` before queuing the
+notification, so with no worker the claim is written and nothing is sent; the
+command reclaims claims older than an hour, up to three attempts.
+
 ## Marketplace expiry — disabled by default
 
 `marketplace:expire-subscriptions` does two things that write to real data:
