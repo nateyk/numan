@@ -141,6 +141,27 @@ subscription — investigate before going live.
 Expected: both counts `0`; every status lowercase. Active plans must read
 `standard` — see the seeding step below, because `migrate` will not create it.
 
+### Demo seeders refuse to run in production
+
+`DatabaseSeeder` and `DemoDataSeeder` now **abort** if
+`app()->environment('production')`. They create demo accounts whose password is
+published in this repository, and `DemoDataSeeder` creates a superadmin among
+them — so `php artisan db:seed` with no `--class`, which runs everything, is the
+one command that hands over the platform. It aborts rather than warns, and it
+aborts before writing anything.
+
+Reference data is a separate matter and is still available, one seeder at a time:
+
+```bash
+php artisan db:seed --class=LocationSeeder --force
+php artisan db:seed --class=EthiopiaMajorTownsSeeder --force
+php artisan db:seed --class=CargoTypeSeeder --force
+php artisan db:seed --class=TruckTypeSeeder --force
+php artisan db:seed --class=EmailTemplateSeeder --force
+```
+
+`marketplace:install` (§ below) creates the plan without any of this.
+
 ### Seed the plan — do not skip this
 
 **`migrate` does not create the plan, and `php artisan db:seed` is not the way to

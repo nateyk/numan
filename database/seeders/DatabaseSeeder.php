@@ -35,14 +35,43 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
      */
+    /**
+     * Refuse to run against production.
+     *
+     * This seeder creates demo accounts whose password is published in the
+     * repository, including a superadmin. Running it on a live site is the one
+     * mistake that hands over the whole platform, and it is a one-word mistake:
+     * db:seed with no --class runs everything.
+     *
+     * Aborts rather than warns, because a warning nobody reads is the same as no
+     * guard at all. Reference data is not lost by this -- run the individual
+     * seeders instead, which are listed in docs/production-runbook.md.
+     */
+    private function guardAgainstProduction(string $seeder): void
+    {
+        if (! app()->environment('production')) {
+            return;
+        }
+
+        throw new RuntimeException(sprintf(
+            'Refusing to run %s in production. It creates demo accounts with a published password,'
+            .' including a superadmin. To load reference data run the individual seeders'
+            .' instead, e.g. "php artisan db:seed --class=LocationSeeder --force".',
+            $seeder
+        ));
+    }
+
     public function run(): void
     {
+        $this->guardAgainstProduction('DatabaseSeeder');
+
         // Seed Ethiopian reference data first — required for profiles and transporter
         $this->call(LocationSeeder::class);
         $this->call(EthiopiaMajorTownsSeeder::class);
