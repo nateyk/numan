@@ -4,6 +4,7 @@ use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\Workspace;
 use App\Services\MarketplaceReminderWindow;
+use Carbon\CarbonInterface;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -23,7 +24,7 @@ beforeEach(function () {
 /**
  * A subscription ending at an exact offset from now.
  *
- * @return array{0: MarketplaceSubscription, 1: \Carbon\CarbonInterface}
+ * @return array{0: MarketplaceSubscription, 1: CarbonInterface}
  */
 function subEndingIn(float $days, string $interval = 'monthly', string $status = 'active'): array
 {

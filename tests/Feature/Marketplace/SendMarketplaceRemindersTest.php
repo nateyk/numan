@@ -3,11 +3,12 @@
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceReminderLog;
 use App\Models\MarketplaceSubscription;
-use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\MarketplacePlanReminder;
 use Database\Seeders\MarketplacePlanSeeder;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -52,7 +53,7 @@ function dueSubscription(float $days, string $interval = 'monthly', string $stat
 it('is not scheduled while the flag is off', function () {
     config(['marketplace.reminders_enabled' => false]);
 
-    $schedule = app(Illuminate\Console\Scheduling\Schedule::class);
+    $schedule = app(Schedule::class);
     $commands = collect($schedule->events())->map(fn ($event) => $event->command ?? '');
 
     expect($commands->implode(' '))->not->toContain('marketplace:send-reminders');
@@ -248,7 +249,7 @@ it('logs no contact data', function () {
     // command's own output, because "log the workspace while debugging" is a very
     // natural edit here.
     $logged = [];
-    Illuminate\Support\Facades\Log::listen(function ($event) use (&$logged): void {
+    Log::listen(function ($event) use (&$logged): void {
         $logged[] = $event->message.' '.json_encode($event->context);
     });
 

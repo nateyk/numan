@@ -2,7 +2,11 @@
 
 use App\Models\CargoType;
 use App\Models\FreightPost;
+use App\Models\Location;
+use App\Models\Profile;
 use App\Models\TruckType;
+use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -21,14 +25,14 @@ uses(RefreshDatabase::class);
  * to its file, and moving it into Pest.php is a wider change than this test
  * needs.
  *
- * @return array{0: \App\Models\User, 1: string}
+ * @return array{0: User, 1: string}
  */
 function cargoStepUser(): array
 {
-    $user = App\Models\User::factory()->create();
-    $location = App\Models\Location::factory()->create();
+    $user = User::factory()->create();
+    $location = Location::factory()->create();
 
-    App\Models\Profile::factory()->create([
+    Profile::factory()->create([
         'user_id' => $user->id,
         'posts_freight' => true,
         'provides_transport' => false,
@@ -40,7 +44,7 @@ function cargoStepUser(): array
         'onboarding_completed_at' => now(),
     ]);
 
-    $workspace = App\Models\Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
     $workspace->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $workspace->id]);
 

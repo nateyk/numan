@@ -3,12 +3,12 @@
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceReminderLog;
 use App\Models\MarketplaceSubscription;
-use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\MarketplacePlanReminder;
 use App\Services\ReminderDispatcher;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -222,7 +222,7 @@ it('abandons a reminder that keeps failing, and warns with ids only', function (
     $log = $dispatcher->claim($subscription, 'renewal_1d');
 
     $logged = [];
-    Illuminate\Support\Facades\Log::listen(function ($event) use (&$logged): void {
+    Log::listen(function ($event) use (&$logged): void {
         $logged[] = $event->message.' '.json_encode($event->context);
     });
 

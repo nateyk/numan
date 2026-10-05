@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceReminderLog;
 use App\Models\MarketplaceSubscription;
@@ -7,6 +8,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\MarketplacePlanReminder;
+use App\Services\ReminderDispatcher;
 use App\Services\ReminderRecipients;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -162,7 +164,7 @@ it('sends one notification per recipient, not one per role', function () {
         'status' => MarketplaceReminderLog::STATUS_CLAIMED,
     ]);
 
-    app(App\Services\ReminderDispatcher::class)->dispatch($log);
+    app(ReminderDispatcher::class)->dispatch($log);
 
     Notification::assertSentToTimes($treasurer, MarketplacePlanReminder::class, 1);
     Notification::assertSentToTimes($subscription->workspace->owner, MarketplacePlanReminder::class, 1);
@@ -175,7 +177,7 @@ it('carries no payer phone, bank reference or proof path', function () {
 
     // The sensitive columns live on the payment transaction, which is where the
     // payer phone and bank reference actually are.
-    App\Models\MarketplacePaymentTransaction::create([
+    MarketplacePaymentTransaction::create([
         'workspace_id' => $subscription->workspace_id,
         'plan_id' => $subscription->plan_id,
         'user_id' => $subscription->user_id,
