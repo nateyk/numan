@@ -16,7 +16,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -64,7 +63,7 @@ class DemoDataSeeder extends Seeder
                 ['email' => 'admin@numanfreight.com'],
                 [
                     'name' => 'Admin User',
-                    'password' => Hash::make('Password123!'),
+                    'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
                     'onboarded_at' => now(),
@@ -75,7 +74,7 @@ class DemoDataSeeder extends Seeder
                 ['email' => 'demo@numanfreight.com'],
                 [
                     'name' => 'Demo User',
-                    'password' => Hash::make('Password123!'),
+                    'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
                     'onboarded_at' => now(),
@@ -86,7 +85,7 @@ class DemoDataSeeder extends Seeder
                 ['email' => 'superadmin@numanfreight.com'],
                 [
                     'name' => 'Superadmin',
-                    'password' => Hash::make('Password123!'),
+                    'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
                     'is_superadmin' => true,
@@ -96,7 +95,7 @@ class DemoDataSeeder extends Seeder
 
             // 2. Create additional demo users for testing
             $additionalUsers = User::factory(10)->create([
-                'password' => Hash::make('Password123!'),
+                'password' => DemoPassword::hashed(),
             ]);
 
             // 3. Get reference data (already seeded by main DatabaseSeeder)

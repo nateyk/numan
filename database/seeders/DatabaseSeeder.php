@@ -33,7 +33,6 @@ use App\Models\WorkspaceInviteLink;
 use App\Services\WorkspaceService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -86,7 +85,7 @@ class DatabaseSeeder extends Seeder
                 ['email' => 'admin@example.com'],
                 [
                     'name' => 'Admin User',
-                    'password' => Hash::make('password'),
+                    'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
                     'onboarded_at' => now(),
@@ -97,7 +96,7 @@ class DatabaseSeeder extends Seeder
                 ['email' => 'demo@example.com'],
                 [
                     'name' => 'Demo User',
-                    'password' => Hash::make('password'),
+                    'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
                     'onboarded_at' => now(),
@@ -109,7 +108,7 @@ class DatabaseSeeder extends Seeder
                 ['email' => 'superadmin@example.com'],
                 [
                     'name' => 'Superadmin System',
-                    'password' => Hash::make('password'),
+                    'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
                     'is_superadmin' => true,
@@ -129,7 +128,7 @@ class DatabaseSeeder extends Seeder
             // Create users with different locales and verification statuses
             $locales = ['en', 'fr', 'es', 'de'];
             $additionalUsers = User::factory(20)->create([
-                'password' => Hash::make('password'),
+                'password' => DemoPassword::hashed(),
             ]);
 
             // Set varied attributes for additional users
@@ -204,7 +203,6 @@ class DatabaseSeeder extends Seeder
             });
 
             // 3c. NumanFreight Pilot Seed Accounts (per NUMANFREIGHT_FRESH_BUILD_GUIDE.md §26)
-            // Password for ALL demo accounts: Password123!
             $numanPilotAccounts = [
                 ['email' => 'admin@numanfreight.com', 'name' => 'Numan System Administrator', 'is_superadmin' => true, 'posts_freight' => true, 'provides_transport' => true, 'account_type' => 'business', 'onboarding_step' => 'completed', 'location' => $addis],
                 ['email' => 'moderator@numanfreight.com', 'name' => 'Numan Moderator', 'is_superadmin' => false, 'posts_freight' => true, 'provides_transport' => true, 'account_type' => 'business', 'onboarding_step' => 'completed', 'location' => $addis],
@@ -221,7 +219,7 @@ class DatabaseSeeder extends Seeder
                     ['email' => $acct['email']],
                     [
                         'name' => $acct['name'],
-                        'password' => Hash::make('Password123!'),
+                        'password' => DemoPassword::hashed(),
                         'email_verified_at' => now(),
                         'locale' => 'en',
                         'is_superadmin' => $acct['is_superadmin'],

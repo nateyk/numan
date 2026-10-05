@@ -4,9 +4,14 @@ use App\Models\User;
 use Database\Seeders\CargoTypeSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoDataSeeder;
+use Database\Seeders\DemoPassword;
 use Database\Seeders\LocationSeeder;
 use Database\Seeders\TruckTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use ReflectionClass;
 use ReflectionMethod;
 
 /**
@@ -21,6 +26,10 @@ use ReflectionMethod;
  * superadmin with a known password is not a control.
  */
 uses(RefreshDatabase::class);
+
+afterEach(function (): void {
+    DemoPassword::flush();
+});
 
 /**
  * Put the application into an environment for the duration of a callback.
@@ -111,5 +120,75 @@ it('leaves the reference-data seeders unguarded', function () {
 
             return str_contains($source, 'guardAgainstProduction');
         }))->toBeFalse();
+    }
+});
+
+// ── the demo password is no longer a published constant ────────────────────
+
+it('uses DEMO_PASSWORD when it is set', function () {
+    DemoPassword::flush();
+    config(['demo.password' => 'a-password-from-env']);
+
+    $resolved = DemoPassword::resolve();
+
+    expect($resolved['generated'])->toBeFalse()
+        ->and($resolved['password'])->toBe('a-password-from-env')
+        ->and(Hash::check('a-password-from-env', $resolved['hashed']))->toBeTrue();
+});
+
+it('generates a random password when DEMO_PASSWORD is empty', function () {
+    DemoPassword::flush();
+    config(['demo.password' => '']);
+
+    $first = DemoPassword::resolve();
+
+    expect($first['generated'])->toBeTrue()
+        ->and(strlen($first['password']))->toBeGreaterThanOrEqual(16)
+        ->and(Hash::check($first['password'], $first['hashed']))->toBeTrue();
+});
+
+it('does not reuse the old shared default', function () {
+    DemoPassword::flush();
+    config(['demo.password' => '']);
+
+    // The constants that were published in this repository, one of them next to
+    // a superadmin account.
+    $password = DemoPassword::resolve()['password'];
+
+    expect($password)->not->toBe('Password123!');
+    expect($password)->not->toBe('password');
+});
+
+it('gives every demo account the same password within one run', function () {
+    DemoPassword::flush();
+    config(['demo.password' => '']);
+
+    // A shared demo password is the point; per-account randomness would be
+    // unusable.
+    expect(DemoPassword::resolve()['hashed'])->toBe(DemoPassword::resolve()['hashed']);
+});
+
+it('never writes the generated password to the log', function () {
+    DemoPassword::flush();
+    config(['demo.password' => '']);
+
+    $logged = [];
+    Log::listen(function (MessageLogged $event) use (&$logged): void {
+        $logged[] = $event->message.' '.json_encode($event->context);
+    });
+
+    $password = DemoPassword::resolve()['password'];
+
+    // A password in storage/logs/laravel.log is a secret on disk that outlives
+    // the terminal it was printed to. Console only, deliberately.
+    expect(implode("\n", $logged))->not->toContain($password);
+});
+
+it('no seeder hard-codes a password any more', function () {
+    foreach ([DatabaseSeeder::class, DemoDataSeeder::class] as $seeder) {
+        $source = file_get_contents((new ReflectionClass($seeder))->getFileName());
+
+        expect($source)->not->toMatch('/Hash::make\(\s*[\'"]/')
+            ->and($source)->not->toContain('Password123!');
     }
 });
