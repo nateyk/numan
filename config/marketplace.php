@@ -92,6 +92,67 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Renewal and expiry reminders
+    |--------------------------------------------------------------------------
+    |
+    | marketplace:send-reminders is DISABLED BY DEFAULT and gated on its own
+    | flag, separate from expiry_enabled. The two are independent decisions: a
+    | site can expire subscriptions without ever emailing anybody about it, and
+    | should be able to turn reminders on for a pilot before trusting the expiry
+    | sweep on live data.
+    |
+    | --dry-run always works regardless of the flag; the flag gates the scheduler
+    | registration only.
+    |
+    */
+
+    'reminders_enabled' => env('MARKETPLACE_REMINDERS_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | How long after ends_at the "your plan expired" notice may still fire
+    |--------------------------------------------------------------------------
+    |
+    | Only inside this window. Without it, the first run after enabling would
+    | email every lapsed subscription in the database, including rows that
+    | expired months ago and whose owner has long since paid again elsewhere.
+    | A backlog is not a reminder.
+    |
+    */
+
+    'reminder_expired_window_days' => 3,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Redelivery of a claimed but undelivered reminder
+    |--------------------------------------------------------------------------
+    |
+    | The log row is written before the notification is queued, so a queue
+    | outage leaves a claim with no sent_at. After this many minutes the command
+    | re-dispatches it, up to max_attempts, then gives up and warns with the
+    | subscription id alone.
+    |
+    */
+
+    'reminder_claim_timeout_minutes' => 60,
+
+    'reminder_max_attempts' => 3,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Timezone for dates in reminder copy
+    |--------------------------------------------------------------------------
+    |
+    | Each recipient is rendered in their own timezone where they have one. This
+    | is the fallback: the business is Ethiopian, and an unconfigured reminder
+    | in UTC is a reminder that arrives at an hour nobody reads email.
+    |
+    */
+
+    'reminder_fallback_timezone' => 'Africa/Addis_Ababa',
+
+    /*
+    |--------------------------------------------------------------------------
     | Paid plans
     |--------------------------------------------------------------------------
     |
