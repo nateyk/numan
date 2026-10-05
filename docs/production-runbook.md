@@ -146,35 +146,50 @@ Expected: both counts `0`; every status lowercase. Active plans must read
 **`migrate` does not create the plan, and `php artisan db:seed` is not the way to
 do it.** `DatabaseSeeder` builds a full demo dataset — demo users, demo
 workspaces, a demo subscription — and must not be run against production. The
-plan seeder is nested inside that.
+plan seeder is nested inside that, which left no safe way to install the one row
+the marketplace cannot run without.
+
+Use the dedicated command:
 
 ```bash
-php artisan db:seed --class=MarketplacePlanSeeder --force
+php artisan marketplace:install --dry-run    # report only
+php artisan marketplace:install
+```
+
+It creates the `standard` plan and tops up any missing `marketplace_settings`
+rows. It creates **no** users, workspaces, posts or anything else. The settings and
+payment-instruction tables seed themselves in their own migrations, so those are
+verified rather than re-created.
+
+```bash
 php artisan tinker --execute="echo 'all: '.DB::table('marketplace_plans')->pluck('slug')->implode(',').' | active: '.DB::table('marketplace_plans')->where('is_active',1)->pluck('slug')->implode(',');"
 ```
 
 Expected `active: standard`.
 
 **Watch the `all:` column, it is diagnostic.** A realistic bad state, and the one
-this development database is actually in right now, is:
+this development database was actually in, is:
 
 ```
 all: business,free,pro,weekly | active:
 ```
 
 Four archived plans, no `standard`, nothing active. That is what happens when the
-archive-legacy-plans migration runs before the plan seeder: it deactivates every
-plan that is not `standard`, and `standard` does not exist yet. The plans page
-renders empty with **no error anywhere**, and nothing in the marketplace can work.
+archive-legacy-plans migration runs before anything creates `standard`: it
+deactivates every plan that is not `standard`, and `standard` does not exist yet.
+The plans page renders empty with **no error anywhere**, and nothing in the
+marketplace can work.
 
-If you see it, run the seeder — `standard` is missing entirely, so the seeder
-creates it active. What the seeder will *not* do is reactivate a plan that already
-exists: when the slug is present it touches nothing at all, so re-seeding never
-reverts an admin's price and never un-archives. That is deliberate, and it is why
-this state needs a seed rather than an `UPDATE`.
+`marketplace:install` is safe to re-run and will not revert an admin's work:
 
-The seeder is safe to re-run. It also seeds the four `free_limits` rows with
-`firstOrCreate`, so it will not overwrite admin-edited limits.
+- an existing plan is left **entirely** alone, prices included — so re-running
+  never reverts a price change
+- an archived plan stays archived. Un-archiving is a decision for a person; an
+  installer that flipped it would silently re-open sales at whatever prices are
+  in the row
+- settings use first-or-create, so an edited limit is never overwritten
+- it **exits non-zero** if there is still no active plan, so a deploy script
+  notices
 
 ## 4. The CSV report: read it before you trust the backfill
 
@@ -542,6 +557,54 @@ unwinding:
 You do **not** need to roll back the migrations. Every one of them is either
 additive or idempotent, and the two irreversible ones (`ends_at` backfill,
 activity-log scrub) both made the data *more* correct.
+
+## 12b. Data retention: two columns hold payer contact data
+
+`marketplace_payment_transactions.provider_response` and
+`chapa_webhook_events.payload` store Chapa's own responses verbatim, and those
+contain the payer's **first name, last name, email and phone number**.
+
+**Nothing sends them anywhere.** Verified, and now asserted by two tests:
+
+| Destination | Exposure |
+|---|---|
+| Admin payment screen (`admin/marketplace-payments`) | explicit arrays only — no `provider_response`, no `payload` |
+| Payer screens (`marketplace.manual.*`) | explicit columns only — no `provider_response`, no payer phone, proof path reduced to a boolean |
+| Revenue export | never reads either column |
+| API resources, jobs, notifications | never reference either column |
+| The log file | not logged (see `LogHygieneTest`) |
+
+They are kept because they are the reconciliation record: when a payment goes
+missing, that JSON is the only evidence of what Chapa actually said.
+
+### Retention decision — yours
+
+These columns are **not** deleted, and nothing prunes them. That is a deliberate
+gap, not an oversight, and it needs a decision rather than a default:
+
+- `provider_response` and `payload` have **no** expiry. They accumulate one row
+  per transaction forever.
+- Each holds personal data, so "we keep it for audit" is a weaker answer here
+  than it is for the activity log — that log records *that* a profile changed,
+  not the phone number that was entered.
+- The reconciliation value expires when the payment is no longer in dispute.
+  Ninety days is a defensible floor; a year is not obviously justified.
+
+Two options, both one piece of work:
+
+1. **Add a retention sweep** — a command that nulls out `provider_response` and
+   `payload` on rows older than N days, keeping `status`, `chapa_tx_ref`,
+   `verified_at` and `amount_etb`, which is everything reconciliation actually
+   needs. Follow the `MARKETPLACE_EXPIRY_ENABLED` pattern: disabled by default,
+   `--dry-run` first.
+2. **Redact on write** — store only the fields used (`status`, `amount`,
+   `currency`, `reference`) and drop the rest at the boundary. Cleaner, but it
+   loses the evidence, and it cannot be applied retroactively.
+
+Whichever you pick, the test that asserts neither reaches a page stays either way.
+
+Until then: do not put either column into a support export, a debug dump, or a
+`Log::` line.
 
 ## 13. CI must stay green
 

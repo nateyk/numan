@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\Profile;
@@ -89,12 +90,20 @@ function pendingManualRow(string $interval, float $amount): MarketplacePaymentTr
  *
  * @return array{0: User, 1: Workspace, 2: MarketplacePaymentTransaction}
  */
-function revenueRow(string $provider, string $interval, float $amount, int $daysAgo = 0): array
-{
+function revenueRow(
+    string $provider,
+    string $interval,
+    float $amount,
+    int $daysAgo = 0,
+    ?int $workspaceId = null,
+    ?array $providerResponse = null,
+): array {
     [$user, $workspace] = revenueUser();
 
+    $workspaceId ??= $workspace->id;
+
     $transaction = MarketplacePaymentTransaction::create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $workspaceId,
         'plan_id' => MarketplacePlan::where('slug', 'standard')->first()->id,
         'user_id' => $user->id,
         'tx_ref' => 'NF-REV'.str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT),
@@ -104,6 +113,7 @@ function revenueRow(string $provider, string $interval, float $amount, int $days
         'status' => MarketplacePaymentTransaction::MANUAL_CONFIRMED,
         'mode' => $provider === 'chapa' ? 'test' : 'manual',
         'provider' => $provider,
+        'provider_response' => $providerResponse,
         'verified_at' => now()->subDays($daysAgo),
     ]);
 
@@ -511,4 +521,72 @@ it('billing history never exposes the payer phone or proof path', function () {
 
     // The bank reference IS shown: the payer typed it and needs to recognise it.
     expect($payload)->toContain('FT-VISIBLE');
+});
+
+// ── (b) provider_response and webhook payload hold payer contact data ──────
+
+it('never sends provider_response or a webhook payload to the admin screen', function () {
+    $admin = revenueAdmin();
+
+    // Both columns hold Chapa's own response, which carries the payer's
+    // first_name, last_name, email and phone_number. An admin does not need to
+    // see those to reconcile an amount, so the screen must not carry them.
+    revenueRow('chapa', 'monthly', 449, providerResponse: [
+        'status' => 'success',
+        'data' => [
+            'first_name' => 'Abebe',
+            'last_name' => 'Kebede',
+            'email' => 'payer.contact@example.com',
+            'phone_number' => '+251911223344',
+        ],
+    ]);
+
+    ChapaWebhookEvent::create([
+        'tx_ref' => 'nf-webhook-1',
+        'event' => 'charge.success',
+        'payload' => [
+            'email' => 'payer.contact@example.com',
+            'phone_number' => '+251911223344',
+        ],
+        'status' => 'processed',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.marketplace-payments.index'))
+        ->assertOk()
+        ->assertInertia(function ($page): void {
+            $page->component('admin/marketplace-payments');
+
+            $serialised = json_encode($page->toArray());
+
+            expect($serialised)
+                ->not->toContain('payer.contact@example.com')
+                ->not->toContain('+251911223344')
+                ->not->toContain('provider_response')
+                ->not->toContain('phone_number');
+        });
+});
+
+it('never sends provider_response or a webhook payload to the payer', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    revenueRow('chapa', 'monthly', 449, workspaceId: $workspace->id, providerResponse: [
+        'status' => 'success',
+        'data' => [
+            'email' => 'payer.contact@example.com',
+            'phone_number' => '+251911223344',
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('marketplace.manual.index'))
+        ->assertOk()
+        ->assertInertia(function ($page): void {
+            $serialised = json_encode($page->toArray());
+
+            expect($serialised)
+                ->not->toContain('payer.contact@example.com')
+                ->not->toContain('+251911223344')
+                ->not->toContain('provider_response');
+        });
 });
