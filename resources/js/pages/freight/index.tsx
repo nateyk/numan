@@ -601,6 +601,7 @@ export default function FreightIndex({
                                                                                 (
                                                                                 {p.interests_count ??
                                                                                     ''}
+
                                                                                 )
                                                                             </Link>
                                                                         </DropdownMenuItem>
@@ -690,6 +691,18 @@ export default function FreightIndex({
                                                   )
                                                 : '—'}
                                         </Badge>
+                                        {/* The desktop table carries this badge
+                                            too. Without it here, the banner says
+                                            two posts are hidden and the cards
+                                            below give no way to tell which. */}
+                                        {p.hidden_at && (
+                                            <Badge
+                                                variant="outline"
+                                                className="border-amber-400 text-[10px] font-bold text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                                            >
+                                                Hidden — subscribe to restore
+                                            </Badge>
+                                        )}
                                     </div>
                                     <div className="mt-3 flex gap-2">
                                         <Button
