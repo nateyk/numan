@@ -627,6 +627,12 @@ activity-log scrub) both made the data *more* correct.
 
 ## 12b. Data retention: two columns hold payer contact data
 
+> **A proposal now exists:** `docs/provider-data-retention.md`. It recommends 90 days
+> for `provider_response`, 180 for `chapa_webhook_events.payload`, redacting
+> identity fields rather than deleting the column, and keeping signatures forever.
+> The numbers still need a business owner's sign-off — the decision below remains
+> yours until you make it.
+
 `marketplace_payment_transactions.provider_response` and
 `chapa_webhook_events.payload` store Chapa's own responses verbatim, and those
 contain the payer's **first name, last name, email and phone number**.
