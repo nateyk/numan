@@ -777,7 +777,13 @@ npm run build  # before any user-facing QA (keeps public/build in sync)
 
 ## 26. Seed Accounts & Local URLs
 
-**Password for ALL demo accounts:** `Password123!` (hashed via Fortify).
+**Password for all demo accounts:** whatever `DEMO_PASSWORD` is set to in your
+local `.env`. There is no default and it is not written down here — see
+[Demo password](#demo-password) below.
+
+**These accounts are for local development only.** `DatabaseSeeder` and
+`DemoDataSeeder` both abort when `app()->environment('production')`, so the
+accounts cannot be created on a live site even by accident.
 
 | Role | Email | Use |
 |------|-------|-----|
@@ -806,7 +812,22 @@ http://127.0.0.1:8000/billing/*            invoices & payments
 http://127.0.0.1:8000/admin                admin shell
 ```
 
-Verify login greedily: `php artisan tinker --execute 'echo \Illuminate\Support\Facades\Hash::check("Password123!", \App\Models\User::where("email","admin@numanfreight.com")->first()->password) ? "YES":"NO";'`
+### Demo password
+
+Set it in your local `.env`:
+
+```dotenv
+DEMO_PASSWORD=<something you pick>
+```
+
+If `DEMO_PASSWORD` is empty the seeders generate a **random** password and print
+it once to the console — never a shared default. That print is suppressed in
+production, where the seeders refuse to run at all.
+
+To check a demo login worked, sign in through `/login` like a person would. There
+is deliberately no copy-pasteable `Hash::check` snippet for this any more: a
+verification command containing the password is one `grep` away from being a
+published credential, which is how the previous version of this line leaked one.
 
 ---
 
