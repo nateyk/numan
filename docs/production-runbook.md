@@ -714,13 +714,25 @@ command that has never run before.
 
 ### Before enabling
 
-**A queue worker must be running.** A reminder claims its row in the log *before*
-the notification is queued, so with no worker the row is claimed, nothing is sent,
-and the claim sits there undelivered. The command reclaims those after an hour, so
-it recovers on its own — but only if the worker comes back. Do not enable this
-before §9's supervisor is confirmed alive.
+**No queue worker is involved.** `MarketplacePlanReminder` does not implement
+`ShouldQueue`, so `Notification::send()` delivers both channels inline and the
+command finishes the send before it marks the claim delivered. Earlier drafts of
+this section claimed a queue worker was a hard gate; that was wrong, and sizing
+infrastructure off it would be a waste. §9's supervisor is still needed for
+Chapa reconciliation and the digests, but not for reminders.
 
-**`MAIL_MAILER` must not be `log`** (§10).
+**What the 60-minute reclaim actually covers.** The claim row is written before the
+send, precisely so two runs cannot both send. The cost of that ordering is a window
+between the two: if the process is killed or the mailer throws there, the row is left
+with a null `sent_at`, and the claim then blocks every future run from sending that
+reminder. The reclaim re-dispatches it after an hour. The window is milliseconds
+wide, so this is insurance rather than something to expect — but the failure it
+prevents is a customer never hearing about a plan that lapses, which is worse than
+double-sending because nobody notices a message they did not get.
+
+**`MAIL_MAILER` must not be `log`** (§10). The database channel is written by the
+same inline call, so a mailer set to `log` still leaves the recipient a notification
+in the app — but nobody is looking at a log file, so it means no email.
 
 ### Dry run first
 
@@ -783,14 +795,117 @@ work left open by accident. The other marketplace notifications
 (`ManualPaymentConfirmed` and friends) are still hardcoded English; only the new
 reminders are translated.
 
-### If a queue outage swallowed some
+### If a crashed run left a claim behind
 
 Nothing to do. Run the command again, or wait for the hourly schedule. Claims older
-than 60 minutes are re-dispatched automatically, up to three attempts, then
-abandoned with an id-only warning in the log.
+than 60 minutes are re-dispatched automatically, up to three attempts, then abandoned
+with an id-only warning.
 
 ```sql
--- what is pending, and what has been abandoned
+-- what is pending, what was sent, what was given up on
 SELECT status, COUNT(*) FROM marketplace_reminder_logs GROUP BY status;
+
+-- a claim older than an hour that is still pending is the thing to look at
+SELECT id, marketplace_subscription_id, reminder_type, attempts, created_at
+  FROM marketplace_reminder_logs
+ WHERE sent_at IS NULL AND created_at < NOW() - INTERVAL 1 HOUR;
 ```
+
+---
+
+## 15. Rolling back
+
+Ordered by how quickly you need to decide. The first two are instant and lose
+nothing; everything after them is a restore.
+
+### 15a. Stop the scheduled commands — instant, no data loss
+
+Both flags off and clear the schedule cache. Do this first if anything is misbehaving;
+it is reversible and it is what stops a bad state getting worse while you work out
+what the bad state is.
+
+```bash
+# .env
+MARKETPLACE_EXPIRY_ENABLED=false
+MARKETPLACE_REMINDERS_ENABLED=false
+
+php artisan config:clear
+php artisan schedule:clear-cache
+```
+
+Verify nothing is still queued to run:
+
+```bash
+php artisan schedule:list | grep -E "expire|reminder"   # expect no output
+```
+
+### 15b. Roll back the code — instant, no data loss
+
+```bash
+git checkout <previous-tag-or-sha>
+php artisan optimize:clear
+```
+
+Only safe while no migration has run. The code and the schema must move together
+from here on, because every data-changing migration below writes rows the previous
+code does not know how to read.
+
+### 15c. Migrations that are NOT reversible
+
+These cannot be undone by `migrate:rollback`. Two of them are permanently lossy and
+that is the point, not an oversight.
+
+| Migration | Why it cannot be reversed |
+|---|---|
+| `2026_10_04_000001_scrub_contact_data_from_activity_log` | **Irreversible.** The removed values were plaintext phone numbers and bank details and exist nowhere else. `down()` is a no-op that logs a notice. The audit trail is preserved — who changed what, when — but the attribute values are gone. This is the correct outcome: they should not have been written. |
+| `2026_10_03_000004_archive_legacy_marketplace_plans` | Sets `is_active = false`. There is no record of which plans were archived, so restoring means knowing that from somewhere else. It **exits non-zero rather than re-activating anything** — handing live plans back to customers is worse than leaving them archived. |
+| `2026_10_05_000001_add_tariff_weight_to_freight_posts_table` | `down()` is deliberately empty. It backfills `item_name` from `cargo_description`, and dropping `tariff_weight` would drop a column the current code depends on. |
+| `2026_10_04_000003_backfill_payment_transaction_provider` | Derives `provider` from other columns. Re-deriving is not the same as restoring if a row was edited in between. |
+| `2026_10_03_000005_normalize_status_columns_to_enum_values` | Rewrites status casing in place. The original casing is not stored anywhere. |
+
+The rest — adding columns, creating tables, adding indexes — roll back cleanly, and
+`migrate:rollback --step=N` will take them in reverse order.
+
+### 15d. What to restore from backup
+
+Take a backup **before** migrating (§1). If you need it:
+
+```bash
+# 1. the database
+mysqldump --single-transaction --routines --triggers --databases <db> > restore.sql
+
+# 2. the private disk — NOT in the database
+#    manual payment proofs and transporter documents live here
+tar czf storage-restore.tar.gz -C storage/app/private .
+```
+
+**Restoring the database rolls back every data change above**, including the scrub.
+That is usually why you would not do it for a status-casing problem alone.
+
+Restoring the private disk is separate and independent. A database restore does not
+bring back proof images, and losing those means a customer's manual payment cannot
+be confirmed after the fact.
+
+### 15e. If you enabled the flags and something already ran
+
+| Situation | What to do |
+|---|---|
+| Subscriptions were expired early | `marketplace_subscriptions` has `current_period_ends_at` and `ends_at`. Restore those two columns from backup for the affected rows. Listings hidden by the sweep are **restorable without a backup**: `MarketplaceListingVisibilityService::restoreHiddenPosts($workspace)` clears `hidden_at` for one workspace. |
+| Manual payments were expired | They are in `status`, not deleted. `chapa:reconcile` will re-derive them from Chapa — see §6, and note it grants nothing on its own. |
+| Reminders went to the wrong people | Nothing to undo. The log records exactly what was sent: `marketplace_reminder_logs` has `marketplace_subscription_id`, `reminder_type`, `status`, `sent_at`. Delete a row to let that reminder send again; leave it and it will not. |
+| Prices were changed | `marketplace_plans` holds the three price columns. Restore from backup. Nothing was archived or deleted by a price edit. |
+
+### 15f. The one thing to decide first
+
+**A restore is not a rollback.** If you are considering restoring the database to
+undo a migration, check whether the migration was lossy in a way that matters:
+
+- Scrubbed contact data → a restore brings the plaintext phone numbers back. Do not
+  restore for that; the scrub is the correct state.
+- Archived plans → a restore brings them back as active. Check the prices before
+  anyone can buy one.
+- Hidden listings → restorable in place, no database restore needed.
+
+Restoring is the right answer when the migration corrupted something, not when it
+changed something in a direction you can live with.
 
