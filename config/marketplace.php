@@ -34,7 +34,7 @@ return [
     */
 
     'free_limits' => [
-        'free_active_posts' => 1,
+        'free_active_posts' => 5,
         'free_interests_per_week' => 3,
         'free_contact_reveals_per_week' => 3,
         'free_interest_window_days' => 7,

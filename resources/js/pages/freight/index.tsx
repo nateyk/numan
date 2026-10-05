@@ -2,6 +2,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -32,8 +40,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
+    AlertTriangle,
     ArrowRight,
     Calendar,
     ExternalLink,
@@ -81,6 +90,9 @@ interface Props {
     filters: { status: string; search?: string | null };
     counts: Record<string, number>;
     hiddenCount?: number;
+    canPost?: boolean;
+    remainingLivePosts?: number;
+    livePostLimit?: number;
 }
 
 const STATUSES = [
@@ -116,10 +128,27 @@ export default function FreightIndex({
     filters,
     counts,
     hiddenCount = 0,
+    canPost = true,
+    remainingLivePosts = -1,
+    livePostLimit = -1,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
+    const { errors } = usePage().props as unknown as {
+        errors: Record<string, string>;
+    };
+    // Open the limit dialog right away if the server just bounced a create
+    // (e.g. the quota filled between page load and clicking Post).
+    const [limitDialogOpen, setLimitDialogOpen] = useState(
+        () => !canPost && Boolean(errors.freight),
+    );
 
-    const createDraft = () => router.post('/my-freight');
+    const createDraft = () => {
+        if (!canPost) {
+            setLimitDialogOpen(true);
+            return;
+        }
+        router.post('/my-freight');
+    };
     const filterBy = (status: string) =>
         router.get(
             '/my-freight',
@@ -148,6 +177,19 @@ export default function FreightIndex({
                         </p>
                         <Button asChild size="sm" className="shrink-0">
                             <Link href="/billing/plans">Subscribe</Link>
+                        </Button>
+                    </div>
+                )}
+                {!canPost && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+                        <p className="flex items-center gap-2 font-medium">
+                            <AlertTriangle className="size-4 shrink-0" />
+                            Free plan limit reached — your live posts are at the
+                            maximum ({livePostLimit}). Close a post or upgrade
+                            to post more.
+                        </p>
+                        <Button asChild size="sm" className="shrink-0">
+                            <Link href="/billing/plans">View plans</Link>
                         </Button>
                     </div>
                 )}
@@ -809,6 +851,40 @@ export default function FreightIndex({
                         ))}
                     </div>
                 )}
+                <Dialog
+                    open={limitDialogOpen}
+                    onOpenChange={setLimitDialogOpen}
+                >
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <AlertTriangle className="size-5 text-amber-600" />
+                                Post limit reached
+                            </DialogTitle>
+                            <DialogDescription>
+                                {errors.freight ??
+                                    'Your Free plan allows a limited number of live freight posts.'}{' '}
+                                You are using{' '}
+                                {livePostLimit - remainingLivePosts} of{' '}
+                                {livePostLimit} live{' '}
+                                {livePostLimit === 1 ? 'post' : 'posts'}. Close
+                                a delivered post, wait for one to expire, or
+                                upgrade your plan to post more.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setLimitDialogOpen(false)}
+                            >
+                                Got it
+                            </Button>
+                            <Button asChild>
+                                <Link href="/billing/plans">View plans</Link>
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );

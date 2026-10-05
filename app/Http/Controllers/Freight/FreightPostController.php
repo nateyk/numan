@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Freight;
 use App\Enums\FreightPostStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FreightPost;
+use App\Services\MarketplaceEntitlementService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -61,12 +63,37 @@ class FreightPostController extends Controller
             // Hidden posts stay listed here for the owner; only public
             // visibility is withdrawn.
             'hiddenCount' => (clone $base)->hidden()->count(),
+            // Free-plan quota, so the UI can explain the limit before the
+            // user fires a create request the policy would reject.
+            'canPost' => Gate::allows('create', FreightPost::class),
+            'remainingLivePosts' => app(MarketplaceEntitlementService::class)->remainingLivePosts($request->user()->currentWorkspace),
+            'livePostLimit' => app(MarketplaceEntitlementService::class)->getLimitValue($request->user()->currentWorkspace, 'active_freight_posts'),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        Gate::authorize('create', FreightPost::class);
+        try {
+            Gate::authorize('create', FreightPost::class);
+        } catch (AuthorizationException) {
+            // A workspace over its Free live-post limit gets a plain 403 from
+            // the policy. Explain it instead: send the user back with the
+            // numbers and a path to upgrade, rather than an error page.
+            $workspace = $request->user()->currentWorkspace;
+            $entitlement = app(MarketplaceEntitlementService::class);
+
+            if ($workspace && ! $entitlement->canCreateFreightPost($workspace)) {
+                return back()
+                    ->with('limit_reached', [
+                        'live' => $entitlement->livePostCount($workspace),
+                        'limit' => $entitlement->getLimitValue($workspace, 'active_freight_posts'),
+                        'plans_url' => route('billing.plans'),
+                    ])
+                    ->withErrors(['freight' => 'You have reached the Free plan limit for live freight posts. Close or wait for an existing post to expire, or upgrade your plan to post more.']);
+            }
+
+            throw new AuthorizationException('You are not allowed to post freight.');
+        }
 
         // A phone number on the profile is required to post. Carriers need a
         // way to reach a consignor, and contact details are only ever released
