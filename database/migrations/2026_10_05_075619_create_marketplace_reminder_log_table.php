@@ -31,7 +31,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('marketplace_reminder_log', function (Blueprint $table): void {
+        Schema::create('marketplace_reminder_logs', function (Blueprint $table): void {
             $table->id();
 
             $table->foreignId('marketplace_subscription_id')
@@ -63,18 +63,18 @@ return new class extends Migration
             // leave user_id null do not collide.
             $table->unique(
                 ['marketplace_subscription_id', 'reminder_type', 'channel'],
-                'marketplace_reminder_log_unique_reminder'
+                'marketplace_reminder_logs_unique_reminder'
             );
 
             // The reclaim query: rows claimed but not sent, oldest first.
-            $table->index(['status', 'sent_at'], 'marketplace_reminder_log_pending');
+            $table->index(['status', 'sent_at'], 'marketplace_reminder_logs_pending');
 
-            $table->index(['reminder_type', 'created_at'], 'marketplace_reminder_log_type');
+            $table->index(['reminder_type', 'created_at'], 'marketplace_reminder_logs_type');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('marketplace_reminder_log');
+        Schema::dropIfExists('marketplace_reminder_logs');
     }
 };

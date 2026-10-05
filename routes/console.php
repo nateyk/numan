@@ -47,3 +47,22 @@ if (config('marketplace.expiry_enabled')) {
     // cadence would only re-examine the same queue more often.
     Schedule::command('marketplace:expire-manual-payments')->dailyAt('03:30')->withoutOverlapping();
 }
+
+// Marketplace renewal and expiry reminders.
+//
+// DISABLED BY DEFAULT, and gated on its own flag rather than on
+// MARKETPLACE_EXPIRY_ENABLED. The two are independent decisions: a site can
+// expire subscriptions without ever emailing anybody about it, and should be able
+// to try reminders on a pilot before trusting the expiry sweep on live data.
+//
+// Hourly. The windows are day-granular but the moment a subscription enters one
+// is not, and the reminder log is what makes re-asking cheap.
+//
+//   php artisan marketplace:send-reminders --dry-run
+//   MARKETPLACE_REMINDERS_ENABLED=true php artisan marketplace:send-reminders
+//
+// --dry-run works with the flag off. The flag gates the scheduler registration
+// only.
+if (config('marketplace.reminders_enabled')) {
+    Schedule::command('marketplace:send-reminders')->hourly()->withoutOverlapping();
+}
