@@ -134,4 +134,15 @@ class FreightPostController extends Controller
             'post' => $post,
         ]);
     }
+
+    public function destroy(Request $request, string $ulid): RedirectResponse
+    {
+        $post = FreightPost::where('ulid', $ulid)->firstOrFail();
+        Gate::authorize('delete', $post);
+
+        $post->delete();
+
+        return redirect()->route('freight.index')
+            ->with('success', 'Freight post deleted.');
+    }
 }

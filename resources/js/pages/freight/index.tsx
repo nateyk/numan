@@ -141,6 +141,17 @@ export default function FreightIndex({
     const [limitDialogOpen, setLimitDialogOpen] = useState(
         () => !canPost && Boolean(errors.freight),
     );
+    const [deleteTarget, setDeleteTarget] = useState<{
+        ulid: string;
+        label: string;
+    } | null>(null);
+
+    const confirmDelete = () => {
+        if (!deleteTarget) return;
+        router.delete(`/my-freight/${deleteTarget.ulid}`, {
+            onFinish: () => setDeleteTarget(null),
+        });
+    };
 
     const createDraft = () => {
         if (!canPost) {
@@ -649,7 +660,20 @@ export default function FreightIndex({
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem className="cursor-pointer text-destructive">
+                                                                    <DropdownMenuItem
+                                                                        className="cursor-pointer text-destructive"
+                                                                        onSelect={(
+                                                                            e,
+                                                                        ) => {
+                                                                            e.preventDefault();
+                                                                            setDeleteTarget(
+                                                                                {
+                                                                                    ulid: p.ulid,
+                                                                                    label: `${p.originLocation?.name ?? p.origin_location?.name ?? 'Origin'} → ${p.destinationLocation?.name ?? p.destination_location?.name ?? 'Destination'}`,
+                                                                                },
+                                                                            );
+                                                                        }}
+                                                                    >
                                                                         <Trash2 className="mr-2 size-4" />{' '}
                                                                         Delete
                                                                         (draft)
@@ -798,7 +822,16 @@ export default function FreightIndex({
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
-                                                <DropdownMenuItem className="text-destructive">
+                                                <DropdownMenuItem
+                                                    className="text-destructive"
+                                                    onSelect={(e) => {
+                                                        e.preventDefault();
+                                                        setDeleteTarget({
+                                                            ulid: p.ulid,
+                                                            label: `${origin?.name ?? 'Origin'} → ${destination?.name ?? 'Destination'}`,
+                                                        });
+                                                    }}
+                                                >
                                                     <Trash2 className="mr-2 size-4" />{' '}
                                                     Delete
                                                 </DropdownMenuItem>
@@ -855,6 +888,7 @@ export default function FreightIndex({
                     open={limitDialogOpen}
                     onOpenChange={setLimitDialogOpen}
                 >
+                    {' '}
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
@@ -881,6 +915,40 @@ export default function FreightIndex({
                             </Button>
                             <Button asChild>
                                 <Link href="/billing/plans">View plans</Link>
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                <Dialog
+                    open={deleteTarget !== null}
+                    onOpenChange={(open) => {
+                        if (!open) setDeleteTarget(null);
+                    }}
+                >
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Trash2 className="size-5 text-destructive" />
+                                Delete freight post?
+                            </DialogTitle>
+                            <DialogDescription>
+                                {deleteTarget?.label ?? 'This post'} and its
+                                interests will be permanently removed. This
+                                cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setDeleteTarget(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={confirmDelete}
+                            >
+                                Delete
                             </Button>
                         </DialogFooter>
                     </DialogContent>
