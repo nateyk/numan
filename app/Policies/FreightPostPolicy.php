@@ -86,6 +86,23 @@ class FreightPostPolicy
 
     public function delete(User $user, FreightPost $post): bool
     {
-        return $user->id === $post->user_id || (bool) $user->is_superadmin;
+        if ((bool) $user->is_superadmin) {
+            return true;
+        }
+
+        if ($user->id !== $post->user_id) {
+            return false;
+        }
+
+        // Owners may only remove drafts and finished posts. Live posts
+        // (submitted / under review / active) carry transporter interests and
+        // marketplace visibility, so deleting them would silently destroy
+        // other users' records.
+        return in_array($post->status, [
+            FreightPostStatus::Draft->value,
+            FreightPostStatus::Rejected->value,
+            FreightPostStatus::Closed->value,
+            FreightPostStatus::Expired->value,
+        ], true);
     }
 }

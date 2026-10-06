@@ -39,6 +39,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
@@ -145,11 +146,23 @@ export default function FreightIndex({
         ulid: string;
         label: string;
     } | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const { addToast } = useToast();
 
     const confirmDelete = () => {
-        if (!deleteTarget) return;
+        if (!deleteTarget || deleting) return;
+        setDeleting(true);
         router.delete(`/my-freight/${deleteTarget.ulid}`, {
-            onFinish: () => setDeleteTarget(null),
+            onSuccess: () => addToast('Freight post deleted.', 'success'),
+            onError: () =>
+                addToast(
+                    'Could not delete this post. Please try again.',
+                    'error',
+                ),
+            onFinish: () => {
+                setDeleting(false);
+                setDeleteTarget(null);
+            },
         });
     };
 
@@ -471,6 +484,16 @@ export default function FreightIndex({
                                                     .truck_type as Freight['truckType']);
                                             const isDraft =
                                                 p.status === 'draft';
+                                            // Mirrors FreightPostPolicy::delete for owners: drafts
+                                            // and finished posts can go; live posts
+                                            // (submitted / under review / active)
+                                            // carry other users' interests.
+                                            const canDelete = [
+                                                'draft',
+                                                'rejected',
+                                                'closed',
+                                                'expired',
+                                            ].includes(p.status);
                                             return (
                                                 <TableRow key={p.ulid}>
                                                     <TableCell>
@@ -660,24 +683,25 @@ export default function FreightIndex({
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem
-                                                                        className="cursor-pointer text-destructive"
-                                                                        onSelect={(
-                                                                            e,
-                                                                        ) => {
-                                                                            e.preventDefault();
-                                                                            setDeleteTarget(
-                                                                                {
-                                                                                    ulid: p.ulid,
-                                                                                    label: `${p.originLocation?.name ?? p.origin_location?.name ?? 'Origin'} → ${p.destinationLocation?.name ?? p.destination_location?.name ?? 'Destination'}`,
-                                                                                },
-                                                                            );
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="mr-2 size-4" />{' '}
-                                                                        Delete
-                                                                        (draft)
-                                                                    </DropdownMenuItem>
+                                                                    {canDelete && (
+                                                                        <DropdownMenuItem
+                                                                            className="cursor-pointer text-destructive"
+                                                                            onSelect={(
+                                                                                e,
+                                                                            ) => {
+                                                                                e.preventDefault();
+                                                                                setDeleteTarget(
+                                                                                    {
+                                                                                        ulid: p.ulid,
+                                                                                        label: `${p.originLocation?.name ?? p.origin_location?.name ?? 'Origin'} → ${p.destinationLocation?.name ?? p.destination_location?.name ?? 'Destination'}`,
+                                                                                    },
+                                                                                );
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="mr-2 size-4" />{' '}
+                                                                            Delete
+                                                                        </DropdownMenuItem>
+                                                                    )}
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         </div>
@@ -725,6 +749,13 @@ export default function FreightIndex({
                                 ((p as unknown as Record<string, unknown>)
                                     .cargo_type as Freight['cargoType']);
                             const isDraft = p.status === 'draft';
+                            // Same rule as the desktop table and the policy.
+                            const canDelete = [
+                                'draft',
+                                'rejected',
+                                'closed',
+                                'expired',
+                            ].includes(p.status);
                             return (
                                 <Card key={p.ulid} className="p-4">
                                     <div className="flex items-start justify-between gap-2">
@@ -822,19 +853,21 @@ export default function FreightIndex({
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
-                                                <DropdownMenuItem
-                                                    className="text-destructive"
-                                                    onSelect={(e) => {
-                                                        e.preventDefault();
-                                                        setDeleteTarget({
-                                                            ulid: p.ulid,
-                                                            label: `${origin?.name ?? 'Origin'} → ${destination?.name ?? 'Destination'}`,
-                                                        });
-                                                    }}
-                                                >
-                                                    <Trash2 className="mr-2 size-4" />{' '}
-                                                    Delete
-                                                </DropdownMenuItem>
+                                                {canDelete && (
+                                                    <DropdownMenuItem
+                                                        className="text-destructive"
+                                                        onSelect={(e) => {
+                                                            e.preventDefault();
+                                                            setDeleteTarget({
+                                                                ulid: p.ulid,
+                                                                label: `${origin?.name ?? 'Origin'} → ${destination?.name ?? 'Destination'}`,
+                                                            });
+                                                        }}
+                                                    >
+                                                        <Trash2 className="mr-2 size-4" />{' '}
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
@@ -940,15 +973,17 @@ export default function FreightIndex({
                         <DialogFooter className="gap-2">
                             <Button
                                 variant="outline"
+                                disabled={deleting}
                                 onClick={() => setDeleteTarget(null)}
                             >
                                 Cancel
                             </Button>
                             <Button
                                 variant="destructive"
+                                disabled={deleting}
                                 onClick={confirmDelete}
                             >
-                                Delete
+                                {deleting ? 'Deleting…' : 'Delete'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

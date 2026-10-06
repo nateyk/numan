@@ -64,6 +64,29 @@ it('forbids deleting another user freight post', function () {
     expect(FreightPost::where('ulid', $post->ulid)->count())->toBe(1);
 });
 
+it('explains instead of 403 when the owner deletes a live post', function () {
+    [$user, $post] = deleteTestSetup();
+    $post->update(['status' => 'active']);
+
+    $this->actingAs($user)
+        ->delete("/my-freight/{$post->ulid}")
+        ->assertRedirect()
+        ->assertSessionHasErrors('freight');
+
+    expect(FreightPost::where('ulid', $post->ulid)->count())->toBe(1);
+});
+
+it('lets the owner delete a finished post', function () {
+    [$user, $post] = deleteTestSetup();
+    $post->update(['status' => 'closed']);
+
+    $this->actingAs($user)
+        ->delete("/my-freight/{$post->ulid}")
+        ->assertRedirect();
+
+    expect(FreightPost::where('ulid', $post->ulid)->count())->toBe(0);
+});
+
 it('requires authentication to delete a freight post', function () {
     [$user, $post] = deleteTestSetup();
 

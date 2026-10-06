@@ -138,11 +138,23 @@ class FreightPostController extends Controller
     public function destroy(Request $request, string $ulid): RedirectResponse
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
-        Gate::authorize('delete', $post);
+
+        try {
+            Gate::authorize('delete', $post);
+        } catch (AuthorizationException) {
+            // The owner clicking delete on a live post is a wrong-status
+            // problem, not an intruder: explain it instead of a bare 403.
+            if ($request->user()->id === $post->user_id) {
+                return back()->withErrors(['freight' => 'Only drafts and finished posts can be deleted. Close or wait out a live post instead.']);
+            }
+
+            throw new AuthorizationException('You are not allowed to delete this freight post.');
+        }
 
         $post->delete();
 
-        return redirect()->route('freight.index')
+        return redirect()
+            ->route('freight.index', $request->only(['status', 'search']))
             ->with('success', 'Freight post deleted.');
     }
 }
