@@ -3,6 +3,7 @@
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
+use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -73,6 +74,7 @@ it('creates a chapa transaction at the yearly price', function () {
 });
 
 it('refuses a zero-priced checkout and leaves an active subscription untouched', function () {
+
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
     $plan = MarketplacePlan::where('slug', 'standard')->first();
 
@@ -103,6 +105,30 @@ it('refuses a zero-priced checkout and leaves an active subscription untouched',
     $sub->refresh();
     expect($sub->status)->toBe('active');
     expect($sub->ends_at)->not->toBeNull();
+});
+
+it('returns a json error a fetch client can read when chapa initialization fails', function () {
+    [$user] = marketplaceTestUserWithWorkspace();
+
+    // Mirror production: Chapa answers 200 with a failed status (bad key,
+    // inactive business account). The plans page posts with fetch, which
+    // follows redirects, so a redirect-with-errors here would arrive as HTML
+    // and crash the checkout handler. JSON keeps the message readable.
+    $this->mock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('generateReference')->andReturn('NF-test-failed-init');
+        $mock->shouldReceive('initializePayment')->andReturn([
+            'status' => 'failed',
+            'message' => 'Invalid API Key.',
+            'data' => null,
+        ]);
+    });
+
+    $response = $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ]);
+
+    $response->assertStatus(422)->assertJsonPath('error', 'Invalid API Key.');
 });
 
 it('validates the chapa webhook signature and processes', function () {

@@ -102,6 +102,15 @@ class CheckoutController extends Controller
             return redirect()->away($response['data']['checkout_url']);
         }
 
-        return back()->withErrors(['plan' => $response['message'] ?? 'Unable to initialize Chapa payment.']);
+        $message = $response['message'] ?? 'Unable to initialize Chapa payment.';
+
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            return response()->json([
+                'success' => false,
+                'error' => $message,
+            ], 422);
+        }
+
+        return back()->withErrors(['plan' => $message]);
     }
 }

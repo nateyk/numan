@@ -63,7 +63,10 @@ interface PlansPageProps {
      */
     manualPayment?: {
         enabled: boolean;
-        methods: Record<string, { label: string; fields: Record<string, string> }>;
+        methods: Record<
+            string,
+            { label: string; fields: Record<string, string> }
+        >;
         index_url: string;
         expiry_days: number;
     };
@@ -130,23 +133,33 @@ export default function PlansPage({
                 checkout_url?: string;
                 success?: boolean;
                 error?: string;
+                message?: string;
             }>('/marketplace/checkout', {
                 body: { plan: slug, billing_interval: billingPeriod },
             });
 
-            if (data.checkout_url) {
+            if (data?.checkout_url) {
                 window.location.href = data.checkout_url;
                 return;
             }
 
-            if (data.error) {
-                addToast(data.error, 'error');
-            }
+            // Server refused the checkout (validation, bad prices, or the
+            // payment provider rejected initialization). Never crash here:
+            // surface whatever message came back and stay on the page.
+            addToast(
+                data?.error ??
+                    data?.message ??
+                    'Checkout failed. Please try again.',
+                'error',
+            );
 
             setProcessing(null);
-            router.visit('/billing');
         } catch (error) {
             console.error('Checkout error:', error);
+            addToast(
+                'Could not reach the payment server. Check your connection and try again.',
+                'error',
+            );
             setProcessing(null);
         }
     };
@@ -406,7 +419,10 @@ export default function PlansPage({
                                             <Button
                                                 variant="outline"
                                                 className="w-full"
-                                                disabled={!isOwner || processing !== null}
+                                                disabled={
+                                                    !isOwner ||
+                                                    processing !== null
+                                                }
                                                 onClick={() =>
                                                     router.visit(
                                                         `/marketplace/manual/${plan.slug}/${billingPeriod}`,
@@ -430,12 +446,17 @@ export default function PlansPage({
                                 {Object.values(manualPayment.methods)
                                     .map((m) => m.label)
                                     .join(', ')}
-                                . You will get the account details and a reference to put in
-                                the transfer note. We confirm within{' '}
-                                {manualPayment.expiry_days} days, and nothing is activated until
-                                an administrator confirms your payment.
+                                . You will get the account details and a
+                                reference to put in the transfer note. We
+                                confirm within {manualPayment.expiry_days} days,
+                                and nothing is activated until an administrator
+                                confirms your payment.
                             </p>
-                            <Button asChild variant="link" className="mt-2 h-auto p-0">
+                            <Button
+                                asChild
+                                variant="link"
+                                className="mt-2 h-auto p-0"
+                            >
                                 <Link href={manualPayment.index_url}>
                                     See your manual payment requests
                                 </Link>
