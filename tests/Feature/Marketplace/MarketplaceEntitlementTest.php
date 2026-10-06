@@ -19,6 +19,12 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->seed(MarketplacePlanSeeder::class);
     $this->entitlement = app(MarketplaceEntitlementService::class);
+
+    // The slot mechanics below are written against a free limit of one live
+    // post. Pin it explicitly so they do not move when the global Free
+    // default changes. The config-fallback test below asserts the default
+    // itself and is updated for the current value.
+    MarketplaceSetting::updateOrCreate(['key' => 'free_active_posts'], ['value' => 1]);
 });
 
 /**
@@ -61,8 +67,8 @@ it('falls back to config defaults when a setting row is missing', function () {
 
     $service = app(MarketplaceEntitlementService::class);
 
-    // Must not crash and must fall back to 1 / 3 / 3.
-    expect($service->getLimitValue($workspace, 'active_freight_posts'))->toBe(1);
+    // Must not crash and must fall back to the configured defaults (5 / 3 / 3).
+    expect($service->getLimitValue($workspace, 'active_freight_posts'))->toBe(5);
     expect($service->getLimitValue($workspace, 'interests_per_week'))->toBe(3);
     expect($service->getLimitValue($workspace, 'contact_reveals_per_week'))->toBe(3);
 });

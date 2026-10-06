@@ -45,7 +45,7 @@ it('seeds only the standard plan, not the retired plans', function () {
 it('seeds the free limit settings', function () {
     $this->seed(MarketplacePlanSeeder::class);
 
-    expect(MarketplaceSetting::where('key', 'free_active_posts')->value('value'))->toBe(1);
+    expect(MarketplaceSetting::where('key', 'free_active_posts')->value('value'))->toBe(5);
     expect(MarketplaceSetting::where('key', 'free_interests_per_week')->value('value'))->toBe(3);
     expect(MarketplaceSetting::where('key', 'free_contact_reveals_per_week')->value('value'))->toBe(3);
 });

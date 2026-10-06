@@ -41,6 +41,11 @@ beforeEach(function () {
         'test.cargo_type_id' => $cargo->id,
         'test.truck_type_id' => $truck->id,
     ]);
+
+    // The over-limit fixtures below are written against a free limit of one
+    // live post. Pin it explicitly so they do not move when the global Free
+    // default changes.
+    MarketplaceSetting::updateOrCreate(['key' => 'free_active_posts'], ['value' => 1]);
 });
 
 /**

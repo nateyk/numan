@@ -4,6 +4,7 @@ use App\Enums\FreightPostStatus;
 use App\Models\FreightPost;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
+use App\Models\MarketplaceSetting;
 use App\Models\MarketplaceSubscription;
 use App\Models\Profile;
 use App\Models\User;
@@ -23,6 +24,11 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->seed(MarketplacePlanSeeder::class);
     $this->visibility = app(MarketplaceListingVisibilityService::class);
+
+    // Every hiding test in this file is written against a free limit of one
+    // live post. Pin it explicitly so the suite does not move when the
+    // global Free default changes.
+    MarketplaceSetting::updateOrCreate(['key' => 'free_active_posts'], ['value' => 1]);
 });
 
 function ownerWithWorkspace(): array

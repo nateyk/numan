@@ -119,7 +119,10 @@ it('normalising makes the live post limit actually count legacy rows', function 
 
     runStatusNormalizationMigration();
 
-    // The free limit is 1 live post, so one legacy row now fills it.
+    // Pin the free limit to one live post: this test verifies that a single
+    // legacy row fills the quota, independently of the global default.
+    MarketplaceSetting::updateOrCreate(['key' => 'free_active_posts'], ['value' => 1]);
+
     expect($this->entitlement->livePostCount($workspace->fresh()))->toBe(1);
     expect($this->entitlement->canCreateFreightPost($workspace->fresh()))->toBeFalse();
 });

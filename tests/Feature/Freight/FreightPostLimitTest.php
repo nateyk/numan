@@ -2,6 +2,7 @@
 
 use App\Models\FreightPost;
 use App\Models\Location;
+use App\Models\MarketplaceSetting;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\Workspace;
@@ -17,7 +18,11 @@ uses(RefreshDatabase::class);
  */
 function limitTestUser(int $livePosts): User
 {
-    config()->set('marketplace.free_limits.free_active_posts', 1);
+    // Pin the quota at one live post through the settings row (the same row
+    // the admin UI writes): the service reads the row first and only falls
+    // back to config when it is missing, so a config override alone would
+    // not take effect here.
+    MarketplaceSetting::updateOrCreate(['key' => 'free_active_posts'], ['value' => 1]);
 
     $user = User::factory()->create();
     $location = Location::factory()->create();
