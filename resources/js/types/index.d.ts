@@ -122,6 +122,11 @@ export interface SharedData {
     // Set when an action bounced the user back for a missing phone number.
     requires_phone?: boolean;
     requires_phone_reason?: string | null;
+    /**
+     * Set when a contact reveal was refused for quota. Top level, not inside
+     * flash: HandleInertiaRequests shares it beside requires_phone.
+     */
+    reveal_blocked?: { limit: number; used: number; window_days: number } | null;
     locale?: string;
     features?: Record<string, boolean>;
     show_experience_survey?: boolean;

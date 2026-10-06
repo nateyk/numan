@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\FreightPostResource;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Services\ContactRevealService;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -15,6 +16,10 @@ use Inertia\Response;
 
 class PublicFreightDiscoveryController extends Controller
 {
+    public function __construct(
+        protected ContactRevealService $reveals,
+    ) {}
+
     public function index(Request $request): Response
     {
         $search = $request->query('search');
@@ -132,17 +137,41 @@ class PublicFreightDiscoveryController extends Controller
         $user = $request->user();
         $hasInterest = false;
         $interestStatus = null;
+        $interestId = null;
         $interestsCount = 0;
         if ($user) {
             $interest = FreightInterest::where('freight_post_id', $post->id)->where('user_id', $user->id)->first();
             if ($interest) {
                 $hasInterest = true;
                 $interestStatus = $interest->status;
+                // The id, not just the fact. The page needs it to POST the reveal,
+                // and "hasInterest => true" alone cannot produce that URL.
+                $interestId = (int) $interest->id;
             }
             // For owner, provide interests count
             if ($user->id === $post->user_id) {
                 $interestsCount = FreightInterest::where('freight_post_id', $post->id)->count();
             }
+        }
+
+        // Whether this viewer may reveal the consignor's contact from this page,
+        // and what is already revealed.
+        //
+        // canReveal() returns true when the viewer and the counterparty are the same
+        // person, so it is forced false for the owner: a "Reveal contact" button
+        // aimed at somebody revealing their own number is nonsense, and the owner
+        // gets an Edit action instead.
+        $canReveal = false;
+        $revealedContacts = null;
+
+        if ($user && $user->id !== $post->user_id && $post->user) {
+            $canReveal = $this->reveals->canReveal($user, $post->user);
+
+            // Read-only. contactIfAlreadyRevealed() never records a reveal, so
+            // loading this page cannot consume anybody's quota.
+            $revealedContacts = $canReveal
+                ? $this->reveals->contactIfAlreadyRevealed($user, $post->user, $interest ?? null)
+                : null;
         }
 
         $marketplaceEntitlement = null;
@@ -160,6 +189,12 @@ class PublicFreightDiscoveryController extends Controller
             'post' => (new FreightPostResource($post))->resolve(),
             'hasInterest' => $hasInterest,
             'interestStatus' => $interestStatus,
+            'interestId' => $interestId,
+            // Contact stays out of the payload until it has actually been
+            // revealed. The page renders a button instead, and the button is what
+            // goes through the metered, ledgered endpoint.
+            'canReveal' => $canReveal,
+            'revealedContacts' => $revealedContacts,
             'interestsCount' => $interestsCount,
             'marketplaceEntitlement' => $marketplaceEntitlement,
             // Lets the owner page render the "hidden, subscribe to restore"

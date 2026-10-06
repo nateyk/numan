@@ -69,6 +69,23 @@ class FreightPostResource extends JsonResource
                 'slug' => $this->truckType?->slug,
             ]),
 
+            // The stored route, so a map can be drawn and a distance quoted.
+            //
+            // Absent until now, which is why the Freight Details page had no map
+            // and no distance: the page read route_snapshot and this resource never
+            // sent it, so it was always undefined.
+            //
+            // geometry is the OSRM polyline. It is the only field here that can be
+            // large, and it is the reason this is behind a button rather than
+            // mounted on page load — a long route is tens of kilobytes of JSON that
+            // most visitors never scroll back to see.
+            'route_snapshot' => $this->whenLoaded('routeSnapshot', fn () => $this->routeSnapshot ? [
+                'distance_meters' => (int) $this->routeSnapshot->distance_meters,
+                'duration_seconds' => (int) $this->routeSnapshot->duration_seconds,
+                'geometry' => $this->routeSnapshot->geometry,
+                'routing_provider' => $this->routeSnapshot->routing_provider,
+            ] : null),
+
             // Display identity only.
             'owner' => new PostOwnerSummary($this->whenLoaded('user')),
         ];
