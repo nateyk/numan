@@ -264,9 +264,16 @@ export default function FreightShow({
                             </div>
 
                             <div className="grid items-start gap-6 lg:grid-cols-12">
-                                {/* Compact: one column, Consignor first. Wide: details
-                                    on the left, poster on the right. */}
-                                <div className="space-y-4 lg:col-span-7">
+                                {/* Wide: Freight Details on the left, Consignor Poster
+                                    with the action buttons on the right. Compact: they
+                                    stack in this order, so the details — what a
+                                    transporter actually evaluates — come first and
+                                    the call to action follows underneath. */}
+                                <div className="lg:col-span-7">
+                                    <FreightDetailsCard post={post} />
+                                </div>
+
+                                <div className="space-y-4 lg:col-span-5">
                                     <ConsignorPosterCard
                                         owner={post.owner}
                                         ulid={post.ulid}
@@ -280,13 +287,8 @@ export default function FreightShow({
                                         interestsCount={interestsCount}
                                     />
 
-                                    <FreightDetailsCard post={post} />
-                                </div>
-
-                                <div className="space-y-4 lg:col-span-5">
-                                    {/* The action block lives on its own on wide, so the
-                                        primary call to action is not buried below a
-                                        dozen detail rows. */}
+                                    {/* On its own column so the primary call to action is
+                                        not buried under a dozen detail rows. */}
                                     {isOwnPost ? (
                                         <>
                                             <Button

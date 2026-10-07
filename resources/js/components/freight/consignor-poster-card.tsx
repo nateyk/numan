@@ -32,7 +32,10 @@ export type RevealBlocked = {
 } | null;
 
 function initialsFor(name: string | null): string {
-    if (!name) return '—';
+    // Empty rather than a dash or a question mark. A placeholder glyph inside an
+    // avatar circle reads as a broken image, which is worse than an empty circle —
+    // and this shows for any consignor whose profile has no display_name set.
+    if (!name) return '';
 
     return name
         .split(' ')
