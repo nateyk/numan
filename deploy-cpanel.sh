@@ -46,7 +46,21 @@ echo "==> Backing up to ${BACKUP_DIR}"
 mkdir -p "${BACKUP_DIR}"
 cp .env "${BACKUP_DIR}/.env.backup" 2>/dev/null || true
 tar czf "${BACKUP_DIR}/storage-private.tar.gz" storage/app/private 2>/dev/null || true
-php artisan db:backup --database=mysql 2>/dev/null || echo "   (no db:backup command; back the database up out of band)"
+# There is no artisan db:backup command on this project, so back the database
+# up directly. This must run BEFORE migrate below — it is the one backup that
+# matters on a deploy where migrations actually change data.
+DB_CONNECTION="$(grep -oE '^DB_CONNECTION=[A-Za-z0-9_]+' .env 2>/dev/null | cut -d= -f2 || echo sqlite)"
+if [[ "${DB_CONNECTION}" == "sqlite" ]]; then
+    SQLITE_DB="$(grep -oE '^DB_DATABASE=.*' .env 2>/dev/null | cut -d= -f2- || true)"
+    SQLITE_DB="${SQLITE_DB:-database/database.sqlite}"
+    cp "${SQLITE_DB}" "${BACKUP_DIR}/database.sqlite.backup" && echo "    database backed up"
+elif command -v mysqldump > /dev/null 2>&1; then
+    # shellcheck disable=SC1091
+    DB_DATABASE="$(grep -oE '^DB_DATABASE=.*' .env | cut -d= -f2-)"; DB_USERNAME="$(grep -oE '^DB_USERNAME=.*' .env | cut -d= -f2-)"; DB_PASSWORD="$(grep -oE '^DB_PASSWORD=.*' .env | cut -d= -f2-)"
+    mysqldump -u "${DB_USERNAME}" -p"${DB_PASSWORD}" "${DB_DATABASE}" > "${BACKUP_DIR}/database.sql" && echo "    database backed up"
+else
+    echo "    WARNING: no database backup taken (unknown driver ${DB_CONNECTION} and no mysqldump). Migrate at your own risk."
+fi
 echo "    ${BACKUP_DIR}"
 
 # ---------------------------------------------------------------------------
