@@ -246,3 +246,60 @@ it('returns the contact only once the pair is already in the ledger', function (
             ->where('revealedContacts.phone', $phone)
         );
 });
+
+// ── the hidden-listing banner ─────────────────────────────────────────────
+//
+// The controller has passed isHiddenListing and canRestoreListing to this page
+// since the expiry sweep landed, with a comment saying the owner needs the badge
+// here. The page read neither, so an owner whose paid plan lapsed opened their own
+// hidden post and saw a perfectly normal-looking freight post with no explanation
+// of why nobody else can see it.
+//
+// The wording is deliberately the same as the My Freight banner. Two screens
+// describing the same fact differently is how a support ticket gets written.
+
+it('tells the owner that a hidden post is hidden', function () {
+    $owner = User::factory()->create();
+    $post = FreightPost::factory()->for($owner)->create([
+        'status' => 'active',
+        'hidden_at' => now(),
+    ]);
+
+    $workspace = Workspace::factory()->create(['owner_id' => $owner->id]);
+    $workspace->users()->attach($owner->id, ['role' => 'owner']);
+    $owner->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($owner)
+        ->get("/freight/{$post->ulid}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('freight/show')
+            ->where('isHiddenListing', true)
+            // The owner may put it back, so the page offers the route out.
+            ->where('canRestoreListing', true)
+        );
+});
+
+it('does not claim a visible post is hidden', function () {
+    $owner = User::factory()->create();
+    $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
+
+    $this->get("/freight/{$post->ulid}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('isHiddenListing', false)
+            ->where('canRestoreListing', false)
+        );
+});
+
+it('still 404s a hidden post for the public, banner or not', function () {
+    // The banner is for the owner. It must not become a way to confirm that a
+    // post exists.
+    $owner = User::factory()->create();
+    $post = FreightPost::factory()->for($owner)->create([
+        'status' => 'active',
+        'hidden_at' => now(),
+    ]);
+
+    $this->get("/freight/{$post->ulid}")->assertNotFound();
+});

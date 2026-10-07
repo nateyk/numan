@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import CollapsibleRouteMap from '@/components/freight/collapsible-route-map';
 import ConsignorPosterCard, {
     type PostOwner,
     type RevealBlocked,
@@ -34,6 +33,15 @@ interface Props {
     revealedContacts: RevealedContacts;
     interestsCount: number | null;
     canRegister?: boolean;
+    /**
+     * Set when a paid plan lapsed and the expiry sweep hid this post.
+     *
+     * The controller has sent both of these since the sweep landed, saying the
+     * owner needs the badge here. The page read neither, so the owner saw a normal
+     * post with no explanation of why nobody else can.
+     */
+    isHiddenListing?: boolean;
+    canRestoreListing?: boolean;
 }
 
 export default function FreightShow({
@@ -44,6 +52,8 @@ export default function FreightShow({
     canReveal,
     revealedContacts,
     interestsCount,
+    isHiddenListing = false,
+    canRestoreListing = false,
     canRegister = true,
 }: Props) {
     const { auth, reveal_blocked: revealBlocked, requires_phone: requiresPhone } = usePage<SharedData>().props;
@@ -153,6 +163,26 @@ export default function FreightShow({
                                 <ArrowLeft className="mr-2 size-4" /> Back to Freight
                             </Link>
                         </Button>
+
+                        {/* Only the owner or a superadmin can reach this — the controller
+                            404s a hidden post for everybody else, so anyone seeing the
+                            banner can already act on it. Wording is deliberately
+                            identical to the My Freight banner: two screens describing
+                            the same fact differently is how a support ticket gets
+                            written. */}
+                        {isHiddenListing && (
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+                                <p className="font-medium">
+                                    This post is hidden because your plan ended. It is still here —
+                                    subscribe to make it public again.
+                                </p>
+                                {canRestoreListing && (
+                                    <Button asChild size="sm" className="shrink-0">
+                                        <Link href="/billing/plans">Subscribe</Link>
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <section className="py-6">
@@ -310,19 +340,6 @@ export default function FreightShow({
                                     <Button variant="ghost" className="w-full" asChild>
                                         <Link href="/freight">Browse More Freight</Link>
                                     </Button>
-
-                                    {/* The map also appears here on compact, after the
-                                        details, so it is never above the fold pushing
-                                        the details down. */}
-                                    <div className="lg:hidden">
-                                        <CollapsibleRouteMap
-                                            fromLat={post.origin?.latitude !== null && post.origin?.latitude !== undefined ? Number(post.origin.latitude) : null}
-                                            fromLng={post.origin?.longitude !== null && post.origin?.longitude !== undefined ? Number(post.origin.longitude) : null}
-                                            toLat={post.destination?.latitude !== null && post.destination?.latitude !== undefined ? Number(post.destination.latitude) : null}
-                                            toLng={post.destination?.longitude !== null && post.destination?.longitude !== undefined ? Number(post.destination.longitude) : null}
-                                            routeSnapshot={post.route_snapshot}
-                                        />
-                                    </div>
                                 </div>
                             </div>
                         </div>
