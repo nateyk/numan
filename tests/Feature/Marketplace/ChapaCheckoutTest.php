@@ -131,6 +131,46 @@ it('returns a json error a fetch client can read when chapa initialization fails
     $response->assertStatus(422)->assertJsonPath('error', 'Invalid API Key.');
 });
 
+it('flattens chapa field errors into a readable string', function () {
+    [$user] = marketplaceTestUserWithWorkspace();
+
+    // Chapa field errors arrive as an object ({field: [messages]}), which
+    // React cannot render. The endpoint must flatten them to a string.
+    $this->mock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('generateReference')->andReturn('NF-test-field-errors');
+        $mock->shouldReceive('initializePayment')->andReturn([
+            'status' => 'failed',
+            'message' => [
+                'tx_ref' => ['The tx ref must not exceed 50 characters.'],
+                'customization.description' => ['The customization.description may only contain letters.'],
+            ],
+            'data' => null,
+        ]);
+    });
+
+    $response = $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ]);
+
+    $response->assertStatus(422);
+    $error = $response->json('error');
+    expect($error)->toBeString()
+        ->and($error)->toContain('tx ref must not exceed 50 characters')
+        ->and($error)->toContain('customization.description may only contain letters');
+});
+
+it('generates references within the chapa 50 character limit', function () {
+    $service = app(ChapaService::class);
+
+    foreach (['weekly', 'monthly', 'yearly'] as $interval) {
+        $ref = $service->generateReference('NF-standard-'.$interval);
+
+        expect(strlen($ref))->toBeLessThanOrEqual(50)
+            ->and($ref)->toMatch('/^[A-Za-z0-9_-]+$/');
+    }
+});
+
 it('validates the chapa webhook signature and processes', function () {
     [$user, $workspace] = marketplaceTestUserWithWorkspace();
     $plan = MarketplacePlan::where('slug', 'standard')->first();

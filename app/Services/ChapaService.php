@@ -20,12 +20,21 @@ class ChapaService
     public function generateReference(?string $prefix = null): string
     {
         if ($prefix) {
-            return $prefix.'_'.uniqid((string) time(), true);
+            // Chapa rejects refs over 50 chars and anything outside
+            // [A-Za-z0-9_-]. uniqid() alone is 13 hex chars with no dot,
+            // unlike uniqid(time, true). The unique tail is never trimmed.
+            $tail = uniqid();
+            $head = substr($prefix, 0, max(0, 50 - strlen($tail) - 1));
+
+            return $head.'_'.$tail;
         }
 
         $app = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) config('app.name', 'NumanFreight'));
 
-        return $app.'_chapa_'.uniqid((string) time(), true);
+        $tail = uniqid();
+        $head = substr($app.'_chapa', 0, max(0, 50 - strlen($tail) - 1));
+
+        return $head.'_'.$tail;
     }
 
     /**

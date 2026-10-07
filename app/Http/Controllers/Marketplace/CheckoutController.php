@@ -66,6 +66,18 @@ class CheckoutController extends Controller
 
         $callback = route('chapa.callback', ['tx_ref' => $txRef]);
 
+        // Chapa only accepts letters, numbers, hyphens, underscores, spaces
+        // and dots in the customization description. Plan copy contains
+        // commas and dashes, so strip anything outside that set (falling
+        // back to the plan name) rather than letting Chapa 422 the payment.
+        $description = (string) ($plan->description ?? $plan->name);
+        $description = trim((string) preg_replace('/[^A-Za-z0-9 _.\-]+/', '', $description));
+        $description = (string) preg_replace('/\s+/', ' ', $description);
+
+        if ($description === '') {
+            $description = (string) $plan->name;
+        }
+
         $payload = [
             'amount' => $amountStr,
             'currency' => 'ETB',
@@ -77,7 +89,7 @@ class CheckoutController extends Controller
             'return_url' => $callback,
             'customization' => [
                 'title' => Str::limit($plan->name, 16, ''),
-                'description' => Str::limit($plan->description ?? 'NumanFreight plan', 50, ''),
+                'description' => Str::limit($description, 50, ''),
             ],
             'meta' => [
                 'plan_slug' => $plan->slug,
@@ -103,6 +115,16 @@ class CheckoutController extends Controller
         }
 
         $message = $response['message'] ?? 'Unable to initialize Chapa payment.';
+
+        // Chapa field errors arrive as an object ({field: [messages]}),
+        // which the frontend cannot render. Flatten to a readable string.
+        if (is_array($message)) {
+            $message = collect($message)->flatten()->implode(' ');
+        }
+
+        if (! is_string($message) || $message === '') {
+            $message = 'Unable to initialize Chapa payment.';
+        }
 
         if ($request->wantsJson() || $request->header('X-Inertia')) {
             return response()->json([

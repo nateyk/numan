@@ -146,10 +146,13 @@ export default function PlansPage({
             // Server refused the checkout (validation, bad prices, or the
             // payment provider rejected initialization). Never crash here:
             // surface whatever message came back and stay on the page.
+            // Coerced to a string because provider payloads have arrived as
+            // objects before, which React cannot render.
+            const serverMessage = data?.error ?? data?.message;
             addToast(
-                data?.error ??
-                    data?.message ??
-                    'Checkout failed. Please try again.',
+                typeof serverMessage === 'string' && serverMessage !== ''
+                    ? serverMessage
+                    : 'Checkout failed. Please try again.',
                 'error',
             );
 
