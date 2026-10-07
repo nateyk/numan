@@ -1,6 +1,8 @@
+import CollapsibleRouteMap, {
+    type RouteSnapshot,
+} from '@/components/freight/collapsible-route-map';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import CollapsibleRouteMap, { type RouteSnapshot } from '@/components/freight/collapsible-route-map';
 import { Package } from 'lucide-react';
 
 /**
@@ -33,8 +35,20 @@ export type FreightDetailsPost = {
     created_at: string | null;
     origin_site_note: string | null;
     destination_site_note: string | null;
-    origin: { id: number; name: string; region_name: string; latitude: number | null; longitude: number | null } | null;
-    destination: { id: number; name: string; region_name: string; latitude: number | null; longitude: number | null } | null;
+    origin: {
+        id: number;
+        name: string;
+        region_name: string;
+        latitude: number | null;
+        longitude: number | null;
+    } | null;
+    destination: {
+        id: number;
+        name: string;
+        region_name: string;
+        latitude: number | null;
+        longitude: number | null;
+    } | null;
     cargo_type: { id: number; name: string; slug: string } | null;
     truck_type: { id: number; name: string; slug: string } | null;
     route_snapshot: RouteSnapshot;
@@ -50,7 +64,8 @@ function latitudeOf(place: FreightDetailsPost['origin']): number | null {
 }
 
 function longitudeOf(place: FreightDetailsPost['origin']): number | null {
-    if (place?.longitude === null || place?.longitude === undefined) return null;
+    if (place?.longitude === null || place?.longitude === undefined)
+        return null;
 
     return Number(place.longitude);
 }
@@ -64,7 +79,11 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     );
 }
 
-export default function FreightDetailsCard({ post }: { post: FreightDetailsPost }) {
+export default function FreightDetailsCard({
+    post,
+}: {
+    post: FreightDetailsPost;
+}) {
     const origin = post.origin;
     const destination = post.destination;
 
@@ -98,20 +117,44 @@ export default function FreightDetailsCard({ post }: { post: FreightDetailsPost 
                 <div className={twoColumns}>
                     <div className="space-y-2">
                         <Row label="Origin" value={origin?.name ?? '—'} />
-                        {origin?.region_name && <Row label="Origin region" value={origin.region_name} />}
-                        {origin?.latitude !== null && origin?.latitude !== undefined && (
+                        {origin?.region_name && (
                             <Row
-                                label="Coordinates"
-                                value={`${Number(origin.latitude).toFixed(4)}, ${Number(origin.longitude).toFixed(4)}`}
+                                label="Origin region"
+                                value={origin.region_name}
                             />
                         )}
-                        {post.origin_site_note && <Row label="Pickup note" value={post.origin_site_note} />}
+                        {origin?.latitude !== null &&
+                            origin?.latitude !== undefined && (
+                                <Row
+                                    label="Coordinates"
+                                    value={`${Number(origin.latitude).toFixed(4)}, ${Number(origin.longitude).toFixed(4)}`}
+                                />
+                            )}
+                        {post.origin_site_note && (
+                            <Row
+                                label="Pickup note"
+                                value={post.origin_site_note}
+                            />
+                        )}
                     </div>
 
                     <div className="space-y-2">
-                        <Row label="Destination" value={destination?.name ?? '—'} />
-                        {destination?.region_name && <Row label="Destination region" value={destination.region_name} />}
-                        {post.destination_site_note && <Row label="Delivery note" value={post.destination_site_note} />}
+                        <Row
+                            label="Destination"
+                            value={destination?.name ?? '—'}
+                        />
+                        {destination?.region_name && (
+                            <Row
+                                label="Destination region"
+                                value={destination.region_name}
+                            />
+                        )}
+                        {post.destination_site_note && (
+                            <Row
+                                label="Delivery note"
+                                value={post.destination_site_note}
+                            />
+                        )}
                     </div>
                 </div>
 
@@ -131,12 +174,25 @@ export default function FreightDetailsCard({ post }: { post: FreightDetailsPost 
                         </div>
 
                         <div className="space-y-2">
-                            <Row label="Cargo type" value={post.cargo_type?.name ?? '—'} />
+                            <Row
+                                label="Cargo type"
+                                value={post.cargo_type?.name ?? '—'}
+                            />
                             <Row
                                 label="Truck"
                                 value={`${post.truck_type?.name ?? 'Any truck'}${post.truck_count ? ` ×${post.truck_count}` : ''}`}
                             />
-                            <Row label="Status" value={<Badge variant="outline" className="capitalize">{post.status}</Badge>} />
+                            <Row
+                                label="Status"
+                                value={
+                                    <Badge
+                                        variant="outline"
+                                        className="capitalize"
+                                    >
+                                        {post.status}
+                                    </Badge>
+                                }
+                            />
                         </div>
                     </div>
                 </div>
@@ -156,12 +212,16 @@ export default function FreightDetailsCard({ post }: { post: FreightDetailsPost 
                                         : 'Flexible'
                                 }
                             />
-                            <Row label="Schedule" value={post.schedule_type ?? 'one_time'} />
+                            <Row
+                                label="Schedule"
+                                value={post.schedule_type ?? 'one_time'}
+                            />
                         </div>
 
                         {/* Only rendered when it says something. A row reading
                             "Insurance — No" on every post is noise. */}
-                        {(post.insurance_required || post.depreciation_rate) && (
+                        {(post.insurance_required ||
+                            post.depreciation_rate) && (
                             <div className="space-y-2">
                                 {post.insurance_required && (
                                     <Row
@@ -174,7 +234,10 @@ export default function FreightDetailsCard({ post }: { post: FreightDetailsPost 
                                     />
                                 )}
                                 {post.depreciation_rate && (
-                                    <Row label="Depreciation" value={`${post.depreciation_rate}%`} />
+                                    <Row
+                                        label="Depreciation"
+                                        value={`${post.depreciation_rate}%`}
+                                    />
                                 )}
                             </div>
                         )}

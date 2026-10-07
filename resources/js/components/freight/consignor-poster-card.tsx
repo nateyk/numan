@@ -1,8 +1,8 @@
-import { AlertCircle, Eye, ShieldCheck, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { AlertCircle, Eye, ShieldCheck, User } from 'lucide-react';
 
 /**
  * Exactly what PostOwnerSummary sends: a display name and a verification level.
@@ -54,11 +54,14 @@ function VerificationBadge({ owner }: { owner: PostOwner }) {
         );
     }
 
-    const level = owner.verification_level ? ` · ${owner.verification_level}` : '';
+    const level = owner.verification_level
+        ? ` · ${owner.verification_level}`
+        : '';
 
     return (
         <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3 text-green-600" /> Verified consignor{level}
+            <ShieldCheck className="size-3 text-green-600" /> Verified consignor
+            {level}
         </p>
     );
 }
@@ -93,19 +96,24 @@ function ContactBlock({
                 {revealedContacts.phone && (
                     <p>
                         <span className="text-muted-foreground">Phone</span>{' '}
-                        <a className="font-medium underline-offset-4 hover:underline" href={`tel:${revealedContacts.phone}`}>
+                        <a
+                            className="font-medium underline-offset-4 hover:underline"
+                            href={`tel:${revealedContacts.phone}`}
+                        >
                             {revealedContacts.phone}
                         </a>
                     </p>
                 )}
                 {revealedContacts.email && (
                     <p className="break-all">
-                        <span className="text-muted-foreground">Email</span> {revealedContacts.email}
+                        <span className="text-muted-foreground">Email</span>{' '}
+                        {revealedContacts.email}
                     </p>
                 )}
                 {!revealedContacts.phone && !revealedContacts.email && (
                     <p className="text-muted-foreground">
-                        No phone or email on this profile, so transporters cannot reach you.
+                        No phone or email on this profile, so transporters
+                        cannot reach you.
                     </p>
                 )}
             </div>
@@ -117,12 +125,19 @@ function ContactBlock({
     if (canReveal && interestId !== null) {
         return (
             <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full" disabled={processing} onClick={onRevealed}>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={processing}
+                    onClick={onRevealed}
+                >
                     <Eye className="mr-2 size-4" />
                     {processing ? 'Revealing…' : 'Reveal contact'}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                    Uses one of your contact reveals. Your phone number is shared with this consignor when you do.
+                    Uses one of your contact reveals. Your phone number is
+                    shared with this consignor when you do.
                 </p>
             </div>
         );
@@ -168,10 +183,14 @@ export default function ConsignorPosterCard({
                         {/* No avatar_url: the resource does not send one. The page
                             used to request it and render a broken image beside a
                             blank name. */}
-                        <AvatarFallback>{initialsFor(owner?.display_name ?? null)}</AvatarFallback>
+                        <AvatarFallback>
+                            {initialsFor(owner?.display_name ?? null)}
+                        </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                        <p className="truncate font-semibold leading-none">{owner?.display_name ?? 'Consignor'}</p>
+                        <p className="truncate leading-none font-semibold">
+                            {owner?.display_name ?? 'Consignor'}
+                        </p>
                         <VerificationBadge owner={owner} />
                     </div>
                 </div>
@@ -188,9 +207,13 @@ export default function ConsignorPosterCard({
                     <p className="flex items-start gap-2 text-xs text-destructive">
                         <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                         <span>
-                            You have used all {revealBlocked.limit} contact reveals in the last {revealBlocked.window_days}{' '}
+                            You have used all {revealBlocked.limit} contact
+                            reveals in the last {revealBlocked.window_days}{' '}
                             days.{' '}
-                            <a href="/billing/plans" className="underline underline-offset-4">
+                            <a
+                                href="/billing/plans"
+                                className="underline underline-offset-4"
+                            >
                                 See plans
                             </a>
                         </span>
@@ -202,7 +225,8 @@ export default function ConsignorPosterCard({
                         <Separator />
                         <div className="flex items-center gap-2 rounded-md bg-muted/30 p-3">
                             <p className="flex-1 text-sm font-medium">
-                                {interestsCount ?? 0} interested transporter{interestsCount === 1 ? '' : 's'}
+                                {interestsCount ?? 0} interested transporter
+                                {interestsCount === 1 ? '' : 's'}
                             </p>
                             <Button size="sm" asChild>
                                 <a href={`/my-freight/${ulid}/interests`}>

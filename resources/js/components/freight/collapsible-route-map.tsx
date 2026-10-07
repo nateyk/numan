@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
 import RoutePreviewMap from '@/components/maps/RoutePreviewMap';
+import { Button } from '@/components/ui/button';
 import { Map, Route } from 'lucide-react';
 import { useState } from 'react';
 
@@ -37,7 +37,11 @@ export default function CollapsibleRouteMap({
 }) {
     const [open, setOpen] = useState(false);
 
-    const hasPoints = fromLat !== null && fromLng !== null && toLat !== null && toLng !== null;
+    const hasPoints =
+        fromLat !== null &&
+        fromLng !== null &&
+        toLat !== null &&
+        toLng !== null;
 
     // No coordinates at all means there is nothing to draw. A toggle that opens
     // onto an empty grey square is worse than no toggle.
@@ -58,7 +62,9 @@ export default function CollapsibleRouteMap({
                 <Map className="mr-2 size-4" />
                 {open ? 'Hide route map' : 'View route map'}
                 {routeSnapshot && !open && (
-                    <span className="ml-2 text-muted-foreground">· {(routeSnapshot.distance_meters / 1000).toFixed(0)} km</span>
+                    <span className="ml-2 text-muted-foreground">
+                        · {(routeSnapshot.distance_meters / 1000).toFixed(0)} km
+                    </span>
                 )}
             </Button>
 
@@ -78,13 +84,20 @@ export default function CollapsibleRouteMap({
                     {routeSnapshot && (
                         <p className="text-sm text-muted-foreground">
                             <Route className="mr-2 inline size-4" />
-                            {(routeSnapshot.distance_meters / 1000).toFixed(1)} km
+                            {(routeSnapshot.distance_meters / 1000).toFixed(
+                                1,
+                            )}{' '}
+                            km
                             {' • '}
-                            {Math.round(routeSnapshot.duration_seconds / 60)} min
+                            {Math.round(
+                                routeSnapshot.duration_seconds / 60,
+                            )}{' '}
+                            min
                             {routeSnapshot.routing_provider && (
                                 <span className="ml-1">
                                     ·{' '}
-                                    {routeSnapshot.routing_provider === 'straight_line'
+                                    {routeSnapshot.routing_provider ===
+                                    'straight_line'
                                         ? 'straight-line estimate'
                                         : `${routeSnapshot.routing_provider} routed`}
                                 </span>
