@@ -293,7 +293,7 @@ it('the discovery filter never matches an OpenStreetMap id', function () {
 
     $this->get('/freight?origin=osm_987654')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('freight', fn ($posts) => count($posts) === 0));
+        ->assertInertia(fn ($page) => $page->where('freight.data', fn ($posts) => count($posts) === 0));
 });
 
 it('the discovery filter still matches a real location id', function () {
@@ -306,5 +306,5 @@ it('the discovery filter still matches a real location id', function () {
 
     $this->get('/freight?origin='.$origin->id)
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('freight', fn ($posts) => count($posts) === 2));
+        ->assertInertia(fn ($page) => $page->where('freight.data', fn ($posts) => count($posts) === 2));
 });

@@ -100,7 +100,18 @@ class PublicFreightDiscoveryController extends Controller
         return Inertia::render('discover/index', [
             // Explicit columns only. The raw post includes the owner's User
             // model, whose email is not hidden by User::$hidden.
-            'freight' => FreightPostResource::collection($posts->getCollection())->resolve(),
+            //
+            // Shape matters: the discover page reads freight.data /
+            // freight.links / freight.total. A flat list falls through the
+            // page's guard into an empty default and renders an empty
+            // marketplace with live posts sitting in the database.
+            'freight' => [
+                'data' => FreightPostResource::collection($posts->getCollection())->resolve(),
+                'links' => $posts->linkCollection()->toArray(),
+                'total' => $posts->total(),
+                'from' => $posts->firstItem(),
+                'to' => $posts->lastItem(),
+            ],
             'total' => $posts->total(),
             'links' => $posts->links(),
             'filters' => [
