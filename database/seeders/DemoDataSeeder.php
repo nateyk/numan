@@ -9,11 +9,13 @@ use App\Enums\VerificationLevel;
 use App\Models\CargoType;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Models\FreightPostRoute;
 use App\Models\Location;
 use App\Models\TransporterProfile;
 use App\Models\TruckType;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -36,6 +38,163 @@ class DemoDataSeeder extends Seeder
      * guard at all. Reference data is not lost by this -- run the individual
      * seeders instead, which are listed in docs/production-runbook.md.
      */
+    /**
+     * A location the demo data depends on, or a hard failure.
+     *
+     * The posts used `$locations->where('name', 'Shire')->first()?->id`. When Shire
+     * was not in any location seeder that quietly became null, the post saved with a
+     * null destination, the details page rendered no destination name and no map, and
+     * the whole thing looked like a broken feature rather than a missing fixture row.
+     *
+     * A seeder that cannot find what it needs should say so. Silence here is what
+     * cost the debugging.
+     *
+     * @param  Collection<int, Location>  $locations
+     */
+    private function resolveLocation($locations, string $name): Location
+    {
+        $location = $locations->firstWhere('name', $name);
+
+        if (! $location) {
+            throw new RuntimeException(sprintf(
+                'DemoDataSeeder needs a location named "%s" and none exists. '
+                .'Run LocationSeeder and EthiopiaMajorTownsSeeder first, or change '
+                .'the demo post to a town that exists. Available: %s',
+                $name,
+                $locations->pluck('name')->implode(', '),
+            ));
+        }
+
+        return $location;
+    }
+
+    /**
+     * A stable 26-character ULID for demo post number $index.
+     *
+     * Deterministic so re-running this seeder updates the same rows instead of
+     * appending a second copy of every demo post. Crockford base32, no timestamp
+     * — it is a fixture, not a real identifier, and pretending otherwise would
+     * make it sort like one.
+     */
+    private function deterministicUlid(int $index): string
+    {
+        $alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+        $encode = function (int $value) use ($alphabet): string {
+            $out = '';
+
+            for ($i = 0; $i < 10; $i++) {
+                $out = $alphabet[$value % 32].$out;
+                $value = intdiv($value, 32);
+            }
+
+            return $out;
+        };
+
+        // 'DEMO' prefix in base32, then the index, so the value is recognisable
+        // in a database dump and cannot collide with a real ULID.
+        $prefix = '';
+
+        foreach (str_split('DEMO') as $character) {
+            $position = strpos($alphabet, $character);
+
+            // An explicit int cast, not just (int). strpos returns int|false, and
+            // PHP 8.4 raises "String offset cast occurred" on the false branch
+            // rather than quietly using an empty string.
+            $prefix .= $alphabet[(int) $position];
+        }
+
+        return $prefix.$encode($index + 1);
+    }
+
+    /**
+     * Give a demo post a route snapshot, so the map and the distance render.
+     *
+     * Without this the Freight Details page shows no map toggle and no distance:
+     * the coordinates come from the Location, but the drawn line and the
+     * kilometre figure come from freight_post_routes. Demo data that cannot
+     * demonstrate the feature it exists to demonstrate reads as a broken feature.
+     *
+     * The distance is a real haversine between the two towns rather than a
+     * made-up number, so the figure on screen is consistent with the line drawn
+     * on the map. A seeded 900 km between Addis Ababa and Hawassa would be the
+     * kind of wrong that gets reported as a routing bug.
+     *
+     * Labelled straight_line_estimate because that is exactly what it is. The
+     * real router is not called here: a seeder reaching out to a routing API is
+     * slow, flaky and dependent on the network.
+     */
+    private function seedRouteSnapshot(FreightPost $post): void
+    {
+        $origin = $post->originLocation;
+        $destination = $post->destinationLocation;
+
+        if (! $origin || ! $destination) {
+            return;
+        }
+
+        $originLat = (float) $origin->latitude;
+        $originLng = (float) $origin->longitude;
+        $destinationLat = (float) $destination->latitude;
+        $destinationLng = (float) $destination->longitude;
+
+        if ($originLat === 0.0 || $originLng === 0.0 || $destinationLat === 0.0 || $destinationLng === 0.0) {
+            return;
+        }
+
+        $distanceMeters = (int) round($this->haversineMeters(
+            $originLat,
+            $originLng,
+            $destinationLat,
+            $destinationLng,
+        ));
+
+        // Roads are not straight lines. 1.25 is a deliberate understatement of the
+        // crow-flight figure so the number looks like a road distance rather than
+        // the obviously-too-short straight one.
+        $roadDistance = (int) round($distanceMeters * 1.25);
+
+        // 45 km/h average including town sections, which is roughly what a loaded
+        // truck on Ethiopian roads actually manages.
+        $durationSeconds = (int) round(($roadDistance / 1000 / 45) * 3600);
+
+        FreightPostRoute::updateOrCreate(
+            ['freight_post_id' => $post->id],
+            [
+                'distance_meters' => $roadDistance,
+                'duration_seconds' => max($durationSeconds, 60),
+                // GeoJSON order is [longitude, latitude]. Reversed, the line draws
+                // in the Indian Ocean off the coast of Somalia.
+                'geometry' => [
+                    'type' => 'LineString',
+                    'coordinates' => [
+                        [$originLng, $originLat],
+                        [$destinationLng, $destinationLat],
+                    ],
+                ],
+                'routing_provider' => 'straight_line_estimate',
+            ],
+        );
+    }
+
+    /**
+     * Great-circle distance in metres.
+     */
+    private function haversineMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371000.0;
+
+        $toRadians = static fn (float $degrees): float => $degrees * M_PI / 180.0;
+
+        $deltaLat = $toRadians($lat2 - $lat1);
+        $deltaLon = $toRadians($lon2 - $lon1);
+
+        $a = sin($deltaLat / 2) ** 2
+            + cos($toRadians($lat1)) * cos($toRadians($lat2)) * sin($deltaLon / 2) ** 2;
+
+        return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
     private function guardAgainstProduction(string $seeder): void
     {
         if (! app()->environment('production')) {
@@ -195,11 +354,15 @@ class DemoDataSeeder extends Seeder
                     'user_id' => $demo->id,
                     'workspace_id' => $workspaces->first()?->id,
                     'origin_location_id' => $locations->where('name', 'Mekelle')->first()?->id,
-                    'destination_location_id' => $locations->where('name', 'Shire')->first()?->id,
-                    'origin_exact_lat' => 13.50,
+                    // Was 'Shire', which no location seeder provides. `?->id`
+                    // turned that into a null foreign key with no warning, so the
+                    // post rendered with no destination and no map and read as a
+                    // bug in the map. resolveLocation() now throws instead.
+                    'destination_location_id' => $this->resolveLocation($locations, 'Addis Ababa')->id,
+                    'origin_exact_lat' => 13.49,
                     'origin_exact_lng' => 39.47,
-                    'destination_exact_lat' => 14.10,
-                    'destination_exact_lng' => 38.28,
+                    'destination_exact_lat' => 9.03,
+                    'destination_exact_lng' => 38.74,
                     'cargo_type_id' => $cargoTypes->where('name', 'Construction')->first()?->id,
                     'cargo_description' => 'Cement bags - 500 bags',
                     'item_name' => 'Cement',
@@ -256,11 +419,25 @@ class DemoDataSeeder extends Seeder
                 ],
             ];
 
-            foreach ($freightPosts as $postData) {
-                FreightPost::firstOrCreate(
-                    ['ulid' => (string) Str::ulid()],
-                    $postData
-                );
+            foreach ($freightPosts as $index => $postData) {
+                // Keyed on a deterministic ULID built from the array index, not on
+                // a freshly generated one.
+                //
+                // firstOrCreate(['ulid' => Str::ulid()]) can never match anything,
+                // because the lookup key is itself random. Every run of this seeder
+                // therefore inserted the whole set again, and a developer running it
+                // twice to see a fresh screen ended up with duplicate demo freight.
+                $ulid = $this->deterministicUlid($index);
+
+                $post = FreightPost::firstOrNew(['ulid' => $ulid]);
+
+                if (! $post->exists) {
+                    $post->fill($postData);
+                    $post->ulid = $ulid;
+                    $post->save();
+                }
+
+                $this->seedRouteSnapshot($post);
             }
 
             // 6. Create demo interests
@@ -333,7 +510,11 @@ class DemoDataSeeder extends Seeder
                 // Attach truck types
                 $profile = TransporterProfile::where('user_id', $user->id)->first();
                 if ($profile && $truckTypes->isNotEmpty()) {
-                    $profile->truckTypes()->attach(
+                    // syncWithoutDetaching, not attach. attach() has no guard
+                    // against a pair that already exists, so running this seeder
+                    // twice died on the unique key — and a seeder that cannot be
+                    // run twice is a seeder nobody can safely re-run.
+                    $profile->truckTypes()->syncWithoutDetaching(
                         $truckTypes->random(min(2, $truckTypes->count()))->pluck('id')->toArray()
                     );
                 }
