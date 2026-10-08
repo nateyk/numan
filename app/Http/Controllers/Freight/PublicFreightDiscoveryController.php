@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\FreightPostResource;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Models\Location;
 use App\Services\ContactRevealService;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
@@ -106,6 +107,8 @@ class PublicFreightDiscoveryController extends Controller
                 'search' => $search,
                 'origin' => $request->query('origin'),
                 'destination' => $request->query('destination'),
+                'origin_name' => $this->locationName($request->query('origin')),
+                'destination_name' => $this->locationName($request->query('destination')),
                 'cargo' => $cargo,
                 'sort' => $sort,
                 'cargo_type' => $request->query('cargo_type'),
@@ -238,5 +241,26 @@ class PublicFreightDiscoveryController extends Controller
         }
 
         $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * Display name for an active location filter, so filter chips and inputs
+     * can show "Djibouti" instead of a raw id. Non-numeric (OpenStreetMap)
+     * values have no directory row and resolve to null; the frontend names
+     * that case separately.
+     */
+    private function locationName(mixed $value): ?string
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $location = Location::query()->find($value);
+
+        if (! $location) {
+            return null;
+        }
+
+        return trim($location->name.', '.$location->region_name, ', ');
     }
 }

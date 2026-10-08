@@ -1,15 +1,32 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
 import { LandingFooter, LandingHeader } from '@/components/landing';
+import LocationSearchInput from '@/components/maps/location-search-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Truck, Package, Calendar, MapPin, Route, ArrowRight, Search, SlidersHorizontal, ChevronDown, X, Weight, Banknote } from 'lucide-react';
-import { useState } from 'react';
-import LocationSearchInput from '@/components/maps/location-search-input';
 import type { SharedData } from '@/types';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    ArrowRight,
+    Banknote,
+    Calendar,
+    ChevronDown,
+    MapPin,
+    Package,
+    Search,
+    SlidersHorizontal,
+    Truck,
+    Weight,
+    X,
+} from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface Freight {
@@ -33,17 +50,39 @@ interface Freight {
     truckType?: { name: string };
     cargo_type?: { name: string };
     truck_type?: { name: string };
-    routeSnapshot?: { distance_meters: number; duration_seconds: number } | null;
-    route_snapshot?: { distance_meters: number; duration_seconds: number } | null;
-    user?: { id: number; name: string; email: string; avatar_url?: string | null };
+    routeSnapshot?: {
+        distance_meters: number;
+        duration_seconds: number;
+    } | null;
+    route_snapshot?: {
+        distance_meters: number;
+        duration_seconds: number;
+    } | null;
+    user?: {
+        id: number;
+        name: string;
+        email: string;
+        avatar_url?: string | null;
+    };
 }
 
 interface Props {
-    freight: { data: Freight[]; links: Array<{ url: string | null; label: string; active: boolean }>; total: number; from: number | null; to: number | null };
+    freight: {
+        data: Freight[];
+        links: Array<{ url: string | null; label: string; active: boolean }>;
+        total: number;
+        from: number | null;
+        to: number | null;
+    };
     filters: Record<string, string>;
     canRegister?: boolean;
     userInterestMap?: Record<number, { id: number; status: string }>;
-    marketplaceEntitlement?: { can_post: boolean; can_interest: boolean; remaining_posts: number; plan: { slug: string; name: string } } | null;
+    marketplaceEntitlement?: {
+        can_post: boolean;
+        can_interest: boolean;
+        remaining_posts: number;
+        plan: { slug: string; name: string };
+    } | null;
 }
 
 const sortOptions = [
@@ -53,48 +92,136 @@ const sortOptions = [
     { id: 'pickup_asc', label: 'Pickup: Earliest' },
 ];
 
-export default function DiscoverIndex({ freight, filters, canRegister = true, userInterestMap = {}, marketplaceEntitlement }: Props) {
+export default function DiscoverIndex({
+    freight,
+    filters,
+    canRegister = true,
+    userInterestMap = {},
+    marketplaceEntitlement,
+}: Props) {
     const { auth } = usePage<SharedData>().props;
-    const safeFilters = (filters && !Array.isArray(filters) ? filters : {}) as Record<string, string>;
+    const safeFilters = (
+        filters && !Array.isArray(filters) ? filters : {}
+    ) as Record<string, string>;
     const getStringFilter = (key: string, fallback = ''): string => {
         const val = safeFilters[key];
         return typeof val === 'string' ? val : fallback;
     };
-    const safeFreight = (freight && typeof freight === 'object' && !Array.isArray(freight) ? freight : { data: [], links: [], total: 0, from: null, to: null }) as Props['freight'];
-    const safeInterestMap = (userInterestMap && typeof userInterestMap === 'object' && !Array.isArray(userInterestMap) ? userInterestMap : {}) as Record<number, { id: number; status: string }>;
-    const [searchQuery, setSearchQuery] = useState(getStringFilter('search', ''));
+    const safeFreight = (
+        freight && typeof freight === 'object' && !Array.isArray(freight)
+            ? freight
+            : { data: [], links: [], total: 0, from: null, to: null }
+    ) as Props['freight'];
+    const safeInterestMap = (
+        userInterestMap &&
+        typeof userInterestMap === 'object' &&
+        !Array.isArray(userInterestMap)
+            ? userInterestMap
+            : {}
+    ) as Record<number, { id: number; status: string }>;
+    const [searchQuery, setSearchQuery] = useState(
+        getStringFilter('search', ''),
+    );
     const [origin, setOrigin] = useState(getStringFilter('origin', ''));
-    const [destination, setDestination] = useState(getStringFilter('destination', ''));
-    const [selectedCargo, setSelectedCargo] = useState(getStringFilter('cargo', 'all') || 'all');
-    const [selectedSort, setSelectedSort] = useState(getStringFilter('sort', 'latest') || 'latest');
+    const [destination, setDestination] = useState(
+        getStringFilter('destination', ''),
+    );
+    const [originName, setOriginName] = useState(
+        getStringFilter('origin_name', ''),
+    );
+    const [destinationName, setDestinationName] = useState(
+        getStringFilter('destination_name', ''),
+    );
+    const [selectedCargo, setSelectedCargo] = useState(
+        getStringFilter('cargo', 'all') || 'all',
+    );
+    const [selectedSort, setSelectedSort] = useState(
+        getStringFilter('sort', 'latest') || 'latest',
+    );
+
+    const originLabel = originName || (origin ? `Location #${origin}` : '');
+    const destinationLabel =
+        destinationName || (destination ? `Location #${destination}` : '');
+    // An OpenStreetMap pick has no directory row, so the server cannot match
+    // it and the result is always empty. Name it plainly instead of letting
+    // the generic "no freight" card take the blame.
+    const unknownOrigin = origin !== '' && !/^\d+$/.test(origin);
+    const unknownDestination = destination !== '' && !/^\d+$/.test(destination);
 
     const activeFilters: Array<{ type: string; label: string }> = [];
-    if (origin) activeFilters.push({ type: 'origin', label: `Origin #${origin}` });
-    if (destination) activeFilters.push({ type: 'destination', label: `Destination #${destination}` });
-    if (selectedCargo !== 'all') activeFilters.push({ type: 'cargo', label: selectedCargo });
-    if (searchQuery) activeFilters.push({ type: 'search', label: `"${searchQuery}"` });
+    if (origin)
+        activeFilters.push({ type: 'origin', label: `Origin: ${originLabel}` });
+    if (destination)
+        activeFilters.push({
+            type: 'destination',
+            label: `Destination: ${destinationLabel}`,
+        });
+    if (selectedCargo !== 'all')
+        activeFilters.push({ type: 'cargo', label: selectedCargo });
+    if (searchQuery)
+        activeFilters.push({ type: 'search', label: `"${searchQuery}"` });
 
     const clearFilter = (type: string) => {
         if (type === 'origin') {
             setOrigin('');
-            router.get('/freight', { destination: destination || undefined, search: searchQuery || undefined, cargo: selectedCargo !== 'all' ? selectedCargo : undefined, sort: selectedSort !== 'latest' ? selectedSort : undefined }, { preserveState: true });
+            setOriginName('');
+            router.get(
+                '/freight',
+                {
+                    destination: destination || undefined,
+                    search: searchQuery || undefined,
+                    cargo: selectedCargo !== 'all' ? selectedCargo : undefined,
+                    sort: selectedSort !== 'latest' ? selectedSort : undefined,
+                },
+                { preserveState: true },
+            );
         }
         if (type === 'destination') {
             setDestination('');
-            router.get('/freight', { origin: origin || undefined, search: searchQuery || undefined, cargo: selectedCargo !== 'all' ? selectedCargo : undefined, sort: selectedSort !== 'latest' ? selectedSort : undefined }, { preserveState: true });
+            setDestinationName('');
+            router.get(
+                '/freight',
+                {
+                    origin: origin || undefined,
+                    search: searchQuery || undefined,
+                    cargo: selectedCargo !== 'all' ? selectedCargo : undefined,
+                    sort: selectedSort !== 'latest' ? selectedSort : undefined,
+                },
+                { preserveState: true },
+            );
         }
         if (type === 'cargo') {
             setSelectedCargo('all');
-            router.get('/freight', { origin: origin || undefined, destination: destination || undefined, search: searchQuery || undefined, sort: selectedSort !== 'latest' ? selectedSort : undefined }, { preserveState: true });
+            router.get(
+                '/freight',
+                {
+                    origin: origin || undefined,
+                    destination: destination || undefined,
+                    search: searchQuery || undefined,
+                    sort: selectedSort !== 'latest' ? selectedSort : undefined,
+                },
+                { preserveState: true },
+            );
         }
         if (type === 'search') {
             setSearchQuery('');
-            router.get('/freight', { origin: origin || undefined, destination: destination || undefined, cargo: selectedCargo !== 'all' ? selectedCargo : undefined, sort: selectedSort !== 'latest' ? selectedSort : undefined }, { preserveState: true });
+            router.get(
+                '/freight',
+                {
+                    origin: origin || undefined,
+                    destination: destination || undefined,
+                    cargo: selectedCargo !== 'all' ? selectedCargo : undefined,
+                    sort: selectedSort !== 'latest' ? selectedSort : undefined,
+                },
+                { preserveState: true },
+            );
         }
     };
     const clearAll = () => {
         setOrigin('');
         setDestination('');
+        setOriginName('');
+        setDestinationName('');
         setSelectedCargo('all');
         setSearchQuery('');
         router.get('/freight', {}, { preserveState: true });
@@ -123,12 +250,19 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                     <section aria-labelledby="freight-heading" className="py-8">
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="mb-6">
-                                <h1 id="freight-heading" className="text-3xl font-bold tracking-tight text-balance">
+                                <h1
+                                    id="freight-heading"
+                                    className="text-3xl font-bold tracking-tight text-balance"
+                                >
                                     Discover Freight Across Ethiopia
                                 </h1>
                                 <p className="mt-2 max-w-2xl text-muted-foreground">
-                                    Browse {safeFreight.total ?? safeFreight.data.length} active freight posts — 934 major towns from Addis Ababa to Jijiga, Hawassa to Mekelle. Find
-                                    verified loads for your fleet.
+                                    Browse{' '}
+                                    {safeFreight.total ??
+                                        safeFreight.data.length}{' '}
+                                    active freight posts — 934 major towns from
+                                    Addis Ababa to Jijiga, Hawassa to Mekelle.
+                                    Find verified loads for your fleet.
                                 </p>
                             </div>
 
@@ -144,110 +278,258 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                     >
                                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                                             <div className="w-full max-w-md space-y-1.5">
-                                                <Label htmlFor="freight-search" className="text-xs font-medium">
+                                                <Label
+                                                    htmlFor="freight-search"
+                                                    className="text-xs font-medium"
+                                                >
                                                     Search
                                                 </Label>
                                                 <div className="relative">
-                                                    <Search aria-hidden="true" className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                                    <Search
+                                                        aria-hidden="true"
+                                                        className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                                                    />
                                                     <Input
                                                         id="freight-search"
                                                         type="search"
                                                         placeholder="Search cargo, description..."
                                                         value={searchQuery}
-                                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                                        onChange={(e) =>
+                                                            setSearchQuery(
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="h-9 pl-10"
                                                         aria-label="Search cargo and description"
                                                     />
                                                 </div>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <Label className="text-xs font-medium" id="sort-label">
+                                                <Label
+                                                    className="text-xs font-medium"
+                                                    id="sort-label"
+                                                >
                                                     Sort by
                                                 </Label>
                                                 <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" className="h-9 w-full justify-between sm:w-auto" aria-labelledby="sort-label">
+                                                    <DropdownMenuTrigger
+                                                        asChild
+                                                    >
+                                                        <Button
+                                                            variant="outline"
+                                                            className="h-9 w-full justify-between sm:w-auto"
+                                                            aria-labelledby="sort-label"
+                                                        >
                                                             <span className="inline-flex items-center gap-2">
-                                                                <SlidersHorizontal className="size-4" aria-hidden="true" />
-                                                                {sortOptions.find((s) => s.id === selectedSort)?.label}
+                                                                <SlidersHorizontal
+                                                                    className="size-4"
+                                                                    aria-hidden="true"
+                                                                />
+                                                                {
+                                                                    sortOptions.find(
+                                                                        (s) =>
+                                                                            s.id ===
+                                                                            selectedSort,
+                                                                    )?.label
+                                                                }
                                                             </span>
-                                                            <ChevronDown className="size-4 opacity-50" aria-hidden="true" />
+                                                            <ChevronDown
+                                                                className="size-4 opacity-50"
+                                                                aria-hidden="true"
+                                                            />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-56">
-                                                        {sortOptions.map((opt) => (
-                                                            <DropdownMenuItem
-                                                                key={opt.id}
-                                                                onClick={() => setSelectedSort(opt.id)}
-                                                                className={selectedSort === opt.id ? 'bg-accent' : ''}
-                                                                aria-current={selectedSort === opt.id ? 'true' : undefined}
-                                                            >
-                                                                {opt.label}
-                                                            </DropdownMenuItem>
-                                                        ))}
+                                                    <DropdownMenuContent
+                                                        align="end"
+                                                        className="w-56"
+                                                    >
+                                                        {sortOptions.map(
+                                                            (opt) => (
+                                                                <DropdownMenuItem
+                                                                    key={opt.id}
+                                                                    onClick={() =>
+                                                                        setSelectedSort(
+                                                                            opt.id,
+                                                                        )
+                                                                    }
+                                                                    className={
+                                                                        selectedSort ===
+                                                                        opt.id
+                                                                            ? 'bg-accent'
+                                                                            : ''
+                                                                    }
+                                                                    aria-current={
+                                                                        selectedSort ===
+                                                                        opt.id
+                                                                            ? 'true'
+                                                                            : undefined
+                                                                    }
+                                                                >
+                                                                    {opt.label}
+                                                                </DropdownMenuItem>
+                                                            ),
+                                                        )}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>
                                         </div>
 
                                         <fieldset className="space-y-3 border-0 p-0">
-                                            <legend className="sr-only">Location and cargo filters</legend>
+                                            <legend className="sr-only">
+                                                Location and cargo filters
+                                            </legend>
                                             <div className="flex flex-wrap items-end gap-3">
                                                 <div className="space-y-1.5">
-                                                    <Label htmlFor="origin-filter" className="text-xs font-medium">
+                                                    <Label
+                                                        htmlFor="origin-filter"
+                                                        className="text-xs font-medium"
+                                                    >
                                                         Origin
                                                     </Label>
                                                     <LocationSearchInput
                                                         id="origin-filter"
                                                         ariaLabel="Origin location"
-                                                        onSelectLocation={(loc) => setOrigin(loc ? String(loc.id) : '')}
+                                                        initialName={
+                                                            originName ||
+                                                            undefined
+                                                        }
+                                                        onSelectLocation={(
+                                                            loc,
+                                                        ) => {
+                                                            setOrigin(
+                                                                loc
+                                                                    ? String(
+                                                                          loc.id,
+                                                                      )
+                                                                    : '',
+                                                            );
+                                                            setOriginName(
+                                                                loc
+                                                                    ? `${loc.name}, ${loc.region_name}`
+                                                                    : '',
+                                                            );
+                                                        }}
                                                         placeholder="Addis Ababa…"
                                                         className="w-48"
                                                         localOnly
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <Label htmlFor="destination-filter" className="text-xs font-medium">
+                                                    <Label
+                                                        htmlFor="destination-filter"
+                                                        className="text-xs font-medium"
+                                                    >
                                                         Destination
                                                     </Label>
                                                     <LocationSearchInput
                                                         id="destination-filter"
                                                         ariaLabel="Destination location"
-                                                        onSelectLocation={(loc) => setDestination(loc ? String(loc.id) : '')}
+                                                        initialName={
+                                                            destinationName ||
+                                                            undefined
+                                                        }
+                                                        onSelectLocation={(
+                                                            loc,
+                                                        ) => {
+                                                            setDestination(
+                                                                loc
+                                                                    ? String(
+                                                                          loc.id,
+                                                                      )
+                                                                    : '',
+                                                            );
+                                                            setDestinationName(
+                                                                loc
+                                                                    ? `${loc.name}, ${loc.region_name}`
+                                                                    : '',
+                                                            );
+                                                        }}
                                                         placeholder="Hawassa…"
                                                         className="w-48"
                                                         localOnly
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-xs font-medium" id="cargo-label">
+                                                    <Label
+                                                        className="text-xs font-medium"
+                                                        id="cargo-label"
+                                                    >
                                                         Cargo
                                                     </Label>
                                                     <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" aria-labelledby="cargo-label">
-                                                                {selectedCargo === 'all' ? 'All Cargo' : selectedCargo}
-                                                                <ChevronDown className="size-3 opacity-50" aria-hidden="true" />
+                                                        <DropdownMenuTrigger
+                                                            asChild
+                                                        >
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-8 gap-1.5 text-xs"
+                                                                aria-labelledby="cargo-label"
+                                                            >
+                                                                {selectedCargo ===
+                                                                'all'
+                                                                    ? 'All Cargo'
+                                                                    : selectedCargo}
+                                                                <ChevronDown
+                                                                    className="size-3 opacity-50"
+                                                                    aria-hidden="true"
+                                                                />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent className="w-56">
-                                                            {['all', 'General', 'Cereals', 'Construction', 'Refrigerated'].map((c) => (
+                                                            {[
+                                                                'all',
+                                                                'General',
+                                                                'Cereals',
+                                                                'Construction',
+                                                                'Refrigerated',
+                                                            ].map((c) => (
                                                                 <DropdownMenuItem
                                                                     key={c}
-                                                                    onClick={() => setSelectedCargo(c)}
-                                                                    className={selectedCargo === c ? 'bg-accent' : ''}
-                                                                    aria-current={selectedCargo === c ? 'true' : undefined}
+                                                                    onClick={() =>
+                                                                        setSelectedCargo(
+                                                                            c,
+                                                                        )
+                                                                    }
+                                                                    className={
+                                                                        selectedCargo ===
+                                                                        c
+                                                                            ? 'bg-accent'
+                                                                            : ''
+                                                                    }
+                                                                    aria-current={
+                                                                        selectedCargo ===
+                                                                        c
+                                                                            ? 'true'
+                                                                            : undefined
+                                                                    }
                                                                 >
-                                                                    {c === 'all' ? 'All Cargo' : c}
+                                                                    {c === 'all'
+                                                                        ? 'All Cargo'
+                                                                        : c}
                                                                 </DropdownMenuItem>
                                                             ))}
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </div>
-                                                <Button type="submit" size="sm" className="h-8 px-3 text-xs">
-                                                    <Search className="size-3.5" aria-hidden="true" /> Apply filters
+                                                <Button
+                                                    type="submit"
+                                                    size="sm"
+                                                    className="h-8 px-3 text-xs"
+                                                >
+                                                    <Search
+                                                        className="size-3.5"
+                                                        aria-hidden="true"
+                                                    />{' '}
+                                                    Apply filters
                                                 </Button>
-                                                <Button type="button" variant="ghost" size="sm" onClick={clearAll} className="h-8 px-3 text-xs">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearAll}
+                                                    className="h-8 px-3 text-xs"
+                                                >
                                                     Clear all
                                                 </Button>
                                             </div>
@@ -255,8 +537,14 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                     </form>
 
                                     {activeFilters.length > 0 && (
-                                        <div className="flex flex-wrap items-center gap-2" role="region" aria-label="Active filters">
-                                            <span className="text-sm font-medium">Active filters:</span>
+                                        <div
+                                            className="flex flex-wrap items-center gap-2"
+                                            role="region"
+                                            aria-label="Active filters"
+                                        >
+                                            <span className="text-sm font-medium">
+                                                Active filters:
+                                            </span>
                                             {activeFilters.map((f) => (
                                                 <span
                                                     key={f.type}
@@ -266,10 +554,15 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                     <button
                                                         type="button"
                                                         aria-label={`Remove ${f.label} filter`}
-                                                        onClick={() => clearFilter(f.type)}
+                                                        onClick={() =>
+                                                            clearFilter(f.type)
+                                                        }
                                                         className="ml-1 inline-flex size-4 items-center justify-center rounded-full p-0.5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                                                     >
-                                                        <X className="size-3" aria-hidden="true" />
+                                                        <X
+                                                            className="size-3"
+                                                            aria-hidden="true"
+                                                        />
                                                     </button>
                                                 </span>
                                             ))}
@@ -278,30 +571,81 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                 </CardContent>
                             </Card>
 
-                            {marketplaceEntitlement && !marketplaceEntitlement.can_post && (
-                                <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
-                                    <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-                                        <div>
-                                            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Post limit reached on {marketplaceEntitlement.plan.name} plan</p>
-                                            <p className="text-xs text-amber-800 dark:text-amber-200">Upgrade to post more freight. ETB via Chapa.</p>
-                                        </div>
-                                        <Button size="sm" asChild>
-                                            <Link href="/billing/plans">View ETB Plans</Link>
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            )}
+                            {marketplaceEntitlement &&
+                                !marketplaceEntitlement.can_post && (
+                                    <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+                                        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                                            <div>
+                                                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                                                    Post limit reached on{' '}
+                                                    {
+                                                        marketplaceEntitlement
+                                                            .plan.name
+                                                    }{' '}
+                                                    plan
+                                                </p>
+                                                <p className="text-xs text-amber-800 dark:text-amber-200">
+                                                    Upgrade to post more
+                                                    freight. ETB via Chapa.
+                                                </p>
+                                            </div>
+                                            <Button size="sm" asChild>
+                                                <Link href="/billing/plans">
+                                                    View ETB Plans
+                                                </Link>
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                )}
 
-                            <div className="flex items-center justify-between gap-4 px-1 py-2 text-sm" aria-live="polite" aria-atomic="true">
+                            {(unknownOrigin || unknownDestination) && (
+                                <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+                                    <p className="font-medium">
+                                        {unknownOrigin && unknownDestination
+                                            ? `“${originLabel}” and “${destinationLabel}” aren’t in the location directory yet, so no posts can match them.`
+                                            : unknownOrigin
+                                              ? `“${originLabel}” isn’t in the location directory yet, so no posts can match it.`
+                                              : `“${destinationLabel}” isn’t in the location directory yet, so no posts can match it.`}{' '}
+                                        <button
+                                            type="button"
+                                            onClick={clearAll}
+                                            className="underline underline-offset-2"
+                                        >
+                                            Clear filters
+                                        </button>{' '}
+                                        to browse everything.
+                                    </p>
+                                </div>
+                            )}
+                            <div
+                                className="flex items-center justify-between gap-4 px-1 py-2 text-sm"
+                                aria-live="polite"
+                                aria-atomic="true"
+                            >
                                 <p className="font-medium">
-                                    Showing {safeFreight.from ?? 1}–{safeFreight.to ?? safeFreight.data.length} of {safeFreight.total ?? safeFreight.data.length} results
+                                    Showing {safeFreight.from ?? 1}–
+                                    {safeFreight.to ?? safeFreight.data.length}{' '}
+                                    of{' '}
+                                    {safeFreight.total ??
+                                        safeFreight.data.length}{' '}
+                                    results
                                 </p>
-                                <p className="text-xs text-muted-foreground">Sorted by {sortOptions.find((s) => s.id === selectedSort)?.label}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Sorted by{' '}
+                                    {
+                                        sortOptions.find(
+                                            (s) => s.id === selectedSort,
+                                        )?.label
+                                    }
+                                </p>
                             </div>
                         </div>
                     </section>
 
-                    <section aria-labelledby="results-heading" className="pb-12">
+                    <section
+                        aria-labelledby="results-heading"
+                        className="pb-12"
+                    >
                         <h2 id="results-heading" className="sr-only">
                             Freight results
                         </h2>
@@ -309,50 +653,146 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                             {safeFreight.data.length === 0 ? (
                                 <Card className="border-dashed">
                                     <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-                                        <div className="flex size-12 items-center justify-center rounded-full bg-muted" aria-hidden="true">
+                                        <div
+                                            className="flex size-12 items-center justify-center rounded-full bg-muted"
+                                            aria-hidden="true"
+                                        >
                                             <Package className="size-6 text-muted-foreground" />
                                         </div>
-                                        <h3 className="font-semibold">No active freight found</h3>
-                                        <p className="max-w-md text-sm text-muted-foreground">Try adjusting your filters or check back later. Active posts appear after admin approval.</p>
+                                        <h3 className="font-semibold">
+                                            No active freight found
+                                        </h3>
+                                        <p className="max-w-md text-sm text-muted-foreground">
+                                            Try adjusting your filters or check
+                                            back later. Active posts appear
+                                            after admin approval.
+                                        </p>
                                         <Button variant="outline" asChild>
-                                            <Link href={auth?.user ? '/my-freight' : '/register'}>{auth?.user ? 'Post Freight' : 'Join to Post'}</Link>
+                                            <Link
+                                                href={
+                                                    auth?.user
+                                                        ? '/my-freight'
+                                                        : '/register'
+                                                }
+                                            >
+                                                {auth?.user
+                                                    ? 'Post Freight'
+                                                    : 'Join to Post'}
+                                            </Link>
                                         </Button>
                                     </CardContent>
                                 </Card>
                             ) : (
-                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+                                <div
+                                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                                    role="list"
+                                >
                                     {safeFreight.data.map((f) => {
                                         const origin =
-                                            ((f as unknown as Record<string, unknown>).originLocation as Freight['originLocation']) ??
-                                            ((f as unknown as Record<string, unknown>).origin_location as Freight['originLocation']);
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .originLocation as Freight['originLocation']) ??
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .origin_location as Freight['originLocation']);
                                         const destination =
-                                            ((f as unknown as Record<string, unknown>).destinationLocation as Freight['destinationLocation']) ??
-                                            ((f as unknown as Record<string, unknown>).destination_location as Freight['destinationLocation']);
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .destinationLocation as Freight['destinationLocation']) ??
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .destination_location as Freight['destinationLocation']);
                                         const cargoType =
-                                            ((f as unknown as Record<string, unknown>).cargoType as Freight['cargoType']) ??
-                                            ((f as unknown as Record<string, unknown>).cargo_type as Freight['cargoType']);
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .cargoType as Freight['cargoType']) ??
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .cargo_type as Freight['cargoType']);
                                         const truckType =
-                                            ((f as unknown as Record<string, unknown>).truckType as Freight['truckType']) ??
-                                            ((f as unknown as Record<string, unknown>).truck_type as Freight['truckType']);
-                                        const isOwn = auth?.user?.id && f.user?.id === auth.user.id;
-                                        const interest = safeInterestMap?.[f.id];
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .truckType as Freight['truckType']) ??
+                                            ((
+                                                f as unknown as Record<
+                                                    string,
+                                                    unknown
+                                                >
+                                            )
+                                                .truck_type as Freight['truckType']);
+                                        const isOwn =
+                                            auth?.user?.id &&
+                                            f.user?.id === auth.user.id;
+                                        const interest =
+                                            safeInterestMap?.[f.id];
                                         const titleId = `freight-${f.ulid}-title`;
                                         return (
-                                            <Card key={f.ulid} role="listitem" aria-labelledby={titleId} className="flex flex-col overflow-hidden border bg-card">
+                                            <Card
+                                                key={f.ulid}
+                                                role="listitem"
+                                                aria-labelledby={titleId}
+                                                className="flex flex-col overflow-hidden border bg-card"
+                                            >
                                                 <div className="p-4 pb-3">
                                                     <div className="flex items-start justify-between gap-3">
-                                                        <h3 id={titleId} className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight">
-                                                            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10" aria-hidden="true">
+                                                        <h3
+                                                            id={titleId}
+                                                            className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight"
+                                                        >
+                                                            <span
+                                                                className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10"
+                                                                aria-hidden="true"
+                                                            >
                                                                 <MapPin className="size-3.5 text-primary" />
                                                             </span>
-                                                            <span className="truncate">{origin?.name ?? '—'}</span>
-                                                            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
-                                                            <span className="truncate">{destination?.name ?? '—'}</span>
+                                                            <span className="truncate">
+                                                                {origin?.name ??
+                                                                    '—'}
+                                                            </span>
+                                                            <ArrowRight
+                                                                className="size-3.5 shrink-0 text-muted-foreground/50"
+                                                                aria-hidden="true"
+                                                            />
+                                                            <span className="truncate">
+                                                                {destination?.name ??
+                                                                    '—'}
+                                                            </span>
                                                         </h3>
                                                         <Badge
                                                             variant={
                                                                 interest
-                                                                    ? interest.status === 'rejected' || interest.status === 'withdrawn'
+                                                                    ? interest.status ===
+                                                                          'rejected' ||
+                                                                      interest.status ===
+                                                                          'withdrawn'
                                                                         ? 'destructive'
                                                                         : 'secondary'
                                                                     : isOwn
@@ -362,115 +802,274 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                                             className="shrink-0 rounded-full px-2.5 text-[11px] capitalize"
                                                             aria-label={`Status: ${interest ? interest.status : isOwn ? 'Your Post' : 'Active'}`}
                                                         >
-                                                            {interest ? interest.status : isOwn ? 'Your Post' : 'Active'}
+                                                            {interest
+                                                                ? interest.status
+                                                                : isOwn
+                                                                  ? 'Your Post'
+                                                                  : 'Active'}
                                                         </Badge>
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-1 flex-col gap-2.5 px-4 pb-3">
-                                                    <div className="overflow-hidden rounded-lg border divide-y">
+                                                    <div className="divide-y overflow-hidden rounded-lg border">
                                                         <div className="flex items-center justify-between px-3 py-2 text-xs">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                                                                <Package className="size-3.5" aria-hidden="true" /> Item
-                                                            </span>
-                                                            <span className="text-sm font-medium">{(f as unknown as { item_name?: string }).item_name ?? cargoType?.name ?? 'General Cargo'}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between px-3 py-2 text-xs">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                                                                <Calendar className="size-3.5" aria-hidden="true" /> Pickup
+                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                                <Package
+                                                                    className="size-3.5"
+                                                                    aria-hidden="true"
+                                                                />{' '}
+                                                                Item
                                                             </span>
                                                             <span className="text-sm font-medium">
-                                                                {f.pickup_date ? String(f.pickup_date).slice(0, 10) : 'Flexible'}
-                                                                {(f as unknown as { pickup_time?: string }).pickup_time ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0, 5)}` : ''}
+                                                                {(
+                                                                    f as unknown as {
+                                                                        item_name?: string;
+                                                                    }
+                                                                ).item_name ??
+                                                                    cargoType?.name ??
+                                                                    'General Cargo'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                                <Calendar
+                                                                    className="size-3.5"
+                                                                    aria-hidden="true"
+                                                                />{' '}
+                                                                Pickup
+                                                            </span>
+                                                            <span className="text-sm font-medium">
+                                                                {f.pickup_date
+                                                                    ? String(
+                                                                          f.pickup_date,
+                                                                      ).slice(
+                                                                          0,
+                                                                          10,
+                                                                      )
+                                                                    : 'Flexible'}
+                                                                {(
+                                                                    f as unknown as {
+                                                                        pickup_time?: string;
+                                                                    }
+                                                                ).pickup_time
+                                                                    ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0, 5)}`
+                                                                    : ''}
                                                             </span>
                                                         </div>
                                                     </div>
                                                     <div className="divide-y overflow-hidden rounded-lg border text-xs">
                                                         <div className="flex items-center justify-between px-3 py-2">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                                                                <Weight className="size-3.5" aria-hidden="true" /> Weight
+                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                                <Weight
+                                                                    className="size-3.5"
+                                                                    aria-hidden="true"
+                                                                />{' '}
+                                                                Weight
                                                             </span>
                                                             <span className="text-sm font-semibold">
-                                                                {(f as unknown as { actual_weight?: string }).actual_weight
+                                                                {(
+                                                                    f as unknown as {
+                                                                        actual_weight?: string;
+                                                                    }
+                                                                ).actual_weight
                                                                     ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}`
                                                                     : '—'}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center justify-between px-3 py-2">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                                                                <Banknote className="size-3.5" aria-hidden="true" /> Tariff
+                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                                <Banknote
+                                                                    className="size-3.5"
+                                                                    aria-hidden="true"
+                                                                />{' '}
+                                                                Tariff
                                                             </span>
                                                             <span className="text-sm font-semibold">
-                                                                {(f as unknown as { tariff_amount?: string }).tariff_amount
+                                                                {(
+                                                                    f as unknown as {
+                                                                        tariff_amount?: string;
+                                                                    }
+                                                                ).tariff_amount
                                                                     ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}`
                                                                     : '—'}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center justify-between px-3 py-2">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                                                                <Truck className="size-3.5" aria-hidden="true" /> Trucks
+                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                                <Truck
+                                                                    className="size-3.5"
+                                                                    aria-hidden="true"
+                                                                />{' '}
+                                                                Trucks
                                                             </span>
                                                             <span className="text-sm font-semibold">
-                                                                {truckType?.name ?? 'Any'} {f.truck_count ? `×${f.truck_count}` : ''}
+                                                                {truckType?.name ??
+                                                                    'Any'}{' '}
+                                                                {f.truck_count
+                                                                    ? `×${f.truck_count}`
+                                                                    : ''}
                                                             </span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 p-4 pt-0">
-                                                    <Button asChild className="flex-1 h-8 text-xs">
-                                                        <Link href={`/freight/${f.ulid}`} aria-label={`View details for ${origin?.name ?? 'freight'} to ${destination?.name ?? ''}`}>
+                                                    <Button
+                                                        asChild
+                                                        className="h-8 flex-1 text-xs"
+                                                    >
+                                                        <Link
+                                                            href={`/freight/${f.ulid}`}
+                                                            aria-label={`View details for ${origin?.name ?? 'freight'} to ${destination?.name ?? ''}`}
+                                                        >
                                                             View Details
                                                         </Link>
                                                     </Button>
                                                     {isOwn ? (
-                                                        <Badge variant="secondary" className="flex flex-1 items-center justify-center rounded-md py-1.5 text-xs">
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="flex flex-1 items-center justify-center rounded-md py-1.5 text-xs"
+                                                        >
                                                             Your Post
                                                         </Badge>
                                                     ) : interest ? (
                                                         <Button
                                                             variant="outline"
-                                                            className="flex-1 h-8 text-xs capitalize"
+                                                            className="h-8 flex-1 text-xs capitalize"
                                                             onClick={() =>
-                                                                interest.status !== 'rejected' &&
-                                                                interest.status !== 'withdrawn' &&
-                                                                router.post(`/interests/${interest.id}/withdraw`, {}, { preserveScroll: true })
+                                                                interest.status !==
+                                                                    'rejected' &&
+                                                                interest.status !==
+                                                                    'withdrawn' &&
+                                                                router.post(
+                                                                    `/interests/${interest.id}/withdraw`,
+                                                                    {},
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                )
                                                             }
-                                                            disabled={interest.status === 'rejected' || interest.status === 'withdrawn'}
-                                                            aria-label={interest.status === 'rejected' || interest.status === 'withdrawn' ? `Interest ${interest.status}` : 'Withdraw interest'}
+                                                            disabled={
+                                                                interest.status ===
+                                                                    'rejected' ||
+                                                                interest.status ===
+                                                                    'withdrawn'
+                                                            }
+                                                            aria-label={
+                                                                interest.status ===
+                                                                    'rejected' ||
+                                                                interest.status ===
+                                                                    'withdrawn'
+                                                                    ? `Interest ${interest.status}`
+                                                                    : 'Withdraw interest'
+                                                            }
                                                         >
-                                                            {interest.status === 'rejected' || interest.status === 'withdrawn' ? interest.status : 'Leave'}
+                                                            {interest.status ===
+                                                                'rejected' ||
+                                                            interest.status ===
+                                                                'withdrawn'
+                                                                ? interest.status
+                                                                : 'Leave'}
                                                         </Button>
                                                     ) : (
                                                         <Button
                                                             variant="secondary"
-                                                            className="flex-1 h-8 text-xs"
+                                                            className="h-8 flex-1 text-xs"
                                                             onClick={() => {
-                                                                if (!auth?.user) {
-                                                                    router.visit('/login');
+                                                                if (
+                                                                    !auth?.user
+                                                                ) {
+                                                                    router.visit(
+                                                                        '/login',
+                                                                    );
                                                                     return;
                                                                 }
                                                                 router.post(
                                                                     `/my-freight/${f.ulid}/interests`,
                                                                     // Contact details come from the profile and are
                                                                     // released only on an explicit reveal.
-                                                                    { message: '' },
+                                                                    {
+                                                                        message:
+                                                                            '',
+                                                                    },
                                                                     {
                                                                         preserveScroll: true,
-                                                                        onSuccess: () => toast.success('Interest expressed successfully.'),
-                                                                        onError: (errors) => {
-                                                                            const msg = (errors as Record<string, string>).interest || Object.values(errors)[0] as string;
-                                                                            if (msg) {
-                                                                                toast.error(msg);
-                                                                                if (String(msg).toLowerCase().includes('transporter profile')) {
-                                                                                    setTimeout(() => router.visit('/my-transporter-profile'), 1500);
-                                                                                } else if (String(msg).toLowerCase().includes('phone number')) {
-                                                                                    setTimeout(() => router.visit('/settings/profile'), 1500);
-                                                                                } else if (String(msg).toLowerCase().includes('not active')) {
-                                                                                    toast.info('This freight is not yet active for interest.');
+                                                                        onSuccess:
+                                                                            () =>
+                                                                                toast.success(
+                                                                                    'Interest expressed successfully.',
+                                                                                ),
+                                                                        onError:
+                                                                            (
+                                                                                errors,
+                                                                            ) => {
+                                                                                const msg =
+                                                                                    (
+                                                                                        errors as Record<
+                                                                                            string,
+                                                                                            string
+                                                                                        >
+                                                                                    )
+                                                                                        .interest ||
+                                                                                    (Object.values(
+                                                                                        errors,
+                                                                                    )[0] as string);
+                                                                                if (
+                                                                                    msg
+                                                                                ) {
+                                                                                    toast.error(
+                                                                                        msg,
+                                                                                    );
+                                                                                    if (
+                                                                                        String(
+                                                                                            msg,
+                                                                                        )
+                                                                                            .toLowerCase()
+                                                                                            .includes(
+                                                                                                'transporter profile',
+                                                                                            )
+                                                                                    ) {
+                                                                                        setTimeout(
+                                                                                            () =>
+                                                                                                router.visit(
+                                                                                                    '/my-transporter-profile',
+                                                                                                ),
+                                                                                            1500,
+                                                                                        );
+                                                                                    } else if (
+                                                                                        String(
+                                                                                            msg,
+                                                                                        )
+                                                                                            .toLowerCase()
+                                                                                            .includes(
+                                                                                                'phone number',
+                                                                                            )
+                                                                                    ) {
+                                                                                        setTimeout(
+                                                                                            () =>
+                                                                                                router.visit(
+                                                                                                    '/settings/profile',
+                                                                                                ),
+                                                                                            1500,
+                                                                                        );
+                                                                                    } else if (
+                                                                                        String(
+                                                                                            msg,
+                                                                                        )
+                                                                                            .toLowerCase()
+                                                                                            .includes(
+                                                                                                'not active',
+                                                                                            )
+                                                                                    ) {
+                                                                                        toast.info(
+                                                                                            'This freight is not yet active for interest.',
+                                                                                        );
+                                                                                    }
+                                                                                } else {
+                                                                                    toast.error(
+                                                                                        'Failed to express interest. Please try again.',
+                                                                                    );
                                                                                 }
-                                                                            } else {
-                                                                                toast.error('Failed to express interest. Please try again.');
-                                                                            }
-                                                                        },
+                                                                            },
                                                                     },
                                                                 );
                                                             }}
@@ -485,27 +1084,60 @@ export default function DiscoverIndex({ freight, filters, canRegister = true, us
                                     })}
                                 </div>
                             )}
-                            {safeFreight.links && safeFreight.links.length > 3 && (
-                                <nav aria-label="Freight pagination" className="mt-8 flex flex-wrap justify-center gap-1">
-                                    {safeFreight.links.map((link, i) => {
-                                        const isDisabled = !link.url;
-                                        const labelText = link.label.replace(/&laquo;|&raquo;/g, '').trim() || link.label;
-                                        return (
-                                            <Button
-                                                key={i}
-                                                variant={link.active ? 'default' : 'outline'}
-                                                size="sm"
-                                                disabled={isDisabled}
-                                                aria-current={link.active ? 'page' : undefined}
-                                                aria-label={labelText}
-                                                onClick={() => link.url && router.get(link.url, {}, { preserveState: true, preserveScroll: true })}
-                                            >
-                                                <span dangerouslySetInnerHTML={{ __html: link.label }} aria-hidden="true" />
-                                            </Button>
-                                        );
-                                    })}
-                                </nav>
-                            )}
+                            {safeFreight.links &&
+                                safeFreight.links.length > 3 && (
+                                    <nav
+                                        aria-label="Freight pagination"
+                                        className="mt-8 flex flex-wrap justify-center gap-1"
+                                    >
+                                        {safeFreight.links.map((link, i) => {
+                                            const isDisabled = !link.url;
+                                            const labelText =
+                                                link.label
+                                                    .replace(
+                                                        /&laquo;|&raquo;/g,
+                                                        '',
+                                                    )
+                                                    .trim() || link.label;
+                                            return (
+                                                <Button
+                                                    key={i}
+                                                    variant={
+                                                        link.active
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
+                                                    size="sm"
+                                                    disabled={isDisabled}
+                                                    aria-current={
+                                                        link.active
+                                                            ? 'page'
+                                                            : undefined
+                                                    }
+                                                    aria-label={labelText}
+                                                    onClick={() =>
+                                                        link.url &&
+                                                        router.get(
+                                                            link.url,
+                                                            {},
+                                                            {
+                                                                preserveState: true,
+                                                                preserveScroll: true,
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    <span
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: link.label,
+                                                        }}
+                                                        aria-hidden="true"
+                                                    />
+                                                </Button>
+                                            );
+                                        })}
+                                    </nav>
+                                )}
                         </div>
                     </section>
                 </main>
