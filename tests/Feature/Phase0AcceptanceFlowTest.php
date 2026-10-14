@@ -3,6 +3,7 @@
 use App\Enums\FreightPostStatus;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Models\Location;
 use App\Models\MarketplaceConnection;
 use App\Models\Profile;
 use App\Models\TransporterProfile;
@@ -60,11 +61,21 @@ function seedAcceptanceFlow(): array
         'phone' => '+251922000002',
     ]);
 
+    // primary_location_id is now part of what "complete" means. This fixture was
+    // approved but had no base, which passed only because approval used to stand
+    // in for completeness — a transporter with no location is an unfinished
+    // profile, and the test was asserting the finished case.
+    $base = Location::firstOrCreate(
+        ['name' => 'Adama'],
+        ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
+    );
+
     TransporterProfile::firstOrCreate(['user_id' => $transporter->id], [
         'slug' => 'transporter-'.Str::lower(Str::random(8)),
         'display_name' => 'Transporter Person',
         'status' => 'approved',
         'phone' => '+251922000002',
+        'primary_location_id' => $base->id,
         'email' => 'transporter@example.com',
         'whatsapp' => '+251955000003',
         'phone_visible' => true,

@@ -137,6 +137,58 @@ class TransporterProfile extends Model
      * knowing a transporter published or hid their number is audit-relevant and
      * carries no contact data.
      */
+    /**
+     * Fields a transporter needs before they can usefully express interest.
+     *
+     * Deliberately the three that make them contactable and locatable, and
+     * nothing more. A legal name, a business description and uploaded documents
+     * are things a *good* profile has, but gating on them means a perfectly good
+     * lorry driver waits for paperwork before saying they can take a load.
+     *
+     * @var list<string>
+     */
+    public const REQUIRED_FIELDS = [
+        'display_name',
+        'phone',
+        'primary_location_id',
+    ];
+
+    /**
+     * Which required fields are still empty.
+     *
+     * Empty means null or blank. A field holding whitespace is as absent as one
+     * holding null, and treating " " as complete is how a profile reads as
+     * finished while showing a blank line to the counterparty.
+     *
+     * @return list<string>
+     */
+    public function missingFields(): array
+    {
+        return array_values(array_filter(
+            self::REQUIRED_FIELDS,
+            fn (string $field): bool => $this->{$field} === null || trim((string) $this->{$field}) === '',
+        ));
+    }
+
+    /**
+     * Whether this profile carries enough to act as a transporter.
+     *
+     * This replaced `status === 'approved'` as the thing deciding whether
+     * somebody may express interest. Approval is an admin's judgement about
+     * quality — a badge and a ranking signal now, not a wall. Gating on it meant
+     * nobody who was not already trusted could take their first step, and since
+     * only AdminTransporterController can set it, nothing ever moved a profile
+     * out of pending.
+     *
+     * Protection against contact details being harvested is the metered reveal
+     * ledger, which logs every single use. A wall in front of expressing interest
+     * added no protection; it only stopped the market from working.
+     */
+    public function isComplete(): bool
+    {
+        return $this->missingFields() === [];
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

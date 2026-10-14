@@ -86,16 +86,27 @@ class FreightInterestController extends Controller
 
         $profile = $user->profile()->first();
         if (! $profile || ! $profile->provides_transport) {
-            return back()->withErrors(['interest' => 'Your profile must be set to provide transport. Update your account type in onboarding.']);
+            return back()->withErrors(['interest' => 'Your profile must be set to provide transport. Update your account type in settings.']);
         }
 
         $transporter = $user->transporterProfile()->first();
+
         if (! $transporter) {
             return back()->withErrors(['interest' => 'Please create a transporter profile first.']);
         }
 
-        if ($transporter->status !== 'approved') {
-            return back()->withErrors(['interest' => 'Your transporter profile is pending approval (status: '.$transporter->status.'). Please wait for admin approval.']);
+        // Completeness, not approval.
+        //
+        // This used to require status === 'approved', which only
+        // AdminTransporterController can set. So a new user filled in the form
+        // and was told to wait for approval of a queue that did not exist, and
+        // expressing interest — the one action the whole marketplace depends on —
+        // was unreachable for anyone who was not already trusted.
+        if (! $transporter->isComplete()) {
+            return back()->withErrors([
+                'interest' => 'Complete your transporter profile to express interest. Missing: '
+                    .implode(', ', $transporter->missingFields()).'.',
+            ]);
         }
 
         if ($post->status !== FreightPostStatus::Active->value) {

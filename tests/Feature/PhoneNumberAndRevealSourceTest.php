@@ -190,6 +190,14 @@ it('shows the inline step instead of blocking an interest, and the interest then
         'slug' => 'step-'.Str::lower(Str::random(8)),
         'display_name' => 'Step Transporter',
         'status' => 'approved',
+        // Expressing interest now needs a *complete* transporter profile, not an
+        // approved one. This fixture was approved with no phone and no base,
+        // which passed only because approval used to stand in for completeness.
+        'phone' => '+251933000001',
+        'primary_location_id' => Location::firstOrCreate(
+            ['name' => 'Adama'],
+            ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
+        )->id,
         'phone_visible' => true,
         'email_visible' => true,
     ]);

@@ -4,6 +4,7 @@ use App\Enums\FreightPostStatus;
 use App\Http\Requests\StoreFreightInterestRequest;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Models\Location;
 use App\Models\MarketplaceConnection;
 use App\Models\Profile;
 use App\Models\TransporterProfile;
@@ -88,6 +89,14 @@ function leakTransporter(): User
         'legal_name' => 'LEAKY LEGAL NAME',
         'status' => 'approved',
         'phone' => UNIQUE_PHONE_TRANSPORTER,
+        // Completes the profile. Expressing interest now requires a complete
+        // transporter profile rather than an approved one, and this fixture had a
+        // phone but no base — approved while unfinished, which used to pass only
+        // because approval stood in for completeness.
+        'primary_location_id' => Location::firstOrCreate(
+            ['name' => 'Adama'],
+            ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
+        )->id,
         'email' => UNIQUE_EMAIL_TRANSPORTER,
         'whatsapp' => UNIQUE_WHATSAPP,
         'phone_visible' => true,

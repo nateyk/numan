@@ -27,7 +27,12 @@ class FreightInterestPolicy
         }
 
         $transporter = $user->transporterProfile()->first();
-        if (! $transporter || $transporter->status !== 'approved') {
+
+        // Completeness, not approval — see FreightInterestController::store().
+        // Requiring status === 'approved' here as well meant the policy and the
+        // controller had to be changed together, and anyone reading only the
+        // policy would still conclude a new transporter can never start.
+        if (! $transporter || ! $transporter->isComplete()) {
             return false;
         }
 
