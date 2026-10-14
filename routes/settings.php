@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\ConnectedAccountController;
 use App\Http\Controllers\Settings\LoginActivityController;
+use App\Http\Controllers\Settings\MarketplaceDetailsController;
 use App\Http\Controllers\Settings\NotificationPreferenceController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -21,6 +22,15 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // The person as a counterparty sees them: name, phone, base, and whether they
+    // agree to be published. Separate from the account because it is a different
+    // thing being edited, and because it used to be reachable only through the
+    // transporter form — so a consignor could not set it at all.
+    Route::get('settings/marketplace-details', [MarketplaceDetailsController::class, 'edit'])
+        ->name('settings.marketplace-details.edit');
+    Route::patch('settings/marketplace-details', [MarketplaceDetailsController::class, 'update'])
+        ->name('settings.marketplace-details.update');
     Route::post('settings/profile/avatar', [UserAvatarController::class, 'update'])->name('profile.avatar.update');
     Route::delete('settings/profile/avatar', [UserAvatarController::class, 'destroy'])->name('profile.avatar.destroy');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

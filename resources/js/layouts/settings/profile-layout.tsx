@@ -8,6 +8,7 @@ import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
     Bell,
+    Briefcase,
     Cookie,
     Fingerprint,
     History,
@@ -34,6 +35,14 @@ const getNavSections = (
                 title: t('navigation.general', 'General'),
                 href: edit(),
                 icon: User,
+            },
+            {
+                title: t(
+                    'navigation.marketplace_details',
+                    'Marketplace details',
+                ),
+                href: '/settings/marketplace-details',
+                icon: Briefcase,
             },
             {
                 title: t('navigation.connected_accounts', 'Connected Accounts'),
