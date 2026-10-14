@@ -93,19 +93,52 @@ it('refuses to leave a user with neither capability', function () {
     expect((bool) Profile::where('user_id', $user->id)->value('posts_freight'))->toBeTrue();
 });
 
-it('creates an empty carrier profile when someone starts carrying', function () {
-    // Without one the readiness check reports "transporter_profile" missing,
-    // which is accurate but tells them nothing actionable. An empty profile turns
-    // it into three ordinary fields they can fill in.
+it('does not create a carrier profile when the capability is switched on', function () {
+    // It did, once. TransporterProfileController::store refuses with "Profile
+    // already exists. Use update." when a row is already there, so picking up the
+    // carrier capability made the very next action — filling in the carrier form
+    // — fail with a message written for a developer.
+    //
+    // Readiness reporting `transporter_profile` as the gap is accurate and
+    // actionable on its own: it says create a carrier profile, and creating one
+    // works.
     $user = onboardedUser(['posts_freight' => true]);
-
-    expect($user->transporterProfile()->exists())->toBeFalse();
 
     $this->actingAs($user)
         ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
         ->assertRedirect();
 
+    expect($user->transporterProfile()->exists())->toBeFalse();
+
+    expect(app(MarketplaceReadiness::class)->for($user)['missing']['provides_transport'])
+        ->toContain('transporter_profile');
+});
+
+it('lets a carrier form be submitted after switching the capability on', function () {
+    // The end-to-end consequence of the one above: the form the user is told to
+    // fill in must actually accept them.
+    $user = onboardedUser(['posts_freight' => true, 'provides_transport' => false]);
+
+    $this->actingAs($user)
+        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
+        ->assertRedirect();
+
+    $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
+
+    $this->actingAs($user)
+        ->post('/my-transporter-profile', [
+            'display_name' => 'Existing Carrier',
+            'phone' => '+251911000009',
+            'email' => 'carrier@example.test',
+            'primary_location_id' => $base->id,
+            'phone_visible' => '1',
+        ])
+        ->assertSessionHasNoErrors();
+
     $this->assertDatabaseHas('transporter_profiles', ['user_id' => $user->id]);
+
+    expect(app(MarketplaceReadiness::class)->for($user)['ready']['provides_transport'])
+        ->toBeTrue();
 });
 
 it('does not overwrite an existing carrier profile', function () {

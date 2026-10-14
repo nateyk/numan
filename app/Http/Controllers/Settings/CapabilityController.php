@@ -48,21 +48,22 @@ class CapabilityController extends Controller
             'provides_transport' => (bool) $validated['provides_transport'],
         ])->save();
 
-        // A carrier with no carrier profile is told "transporter_profile" is
-        // missing, which is accurate but does not tell them what to do. Creating
-        // an empty one means the gap reads as three ordinary fields they can fill
-        // in, and it does not overwrite anything if they already have one.
-        if ($validated['provides_transport'] && ! $user->transporterProfile()->exists()) {
-            $user->transporterProfile()->create([
-                'display_name' => $profile->display_name ?? $user->name,
-                'phone' => $profile->phone,
-                'status' => 'pending',
-            ]);
-        }
-
-        // Turning a capability off leaves its record alone. The user may switch
-        // back tomorrow, and destroying their carrier profile — trucks, routes and
-        // uploaded documents included — over a checkbox would be unforgivable.
+        // No carrier profile is created here.
+        //
+        // An earlier version of this created an empty one so the readiness check
+        // would report missing fields rather than a missing record. It created a
+        // dead end instead: TransporterProfileController::store refuses with
+        // "Profile already exists. Use update." when a row is already there, so
+        // picking up the capability made the very next action — filling in the
+        // carrier form — fail with a message written for a developer.
+        //
+        // Readiness reporting `transporter_profile` is accurate and actionable on
+        // its own: it says create a carrier profile, and creating one works.
+        //
+        // Turning a capability off likewise leaves the record alone. The user may
+        // switch back tomorrow, and destroying their carrier profile — trucks,
+        // routes and uploaded documents included — over a checkbox is
+        // unforgivable.
 
         return back()->with('success', __('What you do here has been updated.'));
     }

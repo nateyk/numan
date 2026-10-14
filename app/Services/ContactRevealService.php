@@ -307,11 +307,21 @@ class ContactRevealService
             return null;
         }
 
+        // A missing profile row is not a reason to withhold contact details.
+        //
+        // This used to read `if (! $profile) { return null; }`, which returned
+        // nothing for every user registered before public_profiles existed. On
+        // production that is 18 of 21 accounts — and all 11 live freight
+        // interests involve one. The marketplace's core mechanic had therefore
+        // never once succeeded on real data: a consignor and a carrier could
+        // express interest to each other and then neither could see the other's
+        // number, with no error to say why.
+        //
+        // It hid cleanly because every other test built its profiles by hand.
+        // The identity falls back to the user record and, for a carrier, to the
+        // carrier record — which is where all four production carriers keep
+        // their names and numbers, since none of them has a profile row.
         $profile = $counterparty->profile()->first();
-
-        if (! $profile) {
-            return null;
-        }
 
         $transporter = $counterparty->transporterProfile()->first();
 
@@ -328,15 +338,19 @@ class ContactRevealService
         // until it is dropped, and honouring a stale "no" is free while honouring a
         // stale "yes" would publish a number somebody asked to keep private.
         $phoneRefused = $this->refusesContact(
-            $profile->phone_visible ?? true,
+            $profile?->phone_visible,
             $transporter?->phone_visible,
         );
 
+        // Falls through profile, then carrier, then the user record. All three
+        // hold real numbers for real people; none of them is reliably present.
         $phone = $phoneRefused
             ? null
-            : (filled($profile->phone)
+            : (filled($profile?->phone)
                 ? $profile->phone
-                : $transporter?->phone);
+                : (filled($transporter?->phone)
+                    ? $transporter->phone
+                    : $counterparty->phone));
 
         // Only fall back when the number was merely absent, never when it was
         // explicitly refused.
@@ -345,11 +359,11 @@ class ContactRevealService
         }
 
         $emailRefused = $this->refusesContact(
-            $profile->email_visible ?? true,
+            $profile?->email_visible,
             $transporter?->email_visible,
         );
         $whatsappRefused = $this->refusesContact(
-            $profile->whatsapp_visible ?? true,
+            $profile?->whatsapp_visible,
             $transporter?->whatsapp_visible,
         );
 
@@ -357,7 +371,13 @@ class ContactRevealService
         $whatsapp = $whatsappRefused ? null : $transporter?->whatsapp;
 
         return [
-            'name' => $profile->display_name ?? $counterparty->name,
+            // The carrier record is the only name all four production carriers
+            // have, so it is consulted before falling back to the account name.
+            'name' => filled($profile?->display_name)
+                ? $profile->display_name
+                : (filled($transporter?->display_name)
+                    ? $transporter->display_name
+                    : $counterparty->name),
             'phone' => $phone ?: null,
             'email' => $email ?: null,
             'whatsapp' => $whatsapp ?: null,
