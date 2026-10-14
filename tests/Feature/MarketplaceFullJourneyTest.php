@@ -1,11 +1,13 @@
 <?php
 
 use App\Enums\LegalForm;
+use App\Models\CargoType;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
 use App\Models\TransporterProfile;
+use App\Models\TruckType;
 use App\Models\User;
 use App\Services\MarketplaceReadiness;
 use App\Services\WorkspaceService;
@@ -102,42 +104,70 @@ function onboardThroughTheApp(User $user, array $details = []): void
 }
 
 /**
- * A load somebody has posted.
+ * Publish a load the way a person publishes one.
  *
- * Built with the factory rather than by walking the four-request draft wizard,
- * and deliberately so: posting a load is four screens with their own required
- * fields, and it has dedicated tests (FreightCargoStepTest and friends). What
- * this file is for is everything either side of it — registration, onboarding,
- * capability, interest and reveal — where a hand-built fixture hides the fact
- * that the app and the data do not actually fit together.
+ * Five requests: create the draft, route, cargo, schedule, submit. Each has its
+ * own required fields, and the wizard refuses to submit an incomplete load — so
+ * a factory-built post skips the exact sequence that produces most of what can
+ * go wrong. FreightCargoStepTest covers the cargo step alone; this covers the
+ * whole thing end to end.
+ *
+ * Mirrors the shape used by FreightCargoStepTest, which is the one test in the
+ * suite that already walked this flow.
  */
-function someonePostedALoad(): FreightPost
+function publishALoadThroughTheWizard(User $consignor): FreightPost
 {
-    // A plain onboarded consignor. Running the wizard again here would leave the
-    // session carrying redirects and flash state into the assertions that follow.
-    [$consignor] = registerThroughTheApp(['onboarded_at' => now()]);
+    $origin = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
+    $destination = Location::factory()->create(['name' => 'Awash', 'latitude' => 8.98, 'longitude' => 40.17]);
 
-    Profile::firstOrCreate(['user_id' => $consignor->id], [
-        'display_name' => 'Consignor Co',
-        'phone' => '+251911000001',
-        'posts_freight' => true,
-        'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-    ]);
+    // No body. The draft is created immediately and the first real screen is the
+    // route step.
+    test()->actingAs($consignor->fresh())
+        ->post('/my-freight')
+        ->assertRedirect();
 
-    return FreightPost::factory()->for($consignor->refresh())->create([
-        'status' => 'active',
-        'cargo_description' => 'Twelve tonnes of cement',
-    ]);
+    $post = FreightPost::where('user_id', $consignor->id)->latest('id')->firstOrFail();
+
+    expect($post->status)->toBe('draft');
+
+    test()->actingAs($consignor->fresh())
+        ->put("/my-freight/{$post->ulid}/route", [
+            'origin_location_id' => $origin->id,
+            'destination_location_id' => $destination->id,
+        ])
+        ->assertSessionHasNoErrors();
+
+    test()->actingAs($consignor->fresh())
+        ->put("/my-freight/{$post->ulid}/cargo", [
+            'cargo_type_id' => CargoType::factory()->create()->id,
+            'item_name' => 'Cement',
+            'actual_weight' => 12000,
+            'weight_unit' => 'kg',
+            'tariff_amount' => 9000,
+            'tariff_currency' => 'ETB',
+            'required_truck_type_id' => TruckType::factory()->create()->id,
+            'truck_count' => 1,
+        ])
+        ->assertSessionHasNoErrors();
+
+    test()->actingAs($consignor->fresh())
+        ->put("/my-freight/{$post->ulid}/schedule", [
+            'pickup_date' => now()->addWeek()->toDateString(),
+            'schedule_type' => 'one_time',
+        ])
+        ->assertSessionHasNoErrors();
+
+    test()->actingAs($consignor->fresh())
+        ->post("/my-freight/{$post->ulid}/submit")
+        ->assertSessionHasNoErrors();
+
+    return $post->refresh();
 }
 
 /**
- * An onboarded consignor who can post and be found.
- *
- * Used where the test is about the *counterparty's* missing data rather than
- * about onboarding, and an un-onboarded user would simply be redirected out of
- * the marketplace by middleware before the assertion is ever reached.
+ * An onboarded consignor, for tests whose subject is the counterparty rather
+ * than onboarding. An un-onboarded user is redirected out of the marketplace by
+ * middleware before the assertion is ever reached.
  */
 function onboardedConsignor(): User
 {
@@ -153,6 +183,19 @@ function onboardedConsignor(): User
     ]);
 
     return $user->refresh();
+}
+
+/**
+ * A load already published, for tests about what happens after the posting.
+ */
+function someonePostedALoad(): FreightPost
+{
+    $consignor = onboardedConsignor();
+
+    return FreightPost::factory()->for($consignor)->create([
+        'status' => 'active',
+        'cargo_description' => 'Twelve tonnes of cement',
+    ]);
 }
 
 it('walks a consignor from registration to a published load', function () {
@@ -176,13 +219,19 @@ it('walks a consignor from registration to a published load', function () {
 
     expect($state['ready']['posts_freight'])->toBeTrue();
 
-    $post = FreightPost::factory()->for($consignor)->create([
-        'status' => 'active',
-        'cargo_description' => 'Twelve tonnes of cement',
-    ]);
+    $post = publishALoadThroughTheWizard($consignor);
 
+    // Submitted, not live. A newly published load goes to moderation, which is
+    // why production holds 5 drafts, 1 submitted and 22 already approved. The
+    // rest of these journeys work against a live post because expressing interest
+    // is gated on `active` — a consignor cannot offer to carry their own load
+    // before it has been approved, which is the behaviour we want.
     expect($post->user_id)->toBe($consignor->id)
-        ->and($post->cargo_description)->toBe('Twelve tonnes of cement');
+        ->and($post->status)->toBe('submitted')
+        ->and($post->item_name)->toBe('Cement')
+        ->and((float) $post->tariff_amount)->toBe(9000.0)
+        ->and($post->origin_location_id)->not->toBeNull()
+        ->and($post->destination_location_id)->not->toBeNull();
 });
 
 it('walks a carrier from registration to expressing interest', function () {
