@@ -10,6 +10,7 @@ use App\Models\Location;
 use App\Models\TransporterDocument;
 use App\Models\TransporterProfile;
 use App\Models\TruckType;
+use App\Models\User;
 use App\Services\TransporterCompletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,6 +68,8 @@ class TransporterProfileController extends Controller
             'primary_location_id' => $data['primary_location_id'],
         ]);
 
+        $this->syncContactVisibility($user, $data);
+
         $this->syncRelations($profile, $data, $request);
 
         $this->completionService->update($profile);
@@ -99,6 +102,8 @@ class TransporterProfileController extends Controller
             'email_visible' => (bool) ($data['email_visible'] ?? false),
             'primary_location_id' => $data['primary_location_id'],
         ]);
+
+        $this->syncContactVisibility($user, $data);
 
         $this->syncRelations($profile, $data, $request);
 
@@ -251,17 +256,53 @@ class TransporterProfileController extends Controller
         $data['primary_location'] = $profile->primaryLocation;
 
         if ($respectVisibility) {
-            if (! $profile->phone_visible) {
+            // Read the choice from the profile, which is where ContactRevealService
+            // reads it from. Reading it off the transporter row here meant the
+            // public page and the reveal could disagree about whether a number was
+            // allowed out.
+            $identity = $profile->user?->profile;
+
+            if (! (bool) ($identity?->phone_visible ?? true)) {
                 $data['phone'] = null;
             }
-            if (! $profile->whatsapp_visible) {
+            if (! (bool) ($identity?->whatsapp_visible ?? true)) {
                 $data['whatsapp'] = null;
             }
-            if (! $profile->email_visible) {
+            if (! (bool) ($identity?->email_visible ?? true)) {
                 $data['email'] = null;
             }
         }
 
         return $data;
+    }
+
+    /**
+     * Record the contact-visibility choices against the user's profile.
+     *
+     * These live on profiles because that is the record every kind of user has.
+     * While the flag existed only on transporter_profiles, a consignor had no way
+     * to decline publication of their number, and ContactRevealService released
+     * it regardless.
+     *
+     * The transporter columns are still written, deliberately. They are now a
+     * stale copy kept in step with the profile until the separate migration drops
+     * them, so that a rollback of that step cannot silently re-expose somebody who
+     * had hidden their number.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function syncContactVisibility(User $user, array $data): void
+    {
+        $identity = $user->profile()->first();
+
+        if (! $identity) {
+            return;
+        }
+
+        $identity->forceFill([
+            'phone_visible' => (bool) ($data['phone_visible'] ?? false),
+            'whatsapp_visible' => (bool) ($data['whatsapp_visible'] ?? false),
+            'email_visible' => (bool) ($data['email_visible'] ?? false),
+        ])->save();
     }
 }

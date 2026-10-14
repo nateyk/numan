@@ -315,11 +315,22 @@ class ContactRevealService
 
         $transporter = $counterparty->transporterProfile()->first();
 
-        // A transporter who turned phone visibility off has said "do not
-        // publish my number". That is an explicit refusal, not a gap to fill,
-        // so it suppresses the number outright rather than falling through to
-        // the legacy per-interest phone below.
-        $phoneRefused = $transporter !== null && ! $transporter->phone_visible;
+        // Refusal is read from the profile, which every kind of user has.
+        //
+        // This used to be `$transporter !== null && ! $transporter->phone_visible`,
+        // which meant a consignor — no transporter row — could never refuse, and
+        // the reveal ledger logged the release of their number as though it had
+        // been agreed. Silently publishing somebody who has no way to decline is
+        // worse than not publishing.
+        //
+        // Both sources are honoured and a refusal from either wins. The profile is
+        // where the choice is made now; the transporter column still carries it
+        // until it is dropped, and honouring a stale "no" is free while honouring a
+        // stale "yes" would publish a number somebody asked to keep private.
+        $phoneRefused = $this->refusesContact(
+            $profile->phone_visible ?? true,
+            $transporter?->phone_visible,
+        );
 
         $phone = $phoneRefused
             ? null
@@ -333,13 +344,17 @@ class ContactRevealService
             $phone = $this->legacyInterestPhone($counterparty, $context);
         }
 
-        if ($transporter !== null) {
-            $email = $transporter->email_visible ? ($transporter->email ?: $counterparty->email) : null;
-            $whatsapp = $transporter->whatsapp_visible ? $transporter->whatsapp : null;
-        } else {
-            $email = $counterparty->email;
-            $whatsapp = null;
-        }
+        $emailRefused = $this->refusesContact(
+            $profile->email_visible ?? true,
+            $transporter?->email_visible,
+        );
+        $whatsappRefused = $this->refusesContact(
+            $profile->whatsapp_visible ?? true,
+            $transporter?->whatsapp_visible,
+        );
+
+        $email = $emailRefused ? null : ($transporter?->email ?: $counterparty->email);
+        $whatsapp = $whatsappRefused ? null : $transporter?->whatsapp;
 
         return [
             'name' => $profile->display_name ?? $counterparty->name,
@@ -357,6 +372,41 @@ class ContactRevealService
      * last-resort fallback for legacy rows where the profile was never filled
      * in, and is not consulted for a consignor.
      */
+    /**
+     * Whether either record says "do not publish this".
+     *
+     * The profile is the current home of the choice; the transporter column is a
+     * copy kept in step until it is dropped. Both are consulted and a refusal from
+     * either one stands.
+     *
+     * Asymmetric on purpose. A stale "no" costs a transporter one phone number
+     * being releasable through the legacy fallback, which they can change in a
+     * form. A stale "yes" — which is what honouring a stale refusal incorrectly in
+     * the other direction would produce — publishes a number somebody asked to
+     * keep private, and there is no way for them to learn that happened.
+     *
+     * A null from either side means the column is absent rather than set, which is
+     * not a refusal.
+     *
+     * Compared as truthiness rather than `=== false` because the value comes back
+     * from the database driver as an int 0 or the strings '0' and 'false'. Only
+     * 'false' is a false positive — those three all mean "no".
+     */
+    private function refusesContact(mixed $profileFlag, mixed $transporterFlag): bool
+    {
+        foreach ([$profileFlag, $transporterFlag] as $flag) {
+            if ($flag === null) {
+                continue;
+            }
+
+            if (! $flag) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function legacyInterestPhone(User $counterparty, ?Model $context): ?string
     {
         if (! $context instanceof FreightInterest || ! Schema::hasColumn('freight_interests', 'contact_phone')) {

@@ -32,6 +32,12 @@ class Profile extends Model
         'display_name',
         'phone',
         'primary_location_id',
+        // Contact visibility lives here rather than on transporter_profiles so
+        // that a consignor can refuse publication too. It used to exist only for
+        // transporters, which meant a consignor's number was always released.
+        'phone_visible',
+        'whatsapp_visible',
+        'email_visible',
         'legal_name',
         'legal_form',
         'legal_form_other',
