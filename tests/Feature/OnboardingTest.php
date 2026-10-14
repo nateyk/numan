@@ -104,7 +104,10 @@ it('allows seamlessly onboarded users into the dashboard securely bypassing the 
 
     $response->assertSuccessful();
 
-    // Secondary check: ensure they can't access onboarding again
+    // Secondary check: ensure they can't access onboarding again. They are kept
+    // out of the wizard, but sent to the page that lets them change what they do
+    // here rather than to a dashboard where they cannot — the wizard's redirect
+    // used to be a dead end for exactly that decision.
     $responseWizard = $this->actingAs($user)->get(route('onboarding.index'));
-    $responseWizard->assertRedirect(route('dashboard'));
+    $responseWizard->assertRedirect(route('settings.marketplace-details.edit'));
 });

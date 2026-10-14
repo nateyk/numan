@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\MarketplaceDetailsRequest;
 use App\Models\Location;
 use App\Models\Profile;
+use App\Services\MarketplaceReadiness;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -32,13 +33,15 @@ class MarketplaceDetailsController extends Controller
      * and the page has to work for them without having sent them through
      * onboarding first.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request, MarketplaceReadiness $readiness): Response
     {
         $user = $request->user();
         $profile = Profile::firstOrCreate(
             ['user_id' => $user->id],
             ['display_name' => $user->name],
         );
+
+        $state = $readiness->for($user);
 
         return Inertia::render('settings/marketplace-details', [
             'profile' => [
@@ -49,11 +52,9 @@ class MarketplaceDetailsController extends Controller
                 'whatsapp_visible' => (bool) $profile->whatsapp_visible,
                 'email_visible' => (bool) $profile->email_visible,
             ],
-            'capabilities' => [
-                'posts_freight' => (bool) $profile->posts_freight,
-                'provides_transport' => (bool) $profile->provides_transport,
-            ],
-            'missingFields' => $this->missingFields($profile),
+            'capabilities' => $state['capabilities'],
+            'missingFields' => $state['missing'],
+            'ready' => $state['ready'],
             'locations' => Location::orderBy('name')
                 ->get(['id', 'name', 'type', 'region_name'])
                 ->map(fn (Location $location): array => [
@@ -89,29 +90,5 @@ class MarketplaceDetailsController extends Controller
 
         return to_route('settings.marketplace-details.edit')
             ->with('success', 'Your details have been saved.');
-    }
-
-    /**
-     * What is still standing between this user and being able to trade.
-     *
-     * Reported for whichever capability they hold. A user with both is told about
-     * both, because the two sets of requirements are not the same: posting a
-     * load needs identity, offering to carry one also needs a base and a vehicle.
-     *
-     * @return array<string, list<string>>
-     */
-    private function missingFields(Profile $profile): array
-    {
-        $identity = array_values(array_filter(
-            ['display_name', 'phone'],
-            fn (string $field): bool => trim((string) $profile->{$field}) === '',
-        ));
-
-        $transporter = $profile->user?->transporterProfile?->missingFields() ?? [];
-
-        return [
-            'posts_freight' => $identity,
-            'provides_transport' => $identity === [] ? $transporter : [...$identity, ...$transporter],
-        ];
     }
 }

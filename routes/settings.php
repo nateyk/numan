@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\ApiTokenController;
+use App\Http\Controllers\Settings\CapabilityController;
 use App\Http\Controllers\Settings\ConnectedAccountController;
 use App\Http\Controllers\Settings\LoginActivityController;
 use App\Http\Controllers\Settings\MarketplaceDetailsController;
@@ -31,6 +32,13 @@ Route::middleware('auth')->group(function () {
         ->name('settings.marketplace-details.edit');
     Route::patch('settings/marketplace-details', [MarketplaceDetailsController::class, 'update'])
         ->name('settings.marketplace-details.update');
+
+    // What you do here: post freight, carry freight, or both. Always open.
+    // OnboardingController refuses every action once a user is onboarded, which
+    // is right for the wizard and wrong for this decision — it used to mean the
+    // capability choice could never be changed after registration.
+    Route::patch('settings/capabilities', [CapabilityController::class, 'update'])
+        ->name('settings.capabilities.update');
     Route::post('settings/profile/avatar', [UserAvatarController::class, 'update'])->name('profile.avatar.update');
     Route::delete('settings/profile/avatar', [UserAvatarController::class, 'destroy'])->name('profile.avatar.destroy');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

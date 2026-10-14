@@ -41,6 +41,7 @@ interface Props {
         provides_transport: boolean;
     };
     missingFields: Record<string, string[]>;
+    ready: Record<string, boolean>;
     locations: { id: number; label: string }[];
 }
 
@@ -50,6 +51,7 @@ export default function MarketplaceDetailsPage({
     profile,
     capabilities,
     missingFields,
+    ready,
     locations,
 }: Props) {
     const { t } = useTranslations();
@@ -77,9 +79,17 @@ export default function MarketplaceDetailsPage({
     const actsInMarketplace =
         capabilities.posts_freight || capabilities.provides_transport;
 
-    const postReady = (missingFields.posts_freight ?? []).length === 0;
-    const transportReady =
-        (missingFields.provides_transport ?? []).length === 0;
+    // Both are always sent, so turning one off leaves the other alone. Neither is
+    // a meaningful state, so the server rejects it and the user picks at least one.
+    const capabilityForm = useForm({
+        posts_freight: capabilities.posts_freight,
+        provides_transport: capabilities.provides_transport,
+    });
+
+    // Straight from MarketplaceReadiness. Recomputing it here is how the page and
+    // the gate end up disagreeing about whether somebody is ready.
+    const postReady = ready.posts_freight;
+    const transportReady = ready.provides_transport;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

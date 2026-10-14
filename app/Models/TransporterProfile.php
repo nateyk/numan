@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -187,6 +188,36 @@ class TransporterProfile extends Model
     public function isComplete(): bool
     {
         return $this->missingFields() === [];
+    }
+
+    /**
+     * Give every profile a slug, whatever created it.
+     *
+     * The column is NOT NULL and unique, but the logic lived in
+     * TransporterProfileController::generateSlug — so any other code path that
+     * created a profile hit a database integrity violation. Creating a stub when
+     * somebody picks up the carrier capability is the first such path; the next
+     * one would have been too.
+     *
+     * An explicitly supplied slug wins, so the controller keeps working unchanged.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $profile): void {
+            if (filled($profile->slug)) {
+                return;
+            }
+
+            $base = Str::slug($profile->display_name ?: 'carrier');
+            $slug = $base.'-'.Str::random(4);
+            $i = 1;
+
+            while (self::withTrashed()->where('slug', $slug)->exists()) {
+                $slug = $base.'-'.Str::random(4).$i++;
+            }
+
+            $profile->slug = $slug;
+        });
     }
 
     public function getActivitylogOptions(): LogOptions

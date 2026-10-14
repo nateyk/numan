@@ -226,7 +226,7 @@ it('completes step 3 for business with Other legal form', function (): void {
     expect($user->fresh()->profile->legal_form_other)->toBe('Custom Cooperative Union');
 });
 
-it('prevents revisiting onboarding once completed — redirects to dashboard', function (): void {
+it('prevents revisiting the wizard once completed — redirects to the revisitable page', function (): void {
     $user = User::factory()->create(); // onboarded via legacy flag
     Profile::factory()->create([
         'user_id' => $user->id,
@@ -234,7 +234,13 @@ it('prevents revisiting onboarding once completed — redirects to dashboard', f
         'onboarding_completed_at' => now(),
     ]);
 
-    $this->actingAs($user)->get(route('onboarding.index'))->assertRedirect(route('dashboard'));
+    // Kept out of the wizard entirely — every wizard action redirects to the
+    // dashboard still. The GET now lands on the page that owns capabilities,
+    // because sending an onboarded user to the dashboard left them with no way to
+    // change what they do here at all.
+    $this->actingAs($user)->get(route('onboarding.index'))
+        ->assertRedirect(route('settings.marketplace-details.edit'));
+
     $this->actingAs($user)->post(route('onboarding.capabilities'), [
         'posts_freight' => true,
         'provides_transport' => false,

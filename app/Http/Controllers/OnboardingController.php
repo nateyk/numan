@@ -34,8 +34,13 @@ class OnboardingController extends Controller
         }
 
         // Legacy workspace onboarded check — keep for BC, but also check new public profile
+        //
+        // An onboarded user has no business in a wizard whose every action would
+        // refuse them, so they used to land on the dashboard with no way to change
+        // what they do here. Sent to the page that does let them, which is the
+        // same one holding their capabilities and what is left to fill in.
         if ($user->onboarded_at !== null || $user->isProfileOnboarded()) {
-            return redirect()->route('dashboard');
+            return redirect()->route('settings.marketplace-details.edit');
         }
 
         // Ensure a profile row exists for every user (idempotent)
