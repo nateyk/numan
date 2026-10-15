@@ -1,5 +1,6 @@
 import FreightWizardShell from '@/components/freight/FreightWizardShell';
 import RoutePreviewMap from '@/components/maps/RoutePreviewMap';
+import { freightRoute } from '@/lib/freight-route';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,13 +36,11 @@ interface Props {
         origin_exact_lng: string | null;
         destination_exact_lat: string | null;
         destination_exact_lng: string | null;
-        originLocation?: { name: string; region_name: string };
-        destinationLocation?: { name: string; region_name: string };
+        origin?: { name: string; region_name: string };
+        destination?: { name: string; region_name: string };
         origin_location?: { name: string; region_name: string };
         destination_location?: { name: string; region_name: string };
-        cargoType?: { name: string };
         cargo_type?: { name: string };
-        truckType?: { name: string };
         truck_type?: { name: string };
         routeSnapshot?: {
             distance_meters: number;
@@ -62,26 +61,8 @@ export default function FreightReview({ post, completionScore }: Props) {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const form = useForm<{ confirm?: string }>({});
 
-    const origin =
-        ((post as unknown as Record<string, unknown>).originLocation as
-            { name: string; region_name: string } | undefined) ??
-        ((post as unknown as Record<string, unknown>).origin_location as
-            { name: string; region_name: string } | undefined);
-    const destination =
-        ((post as unknown as Record<string, unknown>).destinationLocation as
-            { name: string; region_name: string } | undefined) ??
-        ((post as unknown as Record<string, unknown>).destination_location as
-            { name: string; region_name: string } | undefined);
-    const cargoType =
-        ((post as unknown as Record<string, unknown>).cargoType as
-            { name: string } | undefined) ??
-        ((post as unknown as Record<string, unknown>).cargo_type as
-            { name: string } | undefined);
-    const truckType =
-        ((post as unknown as Record<string, unknown>).truckType as
-            { name: string } | undefined) ??
-        ((post as unknown as Record<string, unknown>).truck_type as
-            { name: string } | undefined);
+    const { origin, destination, cargoType, truckType } =
+        freightRoute(post);
     const routeSnapshot =
         ((post as unknown as Record<string, unknown>).routeSnapshot as
             | {

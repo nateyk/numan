@@ -177,7 +177,7 @@ it('sends an admin moderation table a route it can render', function () {
     routeActivePost($owner, $workspace);
 
     $this->actingAs(User::factory()->superadmin()->create())
-        ->get(route('admin.freight.index'))
+        ->get('/admin/freight')
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('posts.data', assertRendersTheRoute(...)));
 });
@@ -223,10 +223,11 @@ it('sends a transporter their interest list a route they can read', function () 
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where(
             'interests',
-            function (array $rows) {
+            function (mixed $rows) {
                 // This resource sends the endpoints as bare names rather than
                 // location objects, so a page that only accepts objects renders
                 // a dash here.
+                $rows = $rows instanceof Collection ? $rows->all() : $rows;
                 $post = $rows[0]['freight_post'] ?? $rows[0]['freightPost'];
 
                 return ($post['origin'] ?? null) === 'Kombolcha'

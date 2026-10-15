@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Freight;
 
 use App\Enums\FreightPostStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\FreightPostResource;
 use App\Models\FreightPost;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -131,7 +132,7 @@ class FreightPostController extends Controller
         $post->load(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
         return Inertia::render('freight/show', [
-            'post' => $post,
+            'post' => FreightPostResource::make($post),
         ]);
     }
 

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { freightRoute } from '@/lib/freight-route';
 import type { SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
@@ -42,12 +43,16 @@ interface Freight {
     pickup_date: string | null;
     pickup_time?: string | null;
     truck_count?: number | null;
-    originLocation?: { id: number; name: string; region_name: string };
-    destinationLocation?: { id: number; name: string; region_name: string };
+    /**
+     * FreightPostResource sends origin / destination / cargo_type /
+     * truck_type. A bare Eloquent model serialises the same relations as
+     * origin_location / destination_location instead, so both are declared
+     * and read through freightRoute() rather than picked apart here.
+     */
+    origin?: { id: number; name: string; region_name: string };
+    destination?: { id: number; name: string; region_name: string };
     origin_location?: { id: number; name: string; region_name: string };
     destination_location?: { id: number; name: string; region_name: string };
-    cargoType?: { name: string };
-    truckType?: { name: string };
     cargo_type?: { name: string };
     truck_type?: { name: string };
     routeSnapshot?: {
@@ -688,66 +693,17 @@ export default function DiscoverIndex({
                                     role="list"
                                 >
                                     {safeFreight.data.map((f) => {
-                                        const origin =
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .originLocation as Freight['originLocation']) ??
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .origin_location as Freight['originLocation']);
-                                        const destination =
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .destinationLocation as Freight['destinationLocation']) ??
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .destination_location as Freight['destinationLocation']);
-                                        const cargoType =
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .cargoType as Freight['cargoType']) ??
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .cargo_type as Freight['cargoType']);
-                                        const truckType =
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .truckType as Freight['truckType']) ??
-                                            ((
-                                                f as unknown as Record<
-                                                    string,
-                                                    unknown
-                                                >
-                                            )
-                                                .truck_type as Freight['truckType']);
+                                        // One reader for the route, whichever
+                                        // key shape the payload used. Reading
+                                        // originLocation here against a
+                                        // FreightPostResource payload is what
+                                        // put a dash on the card.
+                                        const {
+                                            origin,
+                                            destination,
+                                            cargoType,
+                                            truckType,
+                                        } = freightRoute(f);
                                         const isOwn =
                                             auth?.user?.id &&
                                             f.user?.id === auth.user.id;

@@ -7,6 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+    freightRoute,
+    nestedFreightPost,
+    postUlid,
+    type FreightRow,
+} from '@/lib/freight-route';
 import { Package, MapPin, Calendar, Truck, ArrowRight, MoreHorizontal, Eye, X } from 'lucide-react';
 
 interface Interest {
@@ -14,8 +20,14 @@ interface Interest {
     status: string;
     message: string | null;
     created_at?: string | null;
-    freightPost?: { ulid: string; status: string; originLocation?: { name: string; region_name: string }; destinationLocation?: { name: string; region_name: string }; cargoType?: { name: string }; truckType?: { name: string }; user?: { name: string } } | null;
-    freight_post?: { ulid: string; status: string; origin_location?: { name: string; region_name: string }; destination_location?: { name: string; region_name: string }; cargo_type?: { name: string }; truck_type?: { name: string }; user?: { name: string } } | null;
+    /**
+     * The post is read through nestedFreightPost() and freightRoute(), so the
+     * several shapes the resources use for it (freightPost / freight_post,
+     * origin as an object or as a bare name) are handled in one place rather
+     * than guessed at per page.
+     */
+    freightPost?: FreightRow;
+    freight_post?: FreightRow;
 }
 
 interface Props {
@@ -118,9 +130,14 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                     </TableHeader>
                                     <TableBody>
                                         {interestData.map((i) => {
-                                            const fpRaw = (i as unknown as Record<string, unknown>).freightPost as Interest['freightPost'] ?? (i as unknown as Record<string, unknown>).freight_post as unknown as Interest['freightPost'];
-                                            const fp = fpRaw ?? null;
-                                            if (!fp || !fp.ulid) {
+                                            const fp = nestedFreightPost(i);
+                                            const ulid = postUlid(fp);
+                                            const {
+                                                origin,
+                                                destination,
+                                                cargoType,
+                                            } = freightRoute(fp);
+                                            if (!ulid) {
                                                 return (
                                                     <TableRow key={i.id} className="opacity-60">
                                                         <TableCell colSpan={4}>
@@ -131,16 +148,13 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                                     </TableRow>
                                                 );
                                             }
-                                            const origin = (fp as unknown as Record<string, unknown>)?.originLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.origin_location as { name: string; region_name: string } | undefined;
-                                            const destination = (fp as unknown as Record<string, unknown>)?.destinationLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.destination_location as { name: string; region_name: string } | undefined;
-                                            const cargoType = (fp as unknown as Record<string, unknown>)?.cargoType as { name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.cargo_type as { name: string } | undefined;
                                             return (
                                                 <TableRow key={i.id}>
                                                     <TableCell>
                                                         <div className="font-medium flex items-center gap-2">
                                                             <MapPin className="size-4 text-primary" /> {origin?.name ?? '—'} <ArrowRight className="size-3 text-muted-foreground" /> {destination?.name ?? '—'}
                                                         </div>
-                                                        <div className="text-xs text-muted-foreground">{fp?.ulid?.slice(0, 8) ?? '—'} • {cargoType?.name ?? 'General'}</div>
+                                                        <div className="text-xs text-muted-foreground">{ulid.slice(0, 8)} • {cargoType?.name ?? 'General'}</div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="text-sm">{i.message ?? '—'}</div>
@@ -153,14 +167,14 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                                         <div className="flex flex-col items-end gap-1">
                                                             <div className="flex items-center justify-end gap-1">
                                                                 <Button variant="ghost" size="icon" className="size-7" asChild>
-                                                                    <Link href={`/freight/${fp?.ulid ?? ''}`}><Eye className="size-4" /></Link>
+                                                                    <Link href={`/freight/${ulid}`}><Eye className="size-4" /></Link>
                                                                 </Button>
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
                                                                         <Button variant="ghost" size="icon" className="size-7"><MoreHorizontal className="size-4" /></Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end" className="w-40">
-                                                                        <DropdownMenuItem asChild><Link href={`/freight/${fp?.ulid ?? ''}`} className="cursor-pointer"><Eye className="mr-2 size-4" /> View Freight</Link></DropdownMenuItem>
+                                                                        <DropdownMenuItem asChild><Link href={`/freight/${ulid}`} className="cursor-pointer"><Eye className="mr-2 size-4" /> View Freight</Link></DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/withdraw`)} disabled={i.status === 'withdrawn' || i.status === 'selected'} className="cursor-pointer"><X className="mr-2 size-4" /> Withdraw</DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>
@@ -192,17 +206,17 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
 
                         <div className="grid gap-3 md:hidden">
                             {interestData.map((i) => {
-                                const fpRaw = (i as unknown as Record<string, unknown>).freightPost as Interest['freightPost'] ?? (i as unknown as Record<string, unknown>).freight_post as unknown as Interest['freightPost'];
-                                const fp = fpRaw ?? null;
-                                if (!fp || !fp.ulid) {
+                                const fp = nestedFreightPost(i);
+                                const ulid = postUlid(fp);
+                                const { origin, destination } =
+                                    freightRoute(fp);
+                                if (!ulid) {
                                     return (
                                         <Card key={i.id} className="p-4 opacity-60">
                                             <div className="text-sm text-muted-foreground">Freight unavailable — Interest #{i.id} • {i.status}</div>
                                         </Card>
                                     );
                                 }
-                                const origin = (fp as unknown as Record<string, unknown>)?.originLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.origin_location as { name: string; region_name: string } | undefined;
-                                const destination = (fp as unknown as Record<string, unknown>)?.destinationLocation as { name: string; region_name: string } | undefined ?? (fp as unknown as Record<string, unknown>)?.destination_location as { name: string; region_name: string } | undefined;
                                 return (
                                     <Card key={i.id} className="p-4">
                                         <div className="flex items-start justify-between gap-2">
@@ -213,7 +227,7 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                         </div>
                                         <div className="mt-2 text-sm text-muted-foreground truncate">{i.message ?? '—'}</div>
                                         <div className="mt-3 flex gap-2">
-                                            <Button variant="outline" size="sm" className="flex-1 h-8" asChild><Link href={`/freight/${fp?.ulid ?? ''}`}>View</Link></Button>
+                                            <Button variant="outline" size="sm" className="flex-1 h-8" asChild><Link href={`/freight/${ulid}`}>View</Link></Button>
                                             <Button size="sm" variant="outline" className="h-8" onClick={() => router.post(`/interests/${i.id}/withdraw`)} disabled={i.status === 'withdrawn'}>Withdraw</Button>
                                         </div>
                                     </Card>

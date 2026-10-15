@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { freightRoute } from '@/lib/freight-route';
 import { Package, MapPin, Calendar, Phone, Mail, User, MoreHorizontal, Eye, Check, X, Star, ArrowLeft } from 'lucide-react';
 
 interface RevealedContact {
@@ -32,9 +33,14 @@ interface Interest {
 interface FreightPost {
     ulid: string;
     status: string;
-    originLocation?: { name: string; region_name: string } | null;
+    /**
+     * FreightPostResource sends origin / destination. Read through
+     * freightRoute(), which also copes with the snake_cased names a bare
+     * Eloquent model serialises these relations under.
+     */
+    origin?: { name: string; region_name: string } | null;
+    destination?: { name: string; region_name: string } | null;
     origin_location?: { name: string; region_name: string } | null;
-    destinationLocation?: { name: string; region_name: string } | null;
     destination_location?: { name: string; region_name: string } | null;
     cargo_description: string | null;
     item_name: string | null;
@@ -71,8 +77,7 @@ const statusColor = (status: string) => {
 };
 
 export default function FreightInterests({ interests, links, canReveal, revealedContacts, reveal_blocked, post }: Props) {
-    const origin = (post as unknown as Record<string, unknown>).originLocation as FreightPost['originLocation'] ?? (post as unknown as Record<string, unknown>).origin_location as FreightPost['originLocation'];
-    const destination = (post as unknown as Record<string, unknown>).destinationLocation as FreightPost['destinationLocation'] ?? (post as unknown as Record<string, unknown>).destination_location as FreightPost['destinationLocation'];
+    const { origin, destination } = freightRoute(post);
 
     const counts = {
         all: interests.length,

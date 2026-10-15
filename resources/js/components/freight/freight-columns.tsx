@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { freightRoute, routeLabel } from '@/lib/freight-route';
 import { Link } from '@inertiajs/react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Eye } from 'lucide-react';
@@ -16,8 +17,15 @@ export type FreightPost = {
     tariff_amount: string | null;
     tariff_currency: string | null;
     user?: { name: string; email: string };
-    originLocation?: { name: string; region_name: string };
-    destinationLocation?: { name: string; region_name: string };
+    /**
+     * A bare Eloquent model serialises these relations snake_cased; a
+     * FreightPostResource sends origin / destination. Read through
+     * freightRoute() rather than picked apart here.
+     */
+    origin?: { name: string; region_name: string };
+    destination?: { name: string; region_name: string };
+    origin_location?: { name: string; region_name: string };
+    destination_location?: { name: string; region_name: string };
 };
 
 const columnHelper = createColumnHelper<DataTableFeatures, FreightPost>();
@@ -51,33 +59,28 @@ const statusColors: Record<string, string> = {
  * where the evidence can actually be looked at.
  */
 export const freightColumns = columnHelper.columns([
-    columnHelper.accessor(
-        (row) =>
-            `${row.originLocation?.name ?? '—'} → ${row.destinationLocation?.name ?? '—'}`,
-        {
-            id: 'route',
-            header: 'Route',
-            cell: ({ row }) => {
-                const origin = row.original.originLocation?.name ?? '—';
-                const destination =
-                    row.original.destinationLocation?.name ?? '—';
-                const originRegion =
-                    row.original.originLocation?.region_name ?? '';
-                const destRegion =
-                    row.original.destinationLocation?.region_name ?? '';
-                return (
-                    <div>
-                        <div className="font-medium">
-                            {origin} → {destination}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                            {originRegion} → {destRegion}
-                        </div>
+    columnHelper.accessor((row) => routeLabel(row), {
+        id: 'route',
+        header: 'Route',
+        cell: ({ row }) => {
+            const { origin, destination } = freightRoute(row.original);
+            const originName = origin?.name ?? '—';
+            const destinationName = destination?.name ?? '—';
+            const originRegion = origin?.region_name ?? '';
+            const destRegion = destination?.region_name ?? '';
+
+            return (
+                <div>
+                    <div className="font-medium">
+                        {originName} → {destinationName}
                     </div>
-                );
-            },
+                    <div className="text-xs text-muted-foreground">
+                        {originRegion} → {destRegion}
+                    </div>
+                </div>
+            );
         },
-    ),
+    }),
     columnHelper.accessor('item_name', {
         header: 'Cargo',
         cell: ({ row }) =>

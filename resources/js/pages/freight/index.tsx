@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
+import { freightRoute, routeLabel } from '@/lib/freight-route';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
@@ -64,8 +65,13 @@ import { useState } from 'react';
 interface Freight {
     ulid: string;
     status: string;
-    originLocation?: { name: string; region_name: string } | null;
-    destinationLocation?: { name: string; region_name: string } | null;
+    /**
+     * A bare Eloquent model serialises these relations snake_cased. Read
+     * through freightRoute() rather than picked apart, so the page works
+     * whichever producer sent the row.
+     */
+    origin?: { name: string; region_name: string } | null;
+    destination?: { name: string; region_name: string } | null;
     origin_location?: { name: string; region_name: string } | null;
     destination_location?: { name: string; region_name: string } | null;
     cargo_description: string | null;
@@ -422,66 +428,12 @@ export default function FreightIndex({
                                         </TableRow>
                                     ) : (
                                         posts.data.map((p) => {
-                                            const origin =
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .originLocation as Freight['originLocation']) ??
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .origin_location as Freight['originLocation']);
-                                            const destination =
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .destinationLocation as Freight['destinationLocation']) ??
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .destination_location as Freight['destinationLocation']);
-                                            const cargoType =
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .cargoType as Freight['cargoType']) ??
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .cargo_type as Freight['cargoType']);
-                                            const truckType =
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .truckType as Freight['truckType']) ??
-                                                ((
-                                                    p as unknown as Record<
-                                                        string,
-                                                        unknown
-                                                    >
-                                                )
-                                                    .truck_type as Freight['truckType']);
+                                            const {
+                                                origin,
+                                                destination,
+                                                cargoType,
+                                                truckType,
+                                            } = freightRoute(p);
                                             const isDraft =
                                                 p.status === 'draft';
                                             // Mirrors FreightPostPolicy::delete for owners: drafts
@@ -693,7 +645,7 @@ export default function FreightIndex({
                                                                                 setDeleteTarget(
                                                                                     {
                                                                                         ulid: p.ulid,
-                                                                                        label: `${p.originLocation?.name ?? p.origin_location?.name ?? 'Origin'} → ${p.destinationLocation?.name ?? p.destination_location?.name ?? 'Destination'}`,
+                                                                                        label: routeLabel(p),
                                                                                     },
                                                                                 );
                                                                             }}
@@ -733,21 +685,8 @@ export default function FreightIndex({
                         </Card>
                     ) : (
                         posts.data.map((p) => {
-                            const origin =
-                                ((p as unknown as Record<string, unknown>)
-                                    .originLocation as Freight['originLocation']) ??
-                                ((p as unknown as Record<string, unknown>)
-                                    .origin_location as Freight['originLocation']);
-                            const destination =
-                                ((p as unknown as Record<string, unknown>)
-                                    .destinationLocation as Freight['destinationLocation']) ??
-                                ((p as unknown as Record<string, unknown>)
-                                    .destination_location as Freight['destinationLocation']);
-                            const cargoType =
-                                ((p as unknown as Record<string, unknown>)
-                                    .cargoType as Freight['cargoType']) ??
-                                ((p as unknown as Record<string, unknown>)
-                                    .cargo_type as Freight['cargoType']);
+                            const { origin, destination, cargoType } =
+                                freightRoute(p);
                             const isDraft = p.status === 'draft';
                             // Same rule as the desktop table and the policy.
                             const canDelete = [

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import RoutePreviewMap from '@/components/maps/RoutePreviewMap';
+import { freightRoute } from '@/lib/freight-route';
 
 interface Props {
     post: {
@@ -63,10 +64,7 @@ export default function AdminFreightShow({ post }: Props) {
     const canReject = post.status === 'submitted' || post.status === 'under_review';
     const canUnderReview = post.status === 'submitted';
 
-    const originLocation = (post as unknown as Record<string, unknown>).originLocation as Props['post']['origin_location'] ?? (post as unknown as Record<string, unknown>).origin_location as Props['post']['origin_location'] ?? post.originLocation ?? post.origin_location;
-    const destinationLocation = (post as unknown as Record<string, unknown>).destinationLocation as Props['post']['destination_location'] ?? (post as unknown as Record<string, unknown>).destination_location as Props['post']['destination_location'] ?? post.destinationLocation ?? post.destination_location;
-    const cargoType = (post as unknown as Record<string, unknown>).cargoType as Props['post']['cargo_type'] ?? (post as unknown as Record<string, unknown>).cargo_type as Props['post']['cargo_type'] ?? post.cargoType ?? post.cargo_type;
-    const truckType = (post as unknown as Record<string, unknown>).truckType as Props['post']['truck_type'] ?? (post as unknown as Record<string, unknown>).truck_type as Props['post']['truck_type'] ?? post.truckType ?? post.truck_type;
+    const { origin: originLocation, destination: destinationLocation, cargoType, truckType } = freightRoute(post);
     const routeSnapshot = (post as unknown as Record<string, unknown>).routeSnapshot as Props['post']['route_snapshot'] ?? (post as unknown as Record<string, unknown>).route_snapshot as Props['post']['route_snapshot'] ?? post.routeSnapshot ?? post.route_snapshot;
     const hasRoute = !!(originLocation && destinationLocation);
     const hasExact = !!(post.origin_exact_lat && post.origin_exact_lng && post.destination_exact_lat && post.destination_exact_lng);
