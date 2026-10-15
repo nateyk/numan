@@ -30,7 +30,7 @@ uses(RefreshDatabase::class);
  * an em dash in place of the town, over live posts sitting in the database.
  * The name was in the payload the whole time; nothing was reading it.
  *
- * renderedRouteNames() below reads the way the page does — trying each known
+ * routeNamesOn() below reads the way the page does — trying each known
  * key — so these pass once any producer sends the name under any of them, and
  * fail when a producer stops sending a name at all.
  */
@@ -114,7 +114,7 @@ function routeTransporter(): User
  *
  * @return array{0: ?string, 1: ?string}
  */
-function renderedRouteNames(mixed $row): array
+function routeNamesOn(mixed $row): array
 {
     $row = $row instanceof Collection ? $row->first() : $row;
 
@@ -146,9 +146,9 @@ function renderedRouteNames(mixed $row): array
     ];
 }
 
-function assertRendersTheRoute(mixed $rows): bool
+function rendersKombolchaToHawassa(mixed $rows): bool
 {
-    [$origin, $destination] = renderedRouteNames($rows);
+    [$origin, $destination] = routeNamesOn($rows);
 
     return $origin === 'Kombolcha' && $destination === 'Hawassa';
 }
@@ -159,7 +159,7 @@ it('sends a discover card a route it can render', function () {
 
     $this->get('/freight')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('freight.data', assertRendersTheRoute(...)));
+        ->assertInertia(fn ($page) => $page->where('freight.data', rendersKombolchaToHawassa(...)));
 });
 
 it('sends the owner list a route it can render', function () {
@@ -169,7 +169,7 @@ it('sends the owner list a route it can render', function () {
     $this->actingAs($owner)
         ->get(route('freight.index'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('posts.data', assertRendersTheRoute(...)));
+        ->assertInertia(fn ($page) => $page->where('posts.data', rendersKombolchaToHawassa(...)));
 });
 
 it('sends an admin moderation table a route it can render', function () {
@@ -179,7 +179,7 @@ it('sends an admin moderation table a route it can render', function () {
     $this->actingAs(User::factory()->superadmin()->create())
         ->get('/admin/freight')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('posts.data', assertRendersTheRoute(...)));
+        ->assertInertia(fn ($page) => $page->where('posts.data', rendersKombolchaToHawassa(...)));
 });
 
 it('sends the public post page the origin its details card reads', function () {
