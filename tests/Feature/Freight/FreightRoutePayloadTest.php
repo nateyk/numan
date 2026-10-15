@@ -61,11 +61,17 @@ function routeConsignor(): array
     return [$user->fresh(), $workspace];
 }
 
-/** An active post with named endpoints, so a card has something to render. */
-function routeActivePost(User $owner, Workspace $workspace): FreightPost
+/**
+ * A post with named endpoints, so a card has something to render.
+ *
+ * The status is a parameter because the admin moderation queue defaults to
+ * submitted — that is the queue it exists to show — so a fixture that is only
+ * ever active is simply absent from it.
+ */
+function routePost(User $owner, Workspace $workspace, string $status = FreightPostStatus::Active->value): FreightPost
 {
     return FreightPost::factory()->create([
-        'status' => FreightPostStatus::Active->value,
+        'status' => $status,
         'user_id' => $owner->id,
         'workspace_id' => $workspace->id,
         'origin_location_id' => Location::factory()->create([
@@ -183,7 +189,7 @@ function inertiaProps(TestResponse $response): array
 
 it('sends a discover card a route it can render', function () {
     [$owner, $workspace] = routeConsignor();
-    routeActivePost($owner, $workspace);
+    routePost($owner, $workspace);
 
     $response = $this->get('/freight');
     $response->assertOk();
@@ -193,7 +199,7 @@ it('sends a discover card a route it can render', function () {
 
 it('sends the owner list a route it can render', function () {
     [$owner, $workspace] = routeConsignor();
-    routeActivePost($owner, $workspace);
+    routePost($owner, $workspace);
 
     $response = $this->actingAs($owner)->get(route('freight.index'));
     $response->assertOk();
@@ -203,7 +209,7 @@ it('sends the owner list a route it can render', function () {
 
 it('sends an admin moderation table a route it can render', function () {
     [$owner, $workspace] = routeConsignor();
-    routeActivePost($owner, $workspace);
+    routePost($owner, $workspace, FreightPostStatus::Submitted->value);
 
     $response = $this->actingAs(User::factory()->superadmin()->create())
         ->get('/admin/freight');
@@ -214,7 +220,7 @@ it('sends an admin moderation table a route it can render', function () {
 
 it('sends the public post page the origin its details card reads', function () {
     [$owner, $workspace] = routeConsignor();
-    $post = routeActivePost($owner, $workspace);
+    $post = routePost($owner, $workspace);
 
     $this->get(route('freight.public.show', $post->ulid))
         ->assertOk()
@@ -223,7 +229,7 @@ it('sends the public post page the origin its details card reads', function () {
 
 it('sends the owner their own post page the same shape the public one sends', function () {
     [$owner, $workspace] = routeConsignor();
-    $post = routeActivePost($owner, $workspace);
+    $post = routePost($owner, $workspace);
 
     // Both render freight/show. When the two sent different shapes, the owner's
     // copy of their own post lost its route and its map while the public copy
@@ -239,7 +245,7 @@ it('sends the owner their own post page the same shape the public one sends', fu
 
 it('sends a transporter their interest list a route they can read', function () {
     [$owner, $workspace] = routeConsignor();
-    $post = routeActivePost($owner, $workspace);
+    $post = routePost($owner, $workspace);
     $transporter = routeTransporter();
 
     FreightInterest::create([
