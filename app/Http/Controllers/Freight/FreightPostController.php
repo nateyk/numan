@@ -132,7 +132,10 @@ class FreightPostController extends Controller
         $post->load(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
         return Inertia::render('freight/show', [
-            'post' => FreightPostResource::make($post),
+            // Resolved, like every other producer of this prop. Handing Inertia
+            // the resource itself leaves the page with a post it cannot read a
+            // route off, which is the same blank card this resource replaced.
+            'post' => (new FreightPostResource($post))->resolve(),
         ]);
     }
 

@@ -110,16 +110,28 @@ function routeTransporter(): User
 }
 
 /**
- * The route names a card can render off a row, read the way the page reads.
+ * The route names a card can render off a payload, read the way the page reads.
+ *
+ * Accepts either one row or a list of them: Inertia hands a paginator's rows
+ * over as a plain array here and as a Collection elsewhere, and the difference
+ * is not worth a test per producer.
  *
  * @return array{0: ?string, 1: ?string}
  */
-function routeNamesOn(mixed $row): array
+function routeNamesOn(mixed $rows): array
 {
-    $row = $row instanceof Collection ? $row->first() : $row;
+    $row = $rows instanceof Collection ? $rows->all() : $rows;
 
     if (! is_array($row)) {
         return [null, null];
+    }
+
+    if (array_is_list($row)) {
+        $row = $row[0] ?? null;
+
+        if (! is_array($row)) {
+            return [null, null];
+        }
     }
 
     $read = static function (mixed $value): ?string {
