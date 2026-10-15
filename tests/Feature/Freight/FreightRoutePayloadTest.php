@@ -12,9 +12,11 @@ use App\Models\TruckType;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\WorkspaceService;
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
 
@@ -139,6 +141,10 @@ function routeNamesOn(mixed $rows): array
             return trim($value) === '' ? null : trim($value);
         }
 
+        if ($value instanceof Collection || $value instanceof Arrayable) {
+            $value = $value instanceof Collection ? $value->all() : $value->toArray();
+        }
+
         if (! is_array($value)) {
             return null;
         }
@@ -158,40 +164,52 @@ function routeNamesOn(mixed $rows): array
     ];
 }
 
-function rendersKombolchaToHawassa(mixed $rows): bool
+/**
+ * Assert a list payload carries the named route a card can render.
+ *
+ * Compared with expect() rather than through assertInertia so a failure shows
+ * the names that were actually sent, which is the whole question here.
+ */
+function expectRowsRenderTheRoute(mixed $rows): void
 {
-    [$origin, $destination] = routeNamesOn($rows);
+    expect(routeNamesOn($rows))->toBe(['Kombolcha', 'Hawassa']);
+}
 
-    return $origin === 'Kombolcha' && $destination === 'Hawassa';
+/** The Inertia props of a response, without Inertia's dot-path walker. */
+function inertiaProps(TestResponse $response): array
+{
+    return $response->viewData('page')['props'] ?? [];
 }
 
 it('sends a discover card a route it can render', function () {
     [$owner, $workspace] = routeConsignor();
     routeActivePost($owner, $workspace);
 
-    $this->get('/freight')
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('freight.data', rendersKombolchaToHawassa(...)));
+    $response = $this->get('/freight');
+    $response->assertOk();
+
+    expectRowsRenderTheRoute(inertiaProps($response)['freight']['data'] ?? null);
 });
 
 it('sends the owner list a route it can render', function () {
     [$owner, $workspace] = routeConsignor();
     routeActivePost($owner, $workspace);
 
-    $this->actingAs($owner)
-        ->get(route('freight.index'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('posts.data', rendersKombolchaToHawassa(...)));
+    $response = $this->actingAs($owner)->get(route('freight.index'));
+    $response->assertOk();
+
+    expectRowsRenderTheRoute(inertiaProps($response)['posts']['data'] ?? null);
 });
 
 it('sends an admin moderation table a route it can render', function () {
     [$owner, $workspace] = routeConsignor();
     routeActivePost($owner, $workspace);
 
-    $this->actingAs(User::factory()->superadmin()->create())
-        ->get('/admin/freight')
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('posts.data', rendersKombolchaToHawassa(...)));
+    $response = $this->actingAs(User::factory()->superadmin()->create())
+        ->get('/admin/freight');
+    $response->assertOk();
+
+    expectRowsRenderTheRoute(inertiaProps($response)['posts']['data'] ?? null);
 });
 
 it('sends the public post page the origin its details card reads', function () {
