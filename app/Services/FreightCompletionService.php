@@ -59,6 +59,47 @@ class FreightCompletionService
         return min(100, $score);
     }
 
+    /**
+     * The requirements submit() enforces, as a checklist the review page shows.
+     *
+     * The review page used to display a bare percentage while the submit gate
+     * rejected on five different rules, so a bounce told the shipper nothing.
+     * These keys mirror the guards in FreightReviewController::submit(); change
+     * one, change both.
+     *
+     * @return array<int, array{key: string, label: string, met: bool}>
+     */
+    public function requirements(FreightPost $post): array
+    {
+        return [
+            [
+                'key' => 'route',
+                'label' => 'Origin and destination',
+                'met' => ! empty($post->origin_location_id) && ! empty($post->destination_location_id),
+            ],
+            [
+                'key' => 'cargo',
+                'label' => 'Cargo details',
+                'met' => ! empty($post->cargo_type_id) || ! empty($post->item_name) || ! empty($post->cargo_description),
+            ],
+            [
+                'key' => 'truck',
+                'label' => 'Truck type',
+                'met' => ! empty($post->required_truck_type_id),
+            ],
+            [
+                'key' => 'schedule',
+                'label' => 'Pickup date',
+                'met' => ! empty($post->pickup_date),
+            ],
+            [
+                'key' => 'completeness',
+                'label' => 'At least 60% complete',
+                'met' => $this->score($post) >= 60,
+            ],
+        ];
+    }
+
     public function update(FreightPost $post): FreightPost
     {
         $score = $this->score($post);

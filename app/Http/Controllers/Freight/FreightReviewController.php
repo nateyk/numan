@@ -22,9 +22,12 @@ class FreightReviewController extends Controller
 
         $post->load(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
+        $completion = app(FreightCompletionService::class);
+
         return Inertia::render('freight/review', [
             'post' => $post,
-            'completionScore' => app(FreightCompletionService::class)->score($post),
+            'completionScore' => $completion->score($post),
+            'requirements' => $completion->requirements($post),
         ]);
     }
 
@@ -40,7 +43,9 @@ class FreightReviewController extends Controller
             return back()->withErrors(['origin_location_id' => 'Choose origin and destination.']);
         }
 
-        if (empty($post->cargo_type_id) && empty($post->cargo_description)) {
+        // item_name is what the wizard collects; cargo_description is the
+        // legacy column older rows still carry. Either satisfies the gate.
+        if (empty($post->cargo_type_id) && empty($post->item_name) && empty($post->cargo_description)) {
             return back()->withErrors(['cargo_type_id' => 'Provide cargo details.']);
         }
 

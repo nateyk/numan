@@ -1,26 +1,11 @@
 import FreightWizardShell from '@/components/freight/FreightWizardShell';
 import RoutePreviewMap from '@/components/maps/RoutePreviewMap';
-import { freightRoute } from '@/lib/freight-route';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
+import { freightRoute } from '@/lib/freight-route';
 import { Head, Link, useForm } from '@inertiajs/react';
-import {
-    Calendar,
-    CheckCircle,
-    MapPin,
-    Package,
-    Route,
-    Truck,
-} from 'lucide-react';
+import { Calendar, Check, Package, Route, Truck, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -54,15 +39,27 @@ interface Props {
         } | null;
     };
     completionScore: number;
+    requirements: {
+        key: string;
+        label: string;
+        met: boolean;
+    }[];
 }
 
-export default function FreightReview({ post, completionScore }: Props) {
+export default function FreightReview({
+    post,
+    completionScore,
+    requirements,
+}: Props) {
     const [confirmed, setConfirmed] = useState(false);
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const form = useForm<{ confirm?: string }>({});
+    // A bounced submit lands here through Inertia's error bag. Name every
+    // reason out loud; the old page swallowed all of them.
+    const submitErrors = Object.values(form.errors).filter(
+        (message): message is string => Boolean(message),
+    );
 
-    const { origin, destination, cargoType, truckType } =
-        freightRoute(post);
+    const { origin, destination, cargoType, truckType } = freightRoute(post);
     const routeSnapshot =
         ((post as unknown as Record<string, unknown>).routeSnapshot as
             | {
@@ -82,11 +79,9 @@ export default function FreightReview({ post, completionScore }: Props) {
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!confirmed) return;
-        form.post(`/my-freight/${post.ulid}/submit`, {
-            onSuccess: () => {
-                setShowSuccessModal(true);
-            },
-        });
+        // Success redirects to My Freight, where the confirmation banner
+        // picks it up; a bounce stays on this page and renders above.
+        form.post(`/my-freight/${post.ulid}/submit`);
     };
 
     return (
@@ -210,10 +205,70 @@ export default function FreightReview({ post, completionScore }: Props) {
                                     style={{ width: `${completionScore}%` }}
                                 />
                             </div>
+                            <div>
+                                <h4 className="text-sm font-medium">
+                                    Before you submit
+                                </h4>
+                                <ul className="mt-2 space-y-1.5">
+                                    {requirements.map((requirement) => (
+                                        <li
+                                            key={requirement.key}
+                                            className="flex items-start gap-2 text-sm"
+                                        >
+                                            {requirement.met ? (
+                                                <>
+                                                    <Check
+                                                        className="mt-0.5 size-4 shrink-0 text-green-600 dark:text-green-400"
+                                                        aria-hidden="true"
+                                                    />
+                                                    <span className="text-muted-foreground">
+                                                        {requirement.label}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <X
+                                                        className="mt-0.5 size-4 shrink-0 text-destructive"
+                                                        aria-hidden="true"
+                                                    />
+                                                    <span>
+                                                        {requirement.label}
+                                                        <span className="text-muted-foreground">
+                                                            {' '}
+                                                            — still needed
+                                                        </span>
+                                                    </span>
+                                                </>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                                {completionScore < 60 && (
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                        A load needs at least 60% complete
+                                        before it can go to review.
+                                    </p>
+                                )}
+                            </div>
                             <form
                                 onSubmit={submit}
                                 className="space-y-3 border-t pt-4"
                             >
+                                {submitErrors.length > 0 && (
+                                    <div
+                                        role="alert"
+                                        className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm"
+                                    >
+                                        <p className="font-medium text-destructive">
+                                            This load can't be submitted yet
+                                        </p>
+                                        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+                                            {submitErrors.map((message) => (
+                                                <li key={message}>{message}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                                 <label className="flex items-center gap-2 text-sm">
                                     <input
                                         type="checkbox"
@@ -247,72 +302,6 @@ export default function FreightReview({ post, completionScore }: Props) {
                     </div>
                 </div>
             </FreightWizardShell>
-
-            {/* Success Modal */}
-            <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <div className="flex items-center gap-3">
-                            <div className="flex size-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-950">
-                                <CheckCircle className="size-6 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-lg">
-                                    Freight Post Submitted!
-                                </DialogTitle>
-                                <DialogDescription>
-                                    Your freight post has been submitted for
-                                    review and is now visible to transporters.
-                                </DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
-                    <div className="space-y-3 rounded-lg bg-muted/50 p-4">
-                        <div className="flex items-center gap-2 text-sm">
-                            <MapPin className="size-4 text-muted-foreground" />
-                            <span className="font-medium">
-                                {origin?.name ?? 'Origin'}
-                            </span>
-                            <span className="text-muted-foreground">→</span>
-                            <span className="font-medium">
-                                {destination?.name ?? 'Destination'}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                            <Package className="size-4 text-muted-foreground" />
-                            <span>{cargoType?.name ?? '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                            <Truck className="size-4 text-muted-foreground" />
-                            <span>
-                                {truckType?.name ?? '—'} ×{' '}
-                                {post.truck_count ?? '—'}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="size-4 text-muted-foreground" />
-                            <span>
-                                {post.pickup_date
-                                    ? String(post.pickup_date).slice(0, 10)
-                                    : '—'}
-                            </span>
-                        </div>
-                    </div>
-                    <DialogFooter className="gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowSuccessModal(false)}
-                        >
-                            Close
-                        </Button>
-                        <Button asChild>
-                            <Link href={`/my-freight/${post.ulid}`}>
-                                View Post
-                            </Link>
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </AppLayout>
     );
 }

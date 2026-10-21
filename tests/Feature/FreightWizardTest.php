@@ -78,6 +78,9 @@ it('rejects submit when incomplete', function () {
         'status' => FreightPostStatus::Draft->value,
         'cargo_type_id' => null,
         'cargo_description' => null,
+        // item_name is what the wizard collects, so a load with no cargo
+        // details at all has to clear it too.
+        'item_name' => null,
     ]);
 
     $this->actingAs($user->fresh())->post("/my-freight/{$post->ulid}/submit")->assertSessionHasErrors();

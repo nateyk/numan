@@ -47,6 +47,7 @@ import {
     AlertTriangle,
     ArrowRight,
     Calendar,
+    CheckCircle2,
     ExternalLink,
     Eye,
     MapPin,
@@ -140,8 +141,9 @@ export default function FreightIndex({
     livePostLimit = -1,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
-    const { errors } = usePage().props as unknown as {
+    const { errors, flash } = usePage().props as unknown as {
         errors: Record<string, string>;
+        flash?: { success?: string | null };
     };
     // Open the limit dialog right away if the server just bounced a create
     // (e.g. the quota filled between page load and clicking Post).
@@ -196,6 +198,18 @@ export default function FreightIndex({
         <AppLayout>
             <Head title="My Freight — Manage Posts" />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
+                {flash?.success && (
+                    <div
+                        role="status"
+                        className="flex items-start gap-2 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/40"
+                    >
+                        <CheckCircle2
+                            className="mt-0.5 size-4 shrink-0 text-green-600 dark:text-green-400"
+                            aria-hidden="true"
+                        />
+                        <p className="font-medium">{flash.success}</p>
+                    </div>
+                )}
                 {hiddenCount > 0 && (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
                         <p className="font-medium">
@@ -645,7 +659,9 @@ export default function FreightIndex({
                                                                                 setDeleteTarget(
                                                                                     {
                                                                                         ulid: p.ulid,
-                                                                                        label: routeLabel(p),
+                                                                                        label: routeLabel(
+                                                                                            p,
+                                                                                        ),
                                                                                     },
                                                                                 );
                                                                             }}
