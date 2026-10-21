@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Freight;
 use App\Enums\FreightPostStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\FreightPostResource;
+use App\Http\Resources\PostOwnerSummary;
+use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -124,18 +126,45 @@ class FreightPostController extends Controller
         return redirect()->route('freight.route.show', ['ulid' => $post->ulid]);
     }
 
-    public function show(Request $request, string $ulid): Response
+    public function show(Request $request, string $ulid): Response|RedirectResponse
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
         Gate::authorize('view', $post);
 
-        $post->load(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
+        $user = $request->user();
+
+        // This URL is the owner's management page; anyone else belongs on the
+        // public listing, which computes the viewer's interest and reveal
+        // state. Rendering this page here for a non-owner left them on a URL
+        // they cannot manage, with a dead "Manage Your Post" button.
+        if (! $user || $user->id !== $post->user_id) {
+            return redirect()->route('freight.public.show', $ulid);
+        }
+
+        // Eager-load the profile so display_name and verification_level resolve
+        // in the same query rather than per-row on the card below.
+        $post->load(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
         return Inertia::render('freight/show', [
             // Resolved, like every other producer of this prop. Handing Inertia
             // the resource itself leaves the page with a post it cannot read a
             // route off, which is the same blank card this resource replaced.
-            'post' => (new FreightPostResource($post))->resolve(),
+            'post' => array_merge(
+                (new FreightPostResource($post))->resolve(),
+                $post->user ? ['owner' => PostOwnerSummary::flat($post->user)] : [],
+            ),
+            // The owner is nobody's bidder and cannot reveal their own number,
+            // so these are fixed by construction rather than looked up.
+            'hasInterest' => false,
+            'interestStatus' => null,
+            'interestId' => null,
+            'canReveal' => false,
+            'revealedContacts' => null,
+            'interestsCount' => FreightInterest::where('freight_post_id', $post->id)->count(),
+            // The owner may always see, and be told how to restore, their own
+            // hidden listing — the public URL 404s it once a plan lapses.
+            'isHiddenListing' => $post->isHidden(),
+            'canRestoreListing' => true,
         ]);
     }
 

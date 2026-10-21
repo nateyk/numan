@@ -48,16 +48,16 @@ it('sends the owner under the owner key, as a display name and nothing else', fu
     // Flat dotted paths rather than a nested closure: a closure-scoped has()
     // resolves against a fresh scope in this version of the assertion helper, so
     // ->has('post.owner', fn ($o) => $o->has('id')) fails on a key that is present.
+    // where() asserts the value, not just the key: etc(['post.owner.id']) passed
+    // while the resource nested the owner under {data: {...}}, which made the
+    // page's isOwnPost check compare an auth id against undefined and read every
+    // owner as a visitor. post.owner.id must equal the owner's id, flat.
     $this->get("/freight/{$post->ulid}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('freight/show')
-            ->etc([
-                'post.owner.id',
-                'post.owner.display_name',
-                'post.owner.verification_level',
-                'post.owner.is_verified',
-            ])
+            ->where('post.owner.id', $owner->id)
+            ->where('post.owner.display_name', 'Real Name On The Account')
             // None of these has ever been sent. The page read all five.
             ->missing('post.owner.user')
             ->missing('post.owner.name')

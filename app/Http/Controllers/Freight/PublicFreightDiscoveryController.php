@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Freight;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\FreightPostResource;
+use App\Http\Resources\PostOwnerSummary;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
@@ -200,7 +201,15 @@ class PublicFreightDiscoveryController extends Controller
 
         return Inertia::render('freight/show', [
             // Explicit columns only: the owner's email must not reach the page.
-            'post' => (new FreightPostResource($post))->resolve(),
+            // The owner is resolved flat rather than through the resource, which
+            // nests it under a "data" key and leaves post.owner.id undefined —
+            // the page compares that id to the viewer's to detect the owner, so
+            // a nested owner read every owner as a visitor and offered them an
+            // Express Interest button on their own load.
+            'post' => array_merge(
+                (new FreightPostResource($post))->resolve(),
+                $post->user ? ['owner' => PostOwnerSummary::flat($post->user)] : [],
+            ),
             'hasInterest' => $hasInterest,
             'interestStatus' => $interestStatus,
             'interestId' => $interestId,
