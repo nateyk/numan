@@ -7,17 +7,24 @@ use App\Http\Resources\FreightPostResource;
 use App\Http\Resources\PostOwnerSummary;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Models\FreightPostRoute;
 use App\Models\Location;
 use App\Services\ContactRevealService;
 use App\Services\MarketplaceEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PublicFreightDiscoveryController extends Controller
 {
+    /**
+     * Sort ids the query honors and the results header may announce.
+     */
+    private const SORT_OPTIONS = ['latest', 'distance_asc', 'distance_desc', 'pickup_asc'];
+
     public function __construct(
         protected ContactRevealService $reveals,
     ) {}
@@ -27,6 +34,13 @@ class PublicFreightDiscoveryController extends Controller
         $search = $request->query('search');
         $cargo = $request->query('cargo');
         $sort = $request->query('sort', 'latest');
+
+        // Echo only a sort that was actually applied. The results header
+        // prints filters.sort as "Sorted by …", so an unrecognized value
+        // must land on the default instead of being announced as if it ran.
+        if (! is_string($sort) || ! in_array($sort, self::SORT_OPTIONS, true)) {
+            $sort = 'latest';
+        }
 
         $query = FreightPost::query()
             ->with(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
@@ -63,9 +77,12 @@ class PublicFreightDiscoveryController extends Controller
                 });
             });
 
-        // Apply sorting
+        // Apply sorting. The distance options order by the real route
+        // snapshot: the menu promises kilometres, so the query must deliver
+        // them — both used to fall through to the default pickup-date order.
         match ($sort) {
-            'distance_asc', 'distance_desc' => $query->orderByDesc('pickup_date')->orderByDesc('created_at'),
+            'distance_asc' => $this->orderByDistance($query, 'asc'),
+            'distance_desc' => $this->orderByDistance($query, 'desc'),
             'pickup_asc' => $query->orderBy('pickup_date', 'asc')->orderBy('created_at', 'asc'),
             default => $query->orderByDesc('pickup_date')->orderByDesc('created_at'),
         };
@@ -107,7 +124,14 @@ class PublicFreightDiscoveryController extends Controller
             // page's guard into an empty default and renders an empty
             // marketplace with live posts sitting in the database.
             'freight' => [
-                'data' => FreightPostResource::collection($posts->getCollection())->resolve(),
+                // The list draws distances, never the polyline: geometry is
+                // tens of kilobytes per route and stays on the surfaces that
+                // actually render a map.
+                'data' => array_map(function (array $row) {
+                    Arr::forget($row, 'route_snapshot.geometry');
+
+                    return $row;
+                }, FreightPostResource::collection($posts->getCollection())->resolve()),
                 'links' => $posts->linkCollection()->toArray(),
                 'total' => $posts->total(),
                 'from' => $posts->firstItem(),
@@ -239,6 +263,28 @@ class PublicFreightDiscoveryController extends Controller
         }
 
         return (bool) $user->is_superadmin || $user->id === $post->user_id;
+    }
+
+    /**
+     * Order by the snapshot's distance, with posts the resolver never routed
+     * last in both directions.
+     *
+     * The correlated subquery keeps this a single query (no join to clash with
+     * the eager loads), and "(…) is null" sorts 0 — a real distance — before
+     * 1 — no snapshot — on MySQL, Postgres, and SQLite alike.
+     *
+     * @param  Builder<FreightPost>  $query
+     */
+    private function orderByDistance(Builder $query, string $direction): void
+    {
+        $distance = FreightPostRoute::query()
+            ->select('distance_meters')
+            ->whereColumn('freight_post_routes.freight_post_id', 'freight_posts.id')
+            ->toSql();
+
+        $query->orderByRaw("({$distance}) is null asc")
+            ->orderByRaw("({$distance}) {$direction}")
+            ->orderByDesc('freight_posts.created_at');
     }
 
     /**

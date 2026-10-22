@@ -3,7 +3,9 @@
 use App\Enums\FreightPostStatus;
 use App\Models\CargoType;
 use App\Models\FreightPost;
+use App\Models\FreightPostRoute;
 use App\Models\Location;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -44,4 +46,123 @@ it('filters by origin and cargo type', function () {
 it('is accessible via discover route as well', function () {
     FreightPost::factory()->create(['status' => FreightPostStatus::Active->value]);
     $this->get('/discover')->assertOk()->assertInertia(fn ($page) => $page->component('discover/index'));
+});
+
+/**
+ * The two distance sort options used to map to the same arm as the default
+ * sort — the menu promised "Distance: Near to Far" and quietly delivered
+ * "Latest". Pickup dates below are set so the old ordering lands on a known
+ * sequence that is not the distance ordering.
+ */
+it('sorts near to far by real distance, with unrouted posts last', function () {
+    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-01']);
+    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-05']);
+    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-10']);
+    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-15']);
+
+    FreightPostRoute::create(['freight_post_id' => $far->id, 'distance_meters' => 500000, 'duration_seconds' => 6000]);
+    FreightPostRoute::create(['freight_post_id' => $mid->id, 'distance_meters' => 300000, 'duration_seconds' => 4000]);
+    FreightPostRoute::create(['freight_post_id' => $near->id, 'distance_meters' => 100000, 'duration_seconds' => 1500]);
+    // $unrouted was never routed: no snapshot row at all.
+
+    $props = null;
+    $this->get('/freight?sort=distance_asc')->assertOk()->assertInertia(function ($page) use (&$props) {
+        $page->component('discover/index');
+        $props = $page->toArray()['props'];
+    });
+
+    expect(collect($props['freight']['data'])->pluck('ulid')->all())
+        ->toBe([$near->ulid, $mid->ulid, $far->ulid, $unrouted->ulid]);
+});
+
+it('sorts far to near by real distance, with unrouted posts last', function () {
+    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-01']);
+    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-05']);
+    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-10']);
+    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-15']);
+
+    FreightPostRoute::create(['freight_post_id' => $far->id, 'distance_meters' => 500000, 'duration_seconds' => 6000]);
+    FreightPostRoute::create(['freight_post_id' => $mid->id, 'distance_meters' => 300000, 'duration_seconds' => 4000]);
+    FreightPostRoute::create(['freight_post_id' => $near->id, 'distance_meters' => 100000, 'duration_seconds' => 1500]);
+
+    $props = null;
+    $this->get('/freight?sort=distance_desc')->assertOk()->assertInertia(function ($page) use (&$props) {
+        $page->component('discover/index');
+        $props = $page->toArray()['props'];
+    });
+
+    expect(collect($props['freight']['data'])->pluck('ulid')->all())
+        ->toBe([$far->ulid, $mid->ulid, $near->ulid, $unrouted->ulid]);
+});
+
+it('echoes back only a sort it actually honors', function () {
+    // The results header reads filters.sort to print "Sorted by …", so an
+    // unrecognized value must not be echoed as if it had been applied.
+    FreightPost::factory()->create(['status' => FreightPostStatus::Active->value]);
+
+    $props = null;
+    $this->get('/freight?sort=cheapest-first')->assertOk()->assertInertia(function ($page) use (&$props) {
+        $page->component('discover/index');
+        $props = $page->toArray()['props'];
+    });
+
+    expect($props['filters']['sort'])->toBe('latest');
+});
+
+/**
+ * The card draws these to let a carrier judge a lane without opening every
+ * load. The payload must carry them flat — the page compares owner.id to the
+ * viewer to detect "your own post", and a nested owner (or the never-sent
+ * user key the page used to read) made that check permanently false.
+ */
+it('sends the owner identity and route numbers every card draws', function () {
+    $owner = User::factory()->create();
+    $post = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'user_id' => $owner->id,
+    ]);
+    FreightPostRoute::create([
+        'freight_post_id' => $post->id,
+        'distance_meters' => 932000,
+        'duration_seconds' => 50400,
+    ]);
+
+    $props = null;
+    $this->get('/freight')->assertOk()->assertInertia(function ($page) use (&$props) {
+        $page->component('discover/index');
+        $props = $page->toArray()['props'];
+    });
+
+    $card = $props['freight']['data'][0];
+
+    expect($card['owner']['id'])->toBe($owner->id)
+        ->and($card['owner']['display_name'])->not->toBeEmpty()
+        ->and($card['route_snapshot']['distance_meters'])->toBe(932000)
+        ->and($card['route_snapshot']['duration_seconds'])->toBe(50400);
+});
+
+/**
+ * geometry is the OSRM polyline — tens of kilobytes per route, drawn behind
+ * a button on the detail surfaces only. Twelve polylines per list page load
+ * to power nothing was dead weight the server kept shipping.
+ */
+it('omits the route geometry from the discovery list', function () {
+    $post = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value]);
+    FreightPostRoute::create([
+        'freight_post_id' => $post->id,
+        'distance_meters' => 932000,
+        'duration_seconds' => 50400,
+        'geometry' => ['type' => 'LineString', 'coordinates' => [[8.98, 38.75], [9.0, 38.8]]],
+    ]);
+
+    $props = null;
+    $this->get('/freight')->assertOk()->assertInertia(function ($page) use (&$props) {
+        $page->component('discover/index');
+        $props = $page->toArray()['props'];
+    });
+
+    $snapshot = $props['freight']['data'][0]['route_snapshot'];
+
+    expect($snapshot)->not->toHaveKey('geometry')
+        ->and($snapshot['distance_meters'])->toBe(932000);
 });

@@ -87,7 +87,11 @@ class FreightPostResource extends JsonResource
             ] : null),
 
             // Display identity only.
-            'owner' => new PostOwnerSummary($this->whenLoaded('user')),
+            //
+            // Resolved through PostOwnerSummary::flat(): emitting the resource
+            // object here nests the owner under a {data: …} key on the
+            // collection path, and every page compares owner.id to the viewer.
+            'owner' => $this->whenLoaded('user', fn () => $this->user ? PostOwnerSummary::flat($this->user) : null),
         ];
     }
 }

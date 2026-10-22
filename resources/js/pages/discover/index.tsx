@@ -1,8 +1,19 @@
-import { LandingFooter, LandingHeader } from '@/components/landing';
+import {
+    DiscoveryFooter,
+    DiscoveryHeader,
+} from '@/components/freight/discovery-chrome';
 import LocationSearchInput from '@/components/maps/location-search-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,8 +24,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { freightRoute } from '@/lib/freight-route';
 import type { SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
 import {
+    AlertTriangle,
     ArrowRight,
     Banknote,
     Calendar,
@@ -22,6 +34,7 @@ import {
     MapPin,
     Package,
     Search,
+    ShieldCheck,
     SlidersHorizontal,
     Truck,
     Weight,
@@ -63,11 +76,15 @@ interface Freight {
         distance_meters: number;
         duration_seconds: number;
     } | null;
-    user?: {
+    /**
+     * PostOwnerSummary::flat() — display identity only. No email, no phone:
+     * contact data is released only through the metered reveal.
+     */
+    owner?: {
         id: number;
-        name: string;
-        email: string;
-        avatar_url?: string | null;
+        display_name: string | null;
+        verification_level: string | null;
+        is_verified: boolean;
     };
 }
 
@@ -97,6 +114,21 @@ const sortOptions = [
     { id: 'pickup_asc', label: 'Pickup: Earliest' },
 ];
 
+/** Metres to a lane figure: "932 km"; a sub-kilometre lane stays in metres. */
+const formatDistance = (meters: number): string =>
+    meters >= 1000 ? `${Math.round(meters / 1000)} km` : `${meters} m`;
+
+/** Seconds to an estimate the card can carry: "~14 h". */
+const formatDuration = (seconds: number): string => {
+    if (seconds >= 3600) {
+        return `~${Math.round(seconds / 3600)} h`;
+    }
+    if (seconds >= 60) {
+        return `~${Math.round(seconds / 60)} min`;
+    }
+    return '';
+};
+
 export default function DiscoverIndex({
     freight,
     filters,
@@ -112,10 +144,16 @@ export default function DiscoverIndex({
         const val = safeFilters[key];
         return typeof val === 'string' ? val : fallback;
     };
+    // A payload that is not the expected object is a load failure, not an
+    // empty market: the old shape-guard flattened both into "No active freight
+    // found", telling a carrier the market was empty when the list had simply
+    // failed to load.
+    const freightLoadFailed =
+        !freight || typeof freight !== 'object' || Array.isArray(freight);
     const safeFreight = (
-        freight && typeof freight === 'object' && !Array.isArray(freight)
-            ? freight
-            : { data: [], links: [], total: 0, from: null, to: null }
+        freightLoadFailed
+            ? { data: [], links: [], total: 0, from: null, to: null }
+            : freight
     ) as Props['freight'];
     const safeInterestMap = (
         userInterestMap &&
@@ -143,6 +181,75 @@ export default function DiscoverIndex({
     const [selectedSort, setSelectedSort] = useState(
         getStringFilter('sort', 'latest') || 'latest',
     );
+    // True while a filter visit is in flight, so the results header can say
+    // "Updating results…" instead of announcing a sort order that has not
+    // landed yet.
+    const [updatingResults, setUpdatingResults] = useState(false);
+
+    // Express Interest is a commitment the shipper sees, so it asks first: one
+    // tap used to fire the POST from mid-scroll with no confirmation and no
+    // processing state, and a double tap fired it twice.
+    const [pendingInterest, setPendingInterest] = useState<Freight | null>(
+        null,
+    );
+    const {
+        post: postInterest,
+        processing: interestProcessing,
+    } = useForm({ message: '' });
+    const pendingRoute = pendingInterest ? freightRoute(pendingInterest) : null;
+
+    const confirmExpressInterest = () => {
+        if (!pendingInterest) return;
+
+        postInterest(`/my-freight/${pendingInterest.ulid}/interests`, {
+            preserveScroll: true,
+            onFinish: () => setPendingInterest(null),
+            onSuccess: () =>
+                toast.success('Interest expressed successfully.'),
+            onError: (errors) => {
+                const msg = (errors as Record<string, string>).interest ||
+                    (Object.values(errors)[0] as string);
+                if (msg) {
+                    toast.error(msg);
+                    if (
+                        String(msg).toLowerCase().includes('transporter profile')
+                    ) {
+                        setTimeout(
+                            () => router.visit('/my-transporter-profile'),
+                            1500,
+                        );
+                    } else if (
+                        String(msg).toLowerCase().includes('phone number')
+                    ) {
+                        setTimeout(
+                            () => router.visit('/settings/profile'),
+                            1500,
+                        );
+                    } else if (
+                        String(msg).toLowerCase().includes('not active')
+                    ) {
+                        toast.info(
+                            'This freight is not yet active for interest.',
+                        );
+                    }
+                } else {
+                    toast.error(
+                        'Failed to express interest. Please try again.',
+                    );
+                }
+            },
+        });
+    };
+
+    // The empty state tells three stories apart: filters that match nothing, a
+    // market with no posts, and a payload that never arrived.
+    const hasActiveFilters =
+        origin !== '' ||
+        destination !== '' ||
+        searchQuery !== '' ||
+        selectedCargo !== 'all' ||
+        selectedSort !== 'latest';
+    const resultTotal = safeFreight.total ?? safeFreight.data.length;
 
     const originLabel = originName || (origin ? `Location #${origin}` : '');
     const destinationLabel =
@@ -242,15 +349,20 @@ export default function DiscoverIndex({
                 cargo: selectedCargo !== 'all' ? selectedCargo : undefined,
                 sort: selectedSort !== 'latest' ? selectedSort : undefined,
             },
-            { preserveState: true, replace: true },
+            {
+                preserveState: true,
+                replace: true,
+                onStart: () => setUpdatingResults(true),
+                onFinish: () => setUpdatingResults(false),
+            },
         );
     };
 
     return (
         <>
-            <Head title="Discover Freight — NumanFreight Ethiopian Marketplace" />
+            <Head title="Discover Freight — Numan Freight Ethiopian Marketplace" />
             <div className="min-h-screen bg-background text-foreground">
-                <LandingHeader canRegister={canRegister} />
+                <DiscoveryHeader canRegister={canRegister} />
                 <main id="main-content">
                     <section aria-labelledby="freight-heading" className="py-8">
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -622,28 +734,41 @@ export default function DiscoverIndex({
                                     </p>
                                 </div>
                             )}
-                            <div
-                                className="flex items-center justify-between gap-4 px-1 py-2 text-sm"
-                                aria-live="polite"
-                                aria-atomic="true"
-                            >
-                                <p className="font-medium">
-                                    Showing {safeFreight.from ?? 1}–
-                                    {safeFreight.to ?? safeFreight.data.length}{' '}
-                                    of{' '}
-                                    {safeFreight.total ??
-                                        safeFreight.data.length}{' '}
-                                    results
-                                </p>
+                            {/* Hidden at zero results: "Showing 1–0 of 0"
+                                was the first line many readers saw. */}
+                            {resultTotal > 0 && (
+                                <div
+                                    className="flex items-center justify-between gap-4 px-1 py-2 text-sm"
+                                    aria-live="polite"
+                                    aria-atomic="true"
+                                >
+                                    <p className="font-medium">
+                                        Showing {safeFreight.from ?? 1}–
+                                        {safeFreight.to ??
+                                            safeFreight.data.length}{' '}
+                                        of {resultTotal} results
+                                    </p>
                                 <p className="text-xs text-muted-foreground">
-                                    Sorted by{' '}
-                                    {
-                                        sortOptions.find(
-                                            (s) => s.id === selectedSort,
-                                        )?.label
-                                    }
+                                    {updatingResults ? (
+                                        <>Updating results…</>
+                                    ) : (
+                                        <>
+                                            {'Sorted by '}
+                                            {
+                                                sortOptions.find(
+                                                    (s) =>
+                                                        s.id ===
+                                                        getStringFilter(
+                                                            'sort',
+                                                            'latest',
+                                                        ),
+                                                )?.label
+                                            }
+                                        </>
+                                    )}
                                 </p>
-                            </div>
+                                </div>
+                            )}
                         </div>
                     </section>
 
@@ -655,36 +780,86 @@ export default function DiscoverIndex({
                             Freight results
                         </h2>
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                            {safeFreight.data.length === 0 ? (
+                            {freightLoadFailed ? (
                                 <Card className="border-dashed">
                                     <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
                                         <div
                                             className="flex size-12 items-center justify-center rounded-full bg-muted"
                                             aria-hidden="true"
                                         >
-                                            <Package className="size-6 text-muted-foreground" />
+                                            <AlertTriangle className="size-6 text-muted-foreground" />
                                         </div>
                                         <h3 className="font-semibold">
-                                            No active freight found
+                                            The freight list didn't load
                                         </h3>
                                         <p className="max-w-md text-sm text-muted-foreground">
-                                            Try adjusting your filters or check
-                                            back later. Active posts appear
-                                            after admin approval.
+                                            That's on us, not the market. Your
+                                            filters are still in place — try
+                                            again.
                                         </p>
-                                        <Button variant="outline" asChild>
-                                            <Link
-                                                href={
-                                                    auth?.user
-                                                        ? '/my-freight'
-                                                        : '/register'
-                                                }
-                                            >
-                                                {auth?.user
-                                                    ? 'Post Freight'
-                                                    : 'Join to Post'}
-                                            </Link>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                router.reload({
+                                                    only: ['freight'],
+                                                })
+                                            }
+                                        >
+                                            Try again
                                         </Button>
+                                    </CardContent>
+                                </Card>
+                            ) : safeFreight.data.length === 0 ? (
+                                <Card className="border-dashed">
+                                    <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+                                        <div
+                                            className="flex size-12 items-center justify-center rounded-full bg-muted"
+                                            aria-hidden="true"
+                                        >
+                                            {hasActiveFilters ? (
+                                                <SlidersHorizontal className="size-6 text-muted-foreground" />
+                                            ) : (
+                                                <Package className="size-6 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <h3 className="font-semibold">
+                                            {hasActiveFilters
+                                                ? 'No loads match these filters'
+                                                : 'No active freight found'}
+                                        </h3>
+                                        <p className="max-w-md text-sm text-muted-foreground">
+                                            {hasActiveFilters
+                                                ? 'Nothing matches this combination yet — loosen a filter or two, or clear them to see everything.'
+                                                : 'New loads appear after admin approval. Check back soon.'}
+                                        </p>
+                                        {hasActiveFilters ? (
+                                            <Button
+                                                variant="outline"
+                                                onClick={clearAll}
+                                            >
+                                                Clear all filters
+                                            </Button>
+                                        ) : !auth?.user ? (
+                                            <Button asChild>
+                                                <Link
+                                                    href={
+                                                        canRegister
+                                                            ? '/register'
+                                                            : '/login'
+                                                    }
+                                                >
+                                                    {canRegister
+                                                        ? 'Join as a transporter'
+                                                        : 'Sign in'}
+                                                </Link>
+                                            </Button>
+                                        ) : (
+                                            <Button asChild>
+                                                <Link href="/my-freight">
+                                                    Post Freight
+                                                </Link>
+                                            </Button>
+                                        )}
                                     </CardContent>
                                 </Card>
                             ) : (
@@ -706,7 +881,21 @@ export default function DiscoverIndex({
                                         } = freightRoute(f);
                                         const isOwn =
                                             auth?.user?.id &&
-                                            f.user?.id === auth.user.id;
+                                            f.owner?.id === auth.user.id;
+                                        const snapshot =
+                                            f.route_snapshot ?? f.routeSnapshot;
+                                        const distanceText =
+                                            snapshot?.distance_meters != null
+                                                ? formatDistance(
+                                                      snapshot.distance_meters,
+                                                  )
+                                                : '';
+                                        const durationText =
+                                            snapshot?.duration_seconds != null
+                                                ? formatDuration(
+                                                      snapshot.duration_seconds,
+                                                  )
+                                                : '';
                                         const interest =
                                             safeInterestMap?.[f.id];
                                         const titleId = `freight-${f.ulid}-title`;
@@ -765,6 +954,54 @@ export default function DiscoverIndex({
                                                                   : 'Active'}
                                                         </Badge>
                                                     </div>
+                                                    {(distanceText ||
+                                                        durationText ||
+                                                        f.owner) && (
+                                                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                                                            {(distanceText ||
+                                                                durationText) && (
+                                                                <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
+                                                                    {distanceText}
+                                                                    {distanceText &&
+                                                                        durationText && (
+                                                                            <span
+                                                                                className="text-muted-foreground/50"
+                                                                                aria-hidden="true"
+                                                                            >
+                                                                                ·
+                                                                            </span>
+                                                                        )}
+                                                                    {durationText}
+                                                                </span>
+                                                            )}
+                                                            {f.owner && (
+                                                                <span className="ml-auto inline-flex items-center gap-1">
+                                                                    <span className="truncate font-medium text-foreground/80">
+                                                                        {f.owner
+                                                                            .display_name ??
+                                                                            'Consignor'}
+                                                                    </span>
+                                                                    {f.owner
+                                                                        .is_verified ? (
+                                                                        <span className="inline-flex items-center gap-0.5 text-green-600">
+                                                                            <ShieldCheck
+                                                                                className="size-3"
+                                                                                aria-hidden="true"
+                                                                            />
+                                                                            Verified
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span>
+                                                                            ·
+                                                                            identity
+                                                                            not
+                                                                            verified
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-1 flex-col gap-2.5 px-4 pb-3">
                                                     <div className="divide-y overflow-hidden rounded-lg border">
@@ -939,94 +1176,8 @@ export default function DiscoverIndex({
                                                                     );
                                                                     return;
                                                                 }
-                                                                router.post(
-                                                                    `/my-freight/${f.ulid}/interests`,
-                                                                    // Contact details come from the profile and are
-                                                                    // released only on an explicit reveal.
-                                                                    {
-                                                                        message:
-                                                                            '',
-                                                                    },
-                                                                    {
-                                                                        preserveScroll: true,
-                                                                        onSuccess:
-                                                                            () =>
-                                                                                toast.success(
-                                                                                    'Interest expressed successfully.',
-                                                                                ),
-                                                                        onError:
-                                                                            (
-                                                                                errors,
-                                                                            ) => {
-                                                                                const msg =
-                                                                                    (
-                                                                                        errors as Record<
-                                                                                            string,
-                                                                                            string
-                                                                                        >
-                                                                                    )
-                                                                                        .interest ||
-                                                                                    (Object.values(
-                                                                                        errors,
-                                                                                    )[0] as string);
-                                                                                if (
-                                                                                    msg
-                                                                                ) {
-                                                                                    toast.error(
-                                                                                        msg,
-                                                                                    );
-                                                                                    if (
-                                                                                        String(
-                                                                                            msg,
-                                                                                        )
-                                                                                            .toLowerCase()
-                                                                                            .includes(
-                                                                                                'transporter profile',
-                                                                                            )
-                                                                                    ) {
-                                                                                        setTimeout(
-                                                                                            () =>
-                                                                                                router.visit(
-                                                                                                    '/my-transporter-profile',
-                                                                                                ),
-                                                                                            1500,
-                                                                                        );
-                                                                                    } else if (
-                                                                                        String(
-                                                                                            msg,
-                                                                                        )
-                                                                                            .toLowerCase()
-                                                                                            .includes(
-                                                                                                'phone number',
-                                                                                            )
-                                                                                    ) {
-                                                                                        setTimeout(
-                                                                                            () =>
-                                                                                                router.visit(
-                                                                                                    '/settings/profile',
-                                                                                                ),
-                                                                                            1500,
-                                                                                        );
-                                                                                    } else if (
-                                                                                        String(
-                                                                                            msg,
-                                                                                        )
-                                                                                            .toLowerCase()
-                                                                                            .includes(
-                                                                                                'not active',
-                                                                                            )
-                                                                                    ) {
-                                                                                        toast.info(
-                                                                                            'This freight is not yet active for interest.',
-                                                                                        );
-                                                                                    }
-                                                                                } else {
-                                                                                    toast.error(
-                                                                                        'Failed to express interest. Please try again.',
-                                                                                    );
-                                                                                }
-                                                                            },
-                                                                    },
+                                                                setPendingInterest(
+                                                                    f,
                                                                 );
                                                             }}
                                                             aria-label={`Express interest in ${origin?.name ?? 'freight'} to ${destination?.name ?? ''}`}
@@ -1097,7 +1248,45 @@ export default function DiscoverIndex({
                         </div>
                     </section>
                 </main>
-                <LandingFooter />
+
+                <Dialog
+                    open={pendingInterest !== null}
+                    onOpenChange={(open) => {
+                        if (!open && !interestProcessing) {
+                            setPendingInterest(null);
+                        }
+                    }}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>
+                                Express interest in this load?
+                            </DialogTitle>
+                            <DialogDescription>
+                                {`${pendingRoute?.origin?.name ?? 'This load'} → ${pendingRoute?.destination?.name ?? 'its destination'} — the shipper will see your carrier profile and can select you. You can withdraw any time before they do.`}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setPendingInterest(null)}
+                                disabled={interestProcessing}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={confirmExpressInterest}
+                                disabled={interestProcessing}
+                            >
+                                {interestProcessing
+                                    ? 'Sending…'
+                                    : 'Express interest'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <DiscoveryFooter />
             </div>
         </>
     );
