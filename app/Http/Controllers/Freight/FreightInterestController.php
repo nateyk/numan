@@ -62,9 +62,25 @@ class FreightInterestController extends Controller
             }
         }
 
+        // Tab counts cover every interest on the post, not just this page.
+        // The page used to count its own slice and label it "N total".
+        $statusCounts = FreightInterest::query()
+            ->where('freight_post_id', $post->id)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         return Inertia::render('freight/interests', [
             'post' => (new FreightPostResource($post))->resolve(),
             'interests' => InterestResource::collection($interests)->resolve(),
+            'total' => $interests->total(),
+            'links' => $interests->linkCollection()->toArray(),
+            'counts' => [
+                'all' => (int) $statusCounts->sum(),
+                'submitted' => (int) $statusCounts->get(FreightInterestStatus::Submitted->value, 0),
+                'shortlisted' => (int) $statusCounts->get(FreightInterestStatus::Shortlisted->value, 0),
+                'selected' => (int) $statusCounts->get(FreightInterestStatus::Selected->value, 0),
+            ],
             'canReveal' => $canReveal,
             'revealedContacts' => $revealedContacts,
         ]);

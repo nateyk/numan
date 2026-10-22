@@ -1,13 +1,15 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { freightRoute } from '@/lib/freight-route';
-import { Package, MapPin, Calendar, Phone, Mail, User, MoreHorizontal, Eye, Check, X, Star, ArrowLeft } from 'lucide-react';
+import { Phone, Mail, User, MoreHorizontal, Eye, Check, X, Star, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 interface RevealedContact {
     name: string;
@@ -52,10 +54,19 @@ interface BlockedReveal {
     window_days: number;
 }
 
+interface Counts {
+    all: number;
+    submitted: number;
+    shortlisted: number;
+    selected: number;
+}
+
 interface Props {
     interests: Interest[];
-    total?: number;
+    total: number;
     links?: Array<{ url: string | null; label: string; active: boolean }>;
+    /** Server-computed across every interest on the post — never the current page. */
+    counts: Counts;
     canReveal?: Record<string, boolean>;
     revealedContacts?: Record<string, RevealedContact>;
     reveal_blocked?: BlockedReveal | null;
@@ -76,27 +87,63 @@ const statusColor = (status: string) => {
     }
 };
 
-export default function FreightInterests({ interests, links, canReveal, revealedContacts, reveal_blocked, post }: Props) {
+export default function FreightInterests({ interests, total, links, counts, canReveal, revealedContacts, reveal_blocked, post }: Props) {
     const { origin, destination } = freightRoute(post);
 
-    const counts = {
-        all: interests.length,
-        submitted: interests.filter((i) => i.status === 'submitted').length,
-        shortlisted: interests.filter((i) => i.status === 'shortlisted').length,
-        selected: interests.filter((i) => i.status === 'selected').length,
+    const { errors, flash } = usePage().props as unknown as {
+        errors: Record<string, string>;
+        flash?: { success?: string | null };
+    };
+
+    // Accept and Reject are both terminal — a carrier cannot be un-selected or
+    // un-rejected — so neither fires on a single click.
+    const [pendingAction, setPendingAction] = useState<{ interest: Interest; action: 'accept' | 'reject' } | null>(null);
+    const { post: postAction, processing } = useForm({});
+
+    const confirmPendingAction = () => {
+        if (!pendingAction) return;
+
+        postAction(`/interests/${pendingAction.interest.id}/${pendingAction.action}`, {
+            onFinish: () => setPendingAction(null),
+        });
     };
 
     return (
         <AppLayout>
             <Head title={`Interests — ${origin?.name ?? ''} → ${destination?.name ?? ''}`} />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
+                {flash?.success && (
+                    <div
+                        role="status"
+                        className="flex items-start gap-2 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/40"
+                    >
+                        <CheckCircle2
+                            className="mt-0.5 size-4 shrink-0 text-green-600 dark:text-green-400"
+                            aria-hidden="true"
+                        />
+                        <p className="font-medium">{flash.success}</p>
+                    </div>
+                )}
+                {Object.keys(errors).length > 0 && (
+                    <div
+                        role="alert"
+                        className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm"
+                    >
+                        <p className="font-medium text-destructive">That didn’t go through</p>
+                        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+                            {Object.entries(errors).map(([key, message]) => (
+                                <li key={key}>{message}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" asChild>
                         <Link href="/my-freight"><ArrowLeft className="size-4" /></Link>
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Interests for {origin?.name ?? '—'} → {destination?.name ?? '—'}</h1>
-                        <p className="text-sm text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.item_name ?? 'General cargo'} • {counts.all} total</p>
+                        <p className="text-sm text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.item_name ?? 'General cargo'} • {total} total</p>
                     </div>
                 </div>
 
@@ -128,7 +175,7 @@ export default function FreightInterests({ interests, links, canReveal, revealed
                                 <Users className="size-6 text-muted-foreground" />
                             </div>
                             <h3 className="font-semibold">No interests yet</h3>
-                            <p className="max-w-md text-sm text-muted-foreground">When transporters express interest on this freight, they will appear here with contact details for you to shortlist or accept.</p>
+                            <p className="max-w-md text-sm text-muted-foreground">When transporters express interest on this freight, they will appear here for you to review, shortlist, or accept.</p>
                         </CardContent>
                     </Card>
                 ) : (
@@ -209,8 +256,8 @@ export default function FreightInterests({ interests, links, canReveal, revealed
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-48">
                                                             <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/shortlist`)} disabled={i.status !== 'submitted'} className="cursor-pointer"><Star className="mr-2 size-4" /> Shortlist</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/accept`)} disabled={i.status === 'selected' || i.status === 'rejected'} className="cursor-pointer"><Check className="mr-2 size-4" /> Accept & Connect</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/reject`)} disabled={i.status === 'rejected' || i.status === 'selected'} className="cursor-pointer"><X className="mr-2 size-4" /> Reject</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setPendingAction({ interest: i, action: 'accept' })} disabled={i.status === 'selected' || i.status === 'rejected'} className="cursor-pointer"><Check className="mr-2 size-4" /> Accept & Connect</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setPendingAction({ interest: i, action: 'reject' })} disabled={i.status === 'rejected' || i.status === 'selected'} className="cursor-pointer"><X className="mr-2 size-4" /> Reject</DropdownMenuItem>
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem asChild><Link href={`/freight/${post.ulid}`} className="cursor-pointer"><Eye className="mr-2 size-4" /> View Freight</Link></DropdownMenuItem>
                                                         </DropdownMenuContent>
@@ -249,8 +296,8 @@ export default function FreightInterests({ interests, links, canReveal, revealed
                                     )}
                                     <div className="mt-3 flex gap-2">
                                         <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => router.post(`/interests/${i.id}/shortlist`)} disabled={i.status !== 'submitted'}>Shortlist</Button>
-                                        <Button size="sm" className="flex-1 h-8" onClick={() => router.post(`/interests/${i.id}/accept`)} disabled={i.status === 'selected'}>Accept</Button>
-                                        <Button size="sm" variant="destructive" className="h-8" onClick={() => router.post(`/interests/${i.id}/reject`)} disabled={i.status === 'rejected'}>Reject</Button>
+                                        <Button size="sm" className="flex-1 h-8" onClick={() => setPendingAction({ interest: i, action: 'accept' })} disabled={i.status === 'selected' || i.status === 'rejected'}>Accept</Button>
+                                        <Button size="sm" variant="destructive" className="h-8" onClick={() => setPendingAction({ interest: i, action: 'reject' })} disabled={i.status === 'rejected' || i.status === 'selected'}>Reject</Button>
                                     </div>
                                 </Card>
                             ))}
@@ -268,6 +315,44 @@ export default function FreightInterests({ interests, links, canReveal, revealed
                     </>
                 )}
             </div>
+
+            <Dialog
+                open={pendingAction !== null}
+                onOpenChange={(open) => {
+                    if (!open && !processing) {
+                        setPendingAction(null);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {pendingAction?.action === 'accept' ? 'Accept this carrier?' : 'Reject this carrier?'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {pendingAction?.action === 'accept'
+                                ? `${pendingAction?.interest.transporter?.display_name ?? 'This carrier'} will be selected for your load, and it will close to every other carrier. This cannot be undone.`
+                                : `${pendingAction?.interest.transporter?.display_name ?? 'This carrier'} will be told they were not selected. This cannot be undone.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPendingAction(null)} disabled={processing}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant={pendingAction?.action === 'accept' ? 'default' : 'destructive'}
+                            onClick={confirmPendingAction}
+                            disabled={processing}
+                        >
+                            {processing
+                                ? 'Working…'
+                                : pendingAction?.action === 'accept'
+                                  ? 'Accept & connect'
+                                  : 'Reject carrier'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
