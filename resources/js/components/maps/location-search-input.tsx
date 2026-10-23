@@ -55,7 +55,6 @@ interface LocationSearchInputProps {
 }
 
 export default function LocationSearchInput({
-    value,
     initialName,
     onChange,
     onSelectLocation,
@@ -215,7 +214,7 @@ export default function LocationSearchInput({
                 <div
                     role="listbox"
                     aria-label={ariaLabel ?? 'Location results'}
-                    className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg"
+                    className="absolute z-50 mt-1 min-w-full rounded-md border bg-popover shadow-lg"
                 >
                     {loading ? (
                         <div className="px-3 py-4 text-center text-sm text-muted-foreground">
