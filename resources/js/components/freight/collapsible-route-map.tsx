@@ -19,8 +19,8 @@ export type RouteSnapshot = {
  * Most people open a freight post for the weight and the tariff, never scroll
  * back to a picture of a map.
  *
- * The distance line sits inside the toggle rather than outside it, because a
- * "312 km • 4 h" with no visible map looks like a stray label.
+ * The toggle names the action only. The distance is already typeset in the
+ * page's route stat, so repeating it on the button said the same thing twice.
  */
 export default function CollapsibleRouteMap({
     fromLat,
@@ -61,11 +61,6 @@ export default function CollapsibleRouteMap({
             >
                 <Map className="mr-2 size-4" />
                 {open ? 'Hide route map' : 'View route map'}
-                {routeSnapshot && !open && (
-                    <span className="ml-2 text-muted-foreground">
-                        · {(routeSnapshot.distance_meters / 1000).toFixed(0)} km
-                    </span>
-                )}
             </Button>
 
             {open && (

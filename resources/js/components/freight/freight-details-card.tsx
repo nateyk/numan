@@ -1,7 +1,6 @@
 import CollapsibleRouteMap, {
     type RouteSnapshot,
 } from '@/components/freight/collapsible-route-map';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package } from 'lucide-react';
 
@@ -70,11 +69,67 @@ function longitudeOf(place: FreightDetailsPost['origin']): number | null {
     return Number(place.longitude);
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+/**
+ * The product's own names for the two ways a load can be awarded. The API
+ * stores `one_time` / `recurring`; neither belongs on a public page.
+ */
+const scheduleCopy: Record<string, { label: string; detail: string }> = {
+    one_time: {
+        label: 'Direct offer',
+        detail: 'One-time freight, first suitable transporter gets it.',
+    },
+    recurring: {
+        label: 'Tender',
+        detail: 'Recurring need, collect multiple offers.',
+    },
+};
+
+function humanize(value: string): string {
+    const words = value.replaceAll('_', ' ');
+
+    return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * A fact in the load sheet. The label sits above the value so a long item
+ * description wraps at the card edge instead of being squeezed into the
+ * right-hand half of a justify-between row.
+ */
+function Fact({
+    label,
+    value,
+    detail,
+}: {
+    label: string;
+    value: React.ReactNode;
+    detail?: string;
+}) {
     return (
-        <div className="flex items-start justify-between gap-4">
-            <span className="shrink-0 text-muted-foreground">{label}</span>
-            <span className="text-right font-medium">{value}</span>
+        <div>
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="mt-0.5 text-sm font-medium">
+                {value}
+                {detail && (
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                        {detail}
+                    </span>
+                )}
+            </dd>
+        </div>
+    );
+}
+
+function Note({
+    label,
+    children,
+}: {
+    label: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div>
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-0.5 text-sm whitespace-pre-line">{children}</p>
         </div>
     );
 }
@@ -87,15 +142,31 @@ export default function FreightDetailsCard({
     const origin = post.origin;
     const destination = post.destination;
 
-    const weight = post.actual_weight
-        ? `${post.actual_weight} ${post.weight_unit ?? 'ton'}`
+    // The route is the page's headline and the map. Repeating its four
+    // label/value rows here said the same thing three times on one screen, so
+    // this card keeps only what the rest of the page does not already say.
+    const weight: { value: string; detail?: string } = post.actual_weight
+        ? { value: `${post.actual_weight} ${post.weight_unit ?? 'ton'}` }
         : post.tariff_weight
-          ? `${post.tariff_weight} ${post.tariff_weight_unit ?? 'ton'} (tariff)`
-          : '—';
+          ? {
+                value: `${post.tariff_weight} ${post.tariff_weight_unit ?? 'ton'}`,
+                detail: 'Tariff weight',
+            }
+          : { value: '—' };
 
-    // Two columns at xl, one below. An xl breakpoint rather than lg because the
-    // right-hand Consignor card is already competing for width at lg.
-    const twoColumns = 'grid gap-x-8 gap-y-2 sm:grid-cols-2';
+    const schedule = post.schedule_type
+        ? scheduleCopy[post.schedule_type]
+        : undefined;
+    const scheduleLabel =
+        schedule?.label ?? humanize(post.schedule_type ?? 'one_time');
+
+    // The wizard collects the goods in item_name; cargo_description is an older
+    // field the API still sends. Show it only when it adds something, so the
+    // card never prints the same sentence twice.
+    const description =
+        post.cargo_description && post.cargo_description !== post.item_name
+            ? post.cargo_description
+            : null;
 
     return (
         <Card>
@@ -114,115 +185,75 @@ export default function FreightDetailsCard({
                     routeSnapshot={post.route_snapshot}
                 />
 
-                <div className={twoColumns}>
-                    <div className="space-y-2">
-                        <Row label="Origin" value={origin?.name ?? '—'} />
-                        {origin?.region_name && (
-                            <Row
-                                label="Origin region"
-                                value={origin.region_name}
-                            />
-                        )}
-                        {/* Coordinates are gone from the rows: the map toggle is
-                            where a location lives, and a decimal pair with equal
-                            billing to the money told carriers nothing they can
-                            act on. */}
-                        {post.origin_site_note && (
-                            <Row
-                                label="Pickup note"
-                                value={post.origin_site_note}
-                            />
-                        )}
-                    </div>
+                <dl className="space-y-4">
+                    <Fact label="Item" value={post.item_name ?? '—'} />
 
-                    <div className="space-y-2">
-                        <Row
-                            label="Destination"
-                            value={destination?.name ?? '—'}
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        <Fact
+                            label="Weight"
+                            value={weight.value}
+                            detail={weight.detail}
                         />
-                        {destination?.region_name && (
-                            <Row
-                                label="Destination region"
-                                value={destination.region_name}
-                            />
+                        <Fact
+                            label="Truck"
+                            value={`${post.truck_type?.name ?? 'Any truck'}${post.truck_count ? ` ×${post.truck_count}` : ''}`}
+                        />
+                        <Fact
+                            label="Schedule"
+                            value={scheduleLabel}
+                            detail={schedule?.detail}
+                        />
+                    </div>
+                </dl>
+
+                {description && (
+                    <div className="border-t pt-4">
+                        <p className="text-xs text-muted-foreground">
+                            Cargo description
+                        </p>
+                        <p className="mt-1 text-sm whitespace-pre-line">
+                            {description}
+                        </p>
+                    </div>
+                )}
+
+                {(post.origin_site_note || post.destination_site_note) && (
+                    <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+                        {post.origin_site_note && (
+                            <Note label="Pickup note">
+                                {post.origin_site_note}
+                            </Note>
                         )}
                         {post.destination_site_note && (
-                            <Row
-                                label="Delivery note"
-                                value={post.destination_site_note}
-                            />
+                            <Note label="Delivery note">
+                                {post.destination_site_note}
+                            </Note>
                         )}
                     </div>
-                </div>
+                )}
 
-                <div className="border-t pt-4">
-                    <div className={twoColumns}>
-                        <div className="space-y-2">
-                            <Row label="Item" value={post.item_name ?? '—'} />
-                            <Row label="Weight" value={weight} />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Row
-                                label="Cargo type"
-                                value={post.cargo_type?.name ?? '—'}
-                            />
-                            <Row
-                                label="Truck"
-                                value={`${post.truck_type?.name ?? 'Any truck'}${post.truck_count ? ` ×${post.truck_count}` : ''}`}
-                            />
-                            <Row
-                                label="Status"
+                {/* Only rendered when it says something. A row reading
+                    "Insurance — No" on every post is noise. */}
+                {(post.insurance_required || post.depreciation_rate) && (
+                    <dl className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+                        {post.insurance_required && (
+                            <Fact
+                                label="Insurance"
                                 value={
-                                    <Badge
-                                        variant="outline"
-                                        className="capitalize"
-                                    >
-                                        {post.status}
-                                    </Badge>
+                                    post.insurance_value
+                                        ? `${post.insurance_value} ${post.tariff_currency ?? 'ETB'}`
+                                        : 'Required, value not set'
                                 }
                             />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="border-t pt-4">
-                    <div className={twoColumns}>
-                        {/* Tariff and pickup moved to the stat strip above the
-                            grid — typeset once, as the headline facts they are,
-                            rather than once more among the rows. */}
-                        <div className="space-y-2">
-                            <Row
-                                label="Schedule"
-                                value={post.schedule_type ?? 'one_time'}
-                            />
-                        </div>
-
-                        {/* Only rendered when it says something. A row reading
-                            "Insurance — No" on every post is noise. */}
-                        {(post.insurance_required ||
-                            post.depreciation_rate) && (
-                            <div className="space-y-2">
-                                {post.insurance_required && (
-                                    <Row
-                                        label="Insurance"
-                                        value={
-                                            post.insurance_value
-                                                ? `${post.insurance_value} ${post.tariff_currency ?? 'ETB'}`
-                                                : 'Required, value not set'
-                                        }
-                                    />
-                                )}
-                                {post.depreciation_rate && (
-                                    <Row
-                                        label="Depreciation"
-                                        value={`${post.depreciation_rate}%`}
-                                    />
-                                )}
-                            </div>
                         )}
-                    </div>
-                </div>
+                        {post.depreciation_rate && (
+                            <Fact
+                                label="Depreciation"
+                                value={`${post.depreciation_rate}%`}
+                            />
+                        )}
+                    </dl>
+                )}
             </CardContent>
         </Card>
     );

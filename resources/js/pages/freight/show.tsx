@@ -273,6 +273,12 @@ export default function FreightShow({
             .filter(Boolean)
             .join(' · ') || undefined;
 
+    // Truck and cargo type moved to the details card and the badge above; the
+    // subtitle is only the lane's regions now, rather than the whole post again.
+    const regionLine = [post.origin?.region_name, post.destination?.region_name]
+        .filter(Boolean)
+        .join(' → ');
+
     return (
         <>
             <Head
@@ -353,23 +359,11 @@ export default function FreightShow({
                                     {post.destination?.name ?? 'Destination'}
                                 </h1>
 
-                                <p className="text-muted-foreground">
-                                    {post.origin?.region_name ?? ''}
-                                    {post.origin?.region_name &&
-                                    post.destination?.region_name
-                                        ? ' → '
-                                        : ''}
-                                    {post.destination?.region_name ?? ''}
-                                    {post.truck_type?.name
-                                        ? ` • ${post.truck_type.name}`
-                                        : ''}
-                                    {post.truck_count
-                                        ? ` ×${post.truck_count}`
-                                        : ''}
-                                    {post.cargo_type?.name
-                                        ? ` • ${post.cargo_type.name}`
-                                        : ''}
-                                </p>
+                                {regionLine && (
+                                    <p className="text-muted-foreground">
+                                        {regionLine}
+                                    </p>
+                                )}
                             </div>
 
                             {/* The three facts a carrier decides on — the money,
