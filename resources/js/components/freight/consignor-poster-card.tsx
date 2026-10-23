@@ -1,8 +1,18 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Link } from '@inertiajs/react';
 import { AlertCircle, Eye, ShieldCheck, User } from 'lucide-react';
+import { useState } from 'react';
 
 /**
  * Exactly what PostOwnerSummary sends: a display name and a verification level.
@@ -84,15 +94,19 @@ function ContactBlock({
     revealedContacts,
     canReveal,
     interestId,
+    requiresPhone,
     onRevealed,
     processing,
 }: {
     revealedContacts: RevealedContacts;
     canReveal: boolean;
     interestId: number | null;
+    requiresPhone: boolean;
     onRevealed: () => void;
     processing: boolean;
 }) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
+
     if (revealedContacts) {
         return (
             <div className="space-y-1 rounded-md border bg-muted/30 p-3 text-sm">
@@ -126,18 +140,78 @@ function ContactBlock({
     // interestId is required, not optional: without it there is no URL to POST to,
     // so a button here would be decoration.
     if (canReveal && interestId !== null) {
+        // The reveal hands over a phone, so the viewer needs one too. The server
+        // keeps a missing phone as a redirect-with-flash rather than a hard
+        // block, and this is where that flash lands: an inline step with the
+        // field that fixes it — not a toast fired at a page with nowhere to
+        // put the number.
+        if (requiresPhone) {
+            return (
+                <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+                    <p className="font-medium">
+                        Add your phone number to reveal this contact.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        A consignor who calls you back needs a number that
+                        reaches you.
+                    </p>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        asChild
+                    >
+                        <Link href="/settings/marketplace-details">
+                            Add phone number
+                        </Link>
+                    </Button>
+                </div>
+            );
+        }
+
+        // The signature transaction, weighted like one: a primary action that
+        // confirms before spending a scarce reveal.
         return (
             <div className="space-y-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    disabled={processing}
-                    onClick={onRevealed}
-                >
-                    <Eye className="mr-2 size-4" />
-                    {processing ? 'Revealing…' : 'Reveal contact'}
-                </Button>
+                <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                    <Button
+                        className="w-full"
+                        disabled={processing}
+                        onClick={() => setConfirmOpen(true)}
+                    >
+                        <Eye className="mr-2 size-4" />
+                        {processing ? 'Revealing…' : 'Reveal contact'}
+                    </Button>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>
+                                Reveal this consignor’s contact?
+                            </DialogTitle>
+                            <DialogDescription>
+                                This uses one of your contact reveals and
+                                shares your phone number with them so they
+                                can call you back.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setConfirmOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                disabled={processing}
+                                onClick={() => {
+                                    setConfirmOpen(false);
+                                    onRevealed();
+                                }}
+                            >
+                                {processing ? 'Revealing…' : 'Reveal contact'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                 <p className="text-xs text-muted-foreground">
                     Uses one of your contact reveals. Your phone number is
                     shared with this consignor when you do.
@@ -156,6 +230,7 @@ export default function ConsignorPosterCard({
     revealedContacts,
     revealBlocked,
     interestId,
+    requiresPhone = false,
     onRevealed,
     processing,
     isOwnPost,
@@ -167,6 +242,8 @@ export default function ConsignorPosterCard({
     revealedContacts: RevealedContacts;
     revealBlocked: RevealBlocked;
     interestId: number | null;
+    /** Session flash from the reveal endpoint — the viewer has no phone of their own. */
+    requiresPhone?: boolean;
     onRevealed: () => void;
     processing: boolean;
     isOwnPost: boolean;
@@ -202,11 +279,17 @@ export default function ConsignorPosterCard({
                     revealedContacts={revealedContacts}
                     canReveal={canReveal}
                     interestId={interestId}
+                    requiresPhone={requiresPhone}
                     onRevealed={onRevealed}
                     processing={processing}
                 />
 
-                {revealBlocked && (
+                {/* Only where a reveal button could exist: interestId is the
+                    condition under which ContactBlock can render at all, and a
+                    contact already on screen needs no quota warning. Without
+                    these gates the card nagged anonymous visitors about a
+                    quota they cannot hold. */}
+                {revealBlocked && interestId !== null && !revealedContacts && (
                     <p className="flex items-start gap-2 text-xs text-destructive">
                         <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                         <span>

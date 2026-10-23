@@ -3,10 +3,17 @@ import ConsignorPosterCard, {
     type RevealBlocked,
     type RevealedContacts,
 } from '@/components/freight/consignor-poster-card';
+import {
+    DiscoveryFooter,
+    DiscoveryHeader,
+} from '@/components/freight/discovery-chrome';
+import {
+    formatDistance,
+    formatDuration,
+} from '@/components/freight/format-route';
 import FreightDetailsCard, {
     type FreightDetailsPost,
 } from '@/components/freight/freight-details-card';
-import { LandingFooter, LandingHeader } from '@/components/landing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +53,56 @@ interface Props {
     canRestoreListing?: boolean;
 }
 
+/**
+ * What each interest status means for the carrier, in the page's own words.
+ *
+ * There was one copy for every status — "awaiting consignor" — so a rejected
+ * carrier read a promise the consignor had already declined, twice over: the
+ * rejection named and then denied.
+ */
+const interestStatusCopy: Record<string, string> = {
+    submitted: "Interest submitted — awaiting the consignor's review.",
+    shortlisted:
+        'The consignor shortlisted your interest — awaiting their final choice.',
+    selected:
+        'The consignor selected you for this load. Continue in My Interests.',
+    rejected:
+        'The consignor did not select your interest this time. You can express interest again.',
+    withdrawn:
+        'You withdrew your interest in this load. You can express interest again.',
+};
+
+/** One headline fact, the way a rate sheet would typeset it. */
+function Stat({
+    label,
+    value,
+    sub,
+    peak = false,
+}: {
+    label: string;
+    value: React.ReactNode;
+    sub?: string;
+    peak?: boolean;
+}) {
+    return (
+        <div className="rounded-lg border bg-muted/30 px-4 py-3">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p
+                className={
+                    peak
+                        ? 'mt-0.5 text-2xl font-bold tracking-tight'
+                        : 'mt-0.5 text-base font-semibold'
+                }
+            >
+                {value}
+            </p>
+            {sub && (
+                <p className="text-xs text-muted-foreground">{sub}</p>
+            )}
+        </div>
+    );
+}
+
 export default function FreightShow({
     post,
     hasInterest,
@@ -64,6 +121,7 @@ export default function FreightShow({
         requires_phone: requiresPhone,
     } = usePage<SharedData>().props;
     const [interestOpen, setInterestOpen] = useState(false);
+    const [withdrawOpen, setWithdrawOpen] = useState(false);
 
     const isOwnPost = auth?.user?.id === post.owner?.id;
 
@@ -89,8 +147,15 @@ export default function FreightShow({
 
     // The reveal goes through the same metered, ledgered endpoint the connections
     // page uses. It is the only thing in this file allowed to hand over contact
-    // data, and nothing here decides whether it may.
+    // data, and nothing here decides whether it may. A missing phone is the
+    // server's answer to keep (it redirects back with the flash), and the poster
+    // card renders that state inline with a link to the field that fixes it.
     const { post: postReveal, processing: revealProcessing } = useForm({});
+
+    // Withdrawal is confirmed first, the way the interests page confirms the
+    // carrier-facing side of the same action.
+    const { post: postWithdraw, processing: withdrawProcessing } =
+        useForm({});
 
     const handleReveal = () => {
         if (interestId === null) return;
@@ -98,17 +163,6 @@ export default function FreightShow({
         postReveal(`/interests/${interestId}/reveal`, {
             preserveScroll: true,
             onSuccess: () => {
-                // The reveal needs a phone of the viewer's own, or the consignor
-                // would be handed somebody they cannot call back. The shared
-                // layout renders the inline field for it.
-                if (requiresPhone) {
-                    toast.error(
-                        'Add your phone number before revealing a contact.',
-                    );
-
-                    return;
-                }
-
                 toast.success('Contact revealed.');
             },
             onError: (errors) => {
@@ -144,34 +198,89 @@ export default function FreightShow({
                     (errors as Record<string, string>).interest ||
                     (Object.values(errors)[0] as string);
 
-                if (msg) {
-                    toast.error(msg);
+                // No auto-navigation on a string match. The dialog stays open
+                // and offers the profile button where the error is explained —
+                // a timed redirect on a fuzzy match seizes the page from
+                // somebody who was only reading it.
+                if (msg) toast.error(String(msg));
+            },
+        });
+    };
 
-                    if (
-                        String(msg)
-                            .toLowerCase()
-                            .includes('transporter profile')
-                    ) {
-                        setTimeout(
-                            () => router.visit('/my-transporter-profile'),
-                            1500,
-                        );
-                    }
-                }
+    const submitWithdraw = () => {
+        if (interestId === null) return;
+
+        postWithdraw(`/interests/${interestId}/withdraw`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setWithdrawOpen(false);
+                toast.success('Interest withdrawn.');
+            },
+            onError: (errors) => {
+                const message = Object.values(errors)[0];
+
+                if (message) toast.error(String(message));
             },
         });
     };
 
     const blocked = (revealBlocked ?? null) as RevealBlocked;
 
+    // Five interest outcomes, five honest renderings. The server allows a fresh
+    // expression after a rejection or withdrawal (its duplicate check skips
+    // those two statuses), so this page offers it rather than dead-ending.
+    const canReExpress =
+        hasInterest &&
+        post.status === 'active' &&
+        (interestStatus === 'rejected' || interestStatus === 'withdrawn');
+
+    // Withdrawn and rejected interests cannot be withdrawn again, and a
+    // Selected interest is terminal on the server.
+    const canWithdraw =
+        interestId !== null &&
+        (interestStatus === null ||
+            interestStatus === 'submitted' ||
+            interestStatus === 'shortlisted');
+
+    const canSubmitInterest =
+        !isOwnPost && !hasInterest && post.status === 'active';
+
+    const routeSnapshot = post.route_snapshot;
+    const laneFact = routeSnapshot
+        ? [
+              formatDistance(routeSnapshot.distance_meters),
+              formatDuration(routeSnapshot.duration_seconds),
+          ]
+              .filter(Boolean)
+              .join(' · ')
+        : 'Not calculated';
+
+    // "T00:00:00" so the ISO date lands on the same day in every timezone.
+    const pickupValue = post.pickup_date
+        ? new Date(`${post.pickup_date}T00:00:00`).toLocaleDateString(
+              undefined,
+              { day: 'numeric', month: 'short', year: 'numeric' },
+          )
+        : 'Flexible';
+
+    const pickupSub =
+        [
+            post.pickup_time ? post.pickup_time.slice(0, 5) : '',
+            post.pickup_date_flexibility_days
+                ? `±${post.pickup_date_flexibility_days} days`
+                : '',
+        ]
+            .filter(Boolean)
+            .join(' · ') || undefined;
+
     return (
         <>
             <Head
-                title={`${post.origin?.name ?? 'Freight'} → ${post.destination?.name ?? ''} — NumanFreight`}
+                title={`${post.origin?.name ?? 'Freight'} → ${post.destination?.name ?? ''} — Numan Freight`}
             />
 
             <div className="min-h-screen bg-background text-foreground">
-                <LandingHeader canRegister={canRegister} />
+                <DiscoveryHeader canRegister={canRegister} />
 
                 <main>
                     <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
@@ -263,6 +372,28 @@ export default function FreightShow({
                                 </p>
                             </div>
 
+                            {/* The three facts a carrier decides on — the money,
+                                the lane, the window — promoted out of the rows
+                                below. The tariff used to be typeset the same as
+                                a coordinate pair. */}
+                            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                <Stat
+                                    peak
+                                    label="Tariff"
+                                    value={
+                                        post.tariff_amount
+                                            ? `${post.tariff_currency ?? 'ETB'} ${post.tariff_amount}`
+                                            : 'Not stated'
+                                    }
+                                />
+                                <Stat label="Route" value={laneFact} />
+                                <Stat
+                                    label="Pickup"
+                                    value={pickupValue}
+                                    sub={pickupSub}
+                                />
+                            </div>
+
                             <div className="grid items-start gap-6 lg:grid-cols-12">
                                 {/* Wide: Freight Details on the left, Consignor Poster
                                     with the action buttons on the right. Compact: they
@@ -281,6 +412,7 @@ export default function FreightShow({
                                         revealedContacts={revealedContacts}
                                         revealBlocked={blocked}
                                         interestId={interestId}
+                                        requiresPhone={requiresPhone}
                                         onRevealed={handleReveal}
                                         processing={revealProcessing}
                                         isOwnPost={isOwnPost}
@@ -305,16 +437,38 @@ export default function FreightShow({
                                         </>
                                     ) : hasInterest ? (
                                         <>
-                                            <Badge
-                                                variant="secondary"
-                                                className="justify-center py-2"
+                                            <p
+                                                role="status"
+                                                className="rounded-md border bg-muted/30 px-4 py-3 text-sm"
                                             >
-                                                Interest{' '}
-                                                {interestStatus ?? 'submitted'}{' '}
-                                                — awaiting consignor
-                                            </Badge>
+                                                {interestStatusCopy[
+                                                    interestStatus ?? ''
+                                                ] ??
+                                                    interestStatusCopy.submitted}
+                                            </p>
+                                            {canWithdraw && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full"
+                                                    onClick={() =>
+                                                        setWithdrawOpen(true)
+                                                    }
+                                                >
+                                                    Withdraw Interest
+                                                </Button>
+                                            )}
+                                            {canReExpress && (
+                                                <Button
+                                                    className="w-full"
+                                                    onClick={
+                                                        handleExpressInterest
+                                                    }
+                                                >
+                                                    Express Interest Again
+                                                </Button>
+                                            )}
                                             <Button
-                                                variant="outline"
+                                                variant="ghost"
                                                 className="w-full"
                                                 asChild
                                             >
@@ -333,17 +487,25 @@ export default function FreightShow({
                                             available for interest
                                         </Badge>
                                     ) : (
-                                        <Dialog
-                                            open={interestOpen}
-                                            onOpenChange={setInterestOpen}
+                                        <Button
+                                            onClick={handleExpressInterest}
+                                            className="w-full"
+                                            size="lg"
                                         >
-                                            <Button
-                                                onClick={handleExpressInterest}
-                                                className="w-full"
-                                                size="lg"
-                                            >
-                                                Express Interest
-                                            </Button>
+                                            Express Interest
+                                        </Button>
+                                    )}
+
+                                    {/* One dialog serves both triggers — the
+                                        first expression and a re-expression
+                                        after a rejection or withdrawal — since
+                                        they POST to the same endpoint. */}
+                                    <Dialog
+                                        open={interestOpen}
+                                        onOpenChange={setInterestOpen}
+                                    >
+                                        {(canSubmitInterest ||
+                                            canReExpress) && (
                                             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                                                 <DialogHeader>
                                                     <DialogTitle>
@@ -355,10 +517,12 @@ export default function FreightShow({
                                                             ?.name ?? ''}
                                                     </DialogTitle>
                                                     <DialogDescription>
-                                                        Provide your contact
-                                                        details for the
-                                                        consignor to contact
-                                                        you.
+                                                        Send the consignor a
+                                                        short message — your
+                                                        profile contact details
+                                                        are shared only when
+                                                        you choose to reveal
+                                                        them.
                                                     </DialogDescription>
                                                 </DialogHeader>
 
@@ -448,8 +612,49 @@ export default function FreightShow({
                                                     </DialogFooter>
                                                 </form>
                                             </DialogContent>
-                                        </Dialog>
-                                    )}
+                                        )}
+                                    </Dialog>
+
+                                    <Dialog
+                                        open={withdrawOpen}
+                                        onOpenChange={setWithdrawOpen}
+                                    >
+                                        <DialogContent className="sm:max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>
+                                                    Withdraw your interest?
+                                                </DialogTitle>
+                                                <DialogDescription>
+                                                    The consignor will see
+                                                    your interest as
+                                                    withdrawn. You can express
+                                                    interest again later, but
+                                                    it starts fresh.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <DialogFooter>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        setWithdrawOpen(false)
+                                                    }
+                                                >
+                                                    Keep Interest
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    disabled={
+                                                        withdrawProcessing
+                                                    }
+                                                    onClick={submitWithdraw}
+                                                >
+                                                    {withdrawProcessing
+                                                        ? 'Withdrawing…'
+                                                        : 'Withdraw Interest'}
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
 
                                     <Button
                                         variant="ghost"
@@ -466,7 +671,7 @@ export default function FreightShow({
                     </section>
                 </main>
 
-                <LandingFooter />
+                <DiscoveryFooter />
             </div>
         </>
     );

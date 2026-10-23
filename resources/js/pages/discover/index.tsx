@@ -2,6 +2,10 @@ import {
     DiscoveryFooter,
     DiscoveryHeader,
 } from '@/components/freight/discovery-chrome';
+import {
+    formatDistance,
+    formatDuration,
+} from '@/components/freight/format-route';
 import LocationSearchInput from '@/components/maps/location-search-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -113,21 +117,6 @@ const sortOptions = [
     { id: 'distance_desc', label: 'Distance: Far to Near' },
     { id: 'pickup_asc', label: 'Pickup: Earliest' },
 ];
-
-/** Metres to a lane figure: "932 km"; a sub-kilometre lane stays in metres. */
-const formatDistance = (meters: number): string =>
-    meters >= 1000 ? `${Math.round(meters / 1000)} km` : `${meters} m`;
-
-/** Seconds to an estimate the card can carry: "~14 h". */
-const formatDuration = (seconds: number): string => {
-    if (seconds >= 3600) {
-        return `~${Math.round(seconds / 3600)} h`;
-    }
-    if (seconds >= 60) {
-        return `~${Math.round(seconds / 60)} min`;
-    }
-    return '';
-};
 
 export default function DiscoverIndex({
     freight,
@@ -339,15 +328,21 @@ export default function DiscoverIndex({
         router.get('/freight', {}, { preserveState: true });
     };
 
-    const doSearch = () => {
+    // The dropdowns are decisions, not drafts: picking a sort or cargo applies
+    // it immediately, the way removing a chip already does. Apply stays for the
+    // text inputs, which are drafts. Overrides carry the picked value because
+    // the state update has not landed when the visit fires.
+    const doSearch = (overrides?: { sort?: string; cargo?: string }) => {
+        const sort = overrides?.sort ?? selectedSort;
+        const cargo = overrides?.cargo ?? selectedCargo;
         router.get(
             '/freight',
             {
                 origin: origin || undefined,
                 destination: destination || undefined,
                 search: searchQuery || undefined,
-                cargo: selectedCargo !== 'all' ? selectedCargo : undefined,
-                sort: selectedSort !== 'latest' ? selectedSort : undefined,
+                cargo: cargo !== 'all' ? cargo : undefined,
+                sort: sort !== 'latest' ? sort : undefined,
             },
             {
                 preserveState: true,
@@ -464,11 +459,14 @@ export default function DiscoverIndex({
                                                             (opt) => (
                                                                 <DropdownMenuItem
                                                                     key={opt.id}
-                                                                    onClick={() =>
+                                                                    onClick={() => {
                                                                         setSelectedSort(
                                                                             opt.id,
-                                                                        )
-                                                                    }
+                                                                        );
+                                                                        doSearch({
+                                                                            sort: opt.id,
+                                                                        });
+                                                                    }}
                                                                     className={
                                                                         selectedSort ===
                                                                         opt.id
@@ -603,11 +601,14 @@ export default function DiscoverIndex({
                                                             ].map((c) => (
                                                                 <DropdownMenuItem
                                                                     key={c}
-                                                                    onClick={() =>
+                                                                    onClick={() => {
                                                                         setSelectedCargo(
                                                                             c,
-                                                                        )
-                                                                    }
+                                                                        );
+                                                                        doSearch({
+                                                                            cargo: c,
+                                                                        });
+                                                                    }}
                                                                     className={
                                                                         selectedCargo ===
                                                                         c

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\FreightInterestStatus;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\FreightPostRoute;
@@ -182,6 +183,37 @@ it('passes the interest id and canReveal once an interest exists', function () {
             ->where('canReveal', true)
             // Reading the page must not consume quota or perform a reveal.
             ->where('revealedContacts', null)
+        );
+});
+
+it('sends the status a rejected carrier needs to stop being told they are awaiting review', function () {
+    $owner = User::factory()->create();
+    $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
+
+    $transporter = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $transporter->id]);
+    $workspace->users()->attach($transporter->id, ['role' => 'owner']);
+    $transporter->update(['current_workspace_id' => $workspace->id]);
+
+    $interest = FreightInterest::create([
+        'freight_post_id' => $post->id,
+        'user_id' => $transporter->id,
+        'status' => FreightInterestStatus::Rejected->value,
+        'message' => 'Available truck',
+    ]);
+
+    // The page renders five interest outcomes from these three props. Drop any
+    // of them and a rejected carrier is back to "awaiting consignor" — the lie
+    // the status mapping replaced. A characterization test: the controller has
+    // always sent these; the page only just started reading them.
+    $this->actingAs($transporter)
+        ->get("/freight/{$post->ulid}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('freight/show')
+            ->where('hasInterest', true)
+            ->where('interestStatus', 'rejected')
+            ->where('interestId', $interest->id)
         );
 });
 

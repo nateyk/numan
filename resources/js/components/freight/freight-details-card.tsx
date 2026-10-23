@@ -123,13 +123,10 @@ export default function FreightDetailsCard({
                                 value={origin.region_name}
                             />
                         )}
-                        {origin?.latitude !== null &&
-                            origin?.latitude !== undefined && (
-                                <Row
-                                    label="Coordinates"
-                                    value={`${Number(origin.latitude).toFixed(4)}, ${Number(origin.longitude).toFixed(4)}`}
-                                />
-                            )}
+                        {/* Coordinates are gone from the rows: the map toggle is
+                            where a location lives, and a decimal pair with equal
+                            billing to the money told carriers nothing they can
+                            act on. */}
                         {post.origin_site_note && (
                             <Row
                                 label="Pickup note"
@@ -163,14 +160,6 @@ export default function FreightDetailsCard({
                         <div className="space-y-2">
                             <Row label="Item" value={post.item_name ?? '—'} />
                             <Row label="Weight" value={weight} />
-                            <Row
-                                label="Tariff"
-                                value={
-                                    post.tariff_amount
-                                        ? `${post.tariff_amount} ${post.tariff_currency ?? 'ETB'}`
-                                        : '—'
-                                }
-                            />
                         </div>
 
                         <div className="space-y-2">
@@ -199,19 +188,10 @@ export default function FreightDetailsCard({
 
                 <div className="border-t pt-4">
                     <div className={twoColumns}>
+                        {/* Tariff and pickup moved to the stat strip above the
+                            grid — typeset once, as the headline facts they are,
+                            rather than once more among the rows. */}
                         <div className="space-y-2">
-                            <Row
-                                label="Pickup"
-                                value={
-                                    post.pickup_date
-                                        ? `${post.pickup_date}${post.pickup_time ? ` ${post.pickup_time.slice(0, 5)}` : ''}${
-                                              post.pickup_date_flexibility_days
-                                                  ? ` ±${post.pickup_date_flexibility_days}d`
-                                                  : ''
-                                          }`
-                                        : 'Flexible'
-                                }
-                            />
                             <Row
                                 label="Schedule"
                                 value={post.schedule_type ?? 'one_time'}
