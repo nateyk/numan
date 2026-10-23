@@ -1,4 +1,5 @@
 import InputError from '@/components/input-error';
+import LocationSearchInput from '@/components/maps/location-search-input';
 import { AccountTypeCard } from '@/components/onboarding/account-type-card';
 import { CapabilityCard } from '@/components/onboarding/capability-card';
 import {
@@ -19,7 +20,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { Head, useForm } from '@inertiajs/react';
-import { Building2, Package, Search, Truck, User } from 'lucide-react';
+import { Building2, Package, Truck, User } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -139,7 +140,6 @@ export default function OnboardingIndex({
 
     // Step 3 — details
     const isBusiness = effectiveAccountType === 'business';
-    const [locationQuery, setLocationQuery] = useState<string>('');
     const [legalFormOther, setLegalFormOther] = useState<string>('');
 
     const detailsForm = useForm<{
@@ -169,17 +169,13 @@ export default function OnboardingIndex({
         }
     };
 
-    const filteredLocations = useMemo(() => {
-        const q = locationQuery.trim().toLowerCase();
-        if (!q) return locations.slice(0, 50);
-        return locations
-            .filter((l) => {
-                const hay =
-                    `${l.name} ${l.region_name} ${l.type}`.toLowerCase();
-                return hay.includes(q);
-            })
-            .slice(0, 50);
-    }, [locations, locationQuery]);
+    // Seeds the location combobox with the town already saved on the profile,
+    // so a returning user never opens the field blank.
+    const primaryLocation = detailsForm.data.primary_location_id
+        ? locations.find(
+              (l) => String(l.id) === detailsForm.data.primary_location_id,
+          )
+        : undefined;
 
     const submitDetails = (e: React.FormEvent): void => {
         e.preventDefault();
@@ -548,54 +544,23 @@ export default function OnboardingIndex({
                                     <Label htmlFor="primary_location_id">
                                         Primary location
                                     </Label>
-                                    <div className="relative">
-                                        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                                        <Input
-                                            id="location_search"
-                                            value={locationQuery}
-                                            onChange={(e) =>
-                                                setLocationQuery(e.target.value)
-                                            }
-                                            placeholder="Search Ethiopian towns…"
-                                            className="pl-9"
-                                        />
-                                    </div>
-                                    <Select
-                                        value={
-                                            detailsForm.data.primary_location_id
+                                    <LocationSearchInput
+                                        id="primary_location_id"
+                                        ariaLabel="Primary location"
+                                        initialName={
+                                            primaryLocation
+                                                ? `${primaryLocation.name}, ${primaryLocation.region_name}`
+                                                : undefined
                                         }
-                                        onValueChange={(v) =>
+                                        onSelectLocation={(loc) =>
                                             detailsForm.setData(
                                                 'primary_location_id',
-                                                v,
+                                                loc ? String(loc.id) : '',
                                             )
                                         }
-                                    >
-                                        <SelectTrigger id="primary_location_id">
-                                            <SelectValue placeholder="Select your primary town" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-64">
-                                            {filteredLocations.length === 0 ? (
-                                                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                                    No towns match “
-                                                    {locationQuery}”.
-                                                </div>
-                                            ) : (
-                                                filteredLocations.map((loc) => (
-                                                    <SelectItem
-                                                        key={loc.id}
-                                                        value={String(loc.id)}
-                                                    >
-                                                        {loc.name}{' '}
-                                                        <span className="text-muted-foreground">
-                                                            ({loc.type} ·{' '}
-                                                            {loc.region_name})
-                                                        </span>
-                                                    </SelectItem>
-                                                ))
-                                            )}
-                                        </SelectContent>
-                                    </Select>
+                                        placeholder="Search Ethiopian towns…"
+                                        localOnly
+                                    />
                                     <InputError
                                         message={
                                             detailsForm.errors
@@ -603,15 +568,8 @@ export default function OnboardingIndex({
                                         }
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Example:{' '}
-                                        <span className="font-medium">
-                                            Kombolcha (South Wollo · Amhara)
-                                        </span>{' '}
-                                        — from{' '}
-                                        <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
-                                            locations
-                                        </code>{' '}
-                                        prop.
+                                        The town you operate from — used to
+                                        match you with loads nearby.
                                     </p>
                                 </div>
 

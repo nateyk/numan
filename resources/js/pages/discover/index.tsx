@@ -378,7 +378,10 @@ export default function DiscoverIndex({
                                 </p>
                             </div>
 
-                            <Card className="gap-0 overflow-hidden border py-0 shadow-sm">
+                            {/* Not overflow-hidden: the location combobox
+                                must be able to escape this card when its
+                                results open. */}
+                            <Card className="gap-0 border py-0 shadow-sm">
                                 <CardContent className="space-y-4 p-4 sm:p-5">
                                     <form
                                         onSubmit={(e) => {
@@ -958,7 +961,7 @@ export default function DiscoverIndex({
                                                     {(distanceText ||
                                                         durationText ||
                                                         f.owner) && (
-                                                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                                                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                                                             {(distanceText ||
                                                                 durationText) && (
                                                                 <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
@@ -1005,8 +1008,8 @@ export default function DiscoverIndex({
                                                     )}
                                                 </div>
                                                 <div className="flex flex-1 flex-col gap-2.5 px-4 pb-3">
-                                                    <div className="divide-y overflow-hidden rounded-lg border">
-                                                        <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                    <div className="divide-y">
+                                                        <div className="flex items-center justify-between py-2 text-xs">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Package
                                                                     className="size-3.5"
@@ -1024,7 +1027,7 @@ export default function DiscoverIndex({
                                                                     'General Cargo'}
                                                             </span>
                                                         </div>
-                                                        <div className="flex items-center justify-between px-3 py-2 text-xs">
+                                                        <div className="flex items-center justify-between py-2 text-xs">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Calendar
                                                                     className="size-3.5"
@@ -1051,8 +1054,8 @@ export default function DiscoverIndex({
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="divide-y overflow-hidden rounded-lg border text-xs">
-                                                        <div className="flex items-center justify-between px-3 py-2">
+                                                    <div className="divide-y text-xs">
+                                                        <div className="flex items-center justify-between py-2">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Weight
                                                                     className="size-3.5"
@@ -1070,7 +1073,7 @@ export default function DiscoverIndex({
                                                                     : '—'}
                                                             </span>
                                                         </div>
-                                                        <div className="flex items-center justify-between px-3 py-2">
+                                                        <div className="flex items-center justify-between py-2">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Banknote
                                                                     className="size-3.5"
@@ -1088,7 +1091,7 @@ export default function DiscoverIndex({
                                                                     : '—'}
                                                             </span>
                                                         </div>
-                                                        <div className="flex items-center justify-between px-3 py-2">
+                                                        <div className="flex items-center justify-between py-2">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Truck
                                                                     className="size-3.5"
