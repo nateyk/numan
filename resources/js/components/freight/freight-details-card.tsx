@@ -1,6 +1,10 @@
 import CollapsibleRouteMap, {
     type RouteSnapshot,
 } from '@/components/freight/collapsible-route-map';
+import {
+    formatDistance,
+    formatDuration,
+} from '@/components/freight/format-route';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package } from 'lucide-react';
 
@@ -168,6 +172,40 @@ export default function FreightDetailsCard({
             ? post.cargo_description
             : null;
 
+    // The three decision facts used to sit in a strip above this card. They
+    // belong to the load sheet, so they move in without their boxes: a stat
+    // card inside a card is a card inside a card.
+    const tariff = post.tariff_amount
+        ? `${post.tariff_currency ?? 'ETB'} ${post.tariff_amount}`
+        : 'Not stated';
+
+    const laneFact = post.route_snapshot
+        ? [
+              formatDistance(post.route_snapshot.distance_meters),
+              formatDuration(post.route_snapshot.duration_seconds),
+          ]
+              .filter(Boolean)
+              .join(' · ')
+        : 'Not calculated';
+
+    // "T00:00:00" so the ISO date lands on the same day in every timezone.
+    const pickupValue = post.pickup_date
+        ? new Date(`${post.pickup_date}T00:00:00`).toLocaleDateString(
+              undefined,
+              { day: 'numeric', month: 'short', year: 'numeric' },
+          )
+        : 'Flexible';
+
+    const pickupSub =
+        [
+            post.pickup_time ? post.pickup_time.slice(0, 5) : '',
+            post.pickup_date_flexibility_days
+                ? `±${post.pickup_date_flexibility_days} days`
+                : '',
+        ]
+            .filter(Boolean)
+            .join(' · ') || undefined;
+
     return (
         <Card>
             <CardHeader className="pb-3">
@@ -177,6 +215,32 @@ export default function FreightDetailsCard({
             </CardHeader>
 
             <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+                    <div>
+                        <p className="text-xs text-muted-foreground">Tariff</p>
+                        <p className="mt-0.5 text-xl font-bold tracking-tight sm:text-2xl">
+                            {tariff}
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground">Route</p>
+                        <p className="mt-0.5 text-sm font-semibold sm:text-base">
+                            {laneFact}
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground">Pickup</p>
+                        <p className="mt-0.5 text-sm font-semibold sm:text-base">
+                            {pickupValue}
+                        </p>
+                        {pickupSub && (
+                            <p className="text-xs text-muted-foreground">
+                                {pickupSub}
+                            </p>
+                        )}
+                    </div>
+                </div>
+
                 <CollapsibleRouteMap
                     fromLat={latitudeOf(origin)}
                     fromLng={longitudeOf(origin)}
@@ -185,7 +249,7 @@ export default function FreightDetailsCard({
                     routeSnapshot={post.route_snapshot}
                 />
 
-                <dl className="space-y-4">
+                <dl className="space-y-4 border-t pt-4">
                     <Fact label="Item" value={post.item_name ?? '—'} />
 
                     <div className="grid gap-4 sm:grid-cols-3">

@@ -7,10 +7,6 @@ import {
     DiscoveryFooter,
     DiscoveryHeader,
 } from '@/components/freight/discovery-chrome';
-import {
-    formatDistance,
-    formatDuration,
-} from '@/components/freight/format-route';
 import FreightDetailsCard, {
     type FreightDetailsPost,
 } from '@/components/freight/freight-details-card';
@@ -71,37 +67,6 @@ const interestStatusCopy: Record<string, string> = {
     withdrawn:
         'You withdrew your interest in this load. You can express interest again.',
 };
-
-/** One headline fact, the way a rate sheet would typeset it. */
-function Stat({
-    label,
-    value,
-    sub,
-    peak = false,
-}: {
-    label: string;
-    value: React.ReactNode;
-    sub?: string;
-    peak?: boolean;
-}) {
-    return (
-        <div className="rounded-lg border bg-muted/30 px-4 py-3">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p
-                className={
-                    peak
-                        ? 'mt-0.5 text-2xl font-bold tracking-tight'
-                        : 'mt-0.5 text-base font-semibold'
-                }
-            >
-                {value}
-            </p>
-            {sub && (
-                <p className="text-xs text-muted-foreground">{sub}</p>
-            )}
-        </div>
-    );
-}
 
 export default function FreightShow({
     post,
@@ -245,36 +210,6 @@ export default function FreightShow({
     const canSubmitInterest =
         !isOwnPost && !hasInterest && post.status === 'active';
 
-    const routeSnapshot = post.route_snapshot;
-    const laneFact = routeSnapshot
-        ? [
-              formatDistance(routeSnapshot.distance_meters),
-              formatDuration(routeSnapshot.duration_seconds),
-          ]
-              .filter(Boolean)
-              .join(' · ')
-        : 'Not calculated';
-
-    // "T00:00:00" so the ISO date lands on the same day in every timezone.
-    const pickupValue = post.pickup_date
-        ? new Date(`${post.pickup_date}T00:00:00`).toLocaleDateString(
-              undefined,
-              { day: 'numeric', month: 'short', year: 'numeric' },
-          )
-        : 'Flexible';
-
-    const pickupSub =
-        [
-            post.pickup_time ? post.pickup_time.slice(0, 5) : '',
-            post.pickup_date_flexibility_days
-                ? `±${post.pickup_date_flexibility_days} days`
-                : '',
-        ]
-            .filter(Boolean)
-            .join(' · ') || undefined;
-
-    // Truck and cargo type moved to the details card and the badge above; the
-    // subtitle is only the lane's regions now, rather than the whole post again.
     const regionLine = [post.origin?.region_name, post.destination?.region_name]
         .filter(Boolean)
         .join(' → ');
@@ -366,28 +301,8 @@ export default function FreightShow({
                                 )}
                             </div>
 
-                            {/* The three facts a carrier decides on — the money,
-                                the lane, the window — promoted out of the rows
-                                below. The tariff used to be typeset the same as
-                                a coordinate pair. */}
-                            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                <Stat
-                                    peak
-                                    label="Tariff"
-                                    value={
-                                        post.tariff_amount
-                                            ? `${post.tariff_currency ?? 'ETB'} ${post.tariff_amount}`
-                                            : 'Not stated'
-                                    }
-                                />
-                                <Stat label="Route" value={laneFact} />
-                                <Stat
-                                    label="Pickup"
-                                    value={pickupValue}
-                                    sub={pickupSub}
-                                />
-                            </div>
-
+                            {/* The three facts a carrier decides on now live at
+                                the top of the Freight Details card. */}
                             <div className="grid items-start gap-6 lg:grid-cols-12">
                                 {/* Wide: Freight Details on the left, Consignor Poster
                                     with the action buttons on the right. Compact: they
