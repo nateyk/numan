@@ -31,6 +31,7 @@ class Profile extends Model
         'account_type',
         'display_name',
         'phone',
+        'whatsapp',
         'primary_location_id',
         // Contact visibility lives here rather than on transporter_profiles so
         // that a consignor can refuse publication too. It used to exist only for

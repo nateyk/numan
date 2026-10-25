@@ -28,6 +28,7 @@ import { Building2, MapPin, Truck } from 'lucide-react';
 interface Details {
     display_name: string | null;
     phone: string | null;
+    whatsapp: string | null;
     primary_location_id: number | null;
     phone_visible: boolean;
     whatsapp_visible: boolean;
@@ -59,6 +60,7 @@ export default function MarketplaceDetailsPage({
         {
             display_name: profile.display_name ?? '',
             phone: profile.phone ?? '',
+            whatsapp: profile.whatsapp ?? '',
             primary_location_id: profile.primary_location_id
                 ? String(profile.primary_location_id)
                 : NO_SELECTION,
@@ -78,13 +80,6 @@ export default function MarketplaceDetailsPage({
 
     const actsInMarketplace =
         capabilities.posts_freight || capabilities.provides_transport;
-
-    // Both are always sent, so turning one off leaves the other alone. Neither is
-    // a meaningful state, so the server rejects it and the user picks at least one.
-    const capabilityForm = useForm({
-        posts_freight: capabilities.posts_freight,
-        provides_transport: capabilities.provides_transport,
-    });
 
     // Straight from MarketplaceReadiness. Recomputing it here is how the page and
     // the gate end up disagreeing about whether somebody is ready.
@@ -201,6 +196,43 @@ export default function MarketplaceDetailsPage({
                             </div>
 
                             <div className="grid gap-1.5">
+                                <Label htmlFor="whatsapp">
+                                    {t(
+                                        'marketplace_details.whatsapp',
+                                        'WhatsApp number',
+                                    )}
+                                </Label>
+                                <Input
+                                    id="whatsapp"
+                                    inputMode="tel"
+                                    value={data.whatsapp}
+                                    onChange={(e) =>
+                                        setData('whatsapp', e.target.value)
+                                    }
+                                    aria-invalid={!!errors.whatsapp}
+                                    aria-describedby={
+                                        errors.whatsapp
+                                            ? 'whatsapp-error'
+                                            : undefined
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {t(
+                                        'marketplace_details.whatsapp_hint',
+                                        'Optional. Adds a WhatsApp button when someone reveals your contact.',
+                                    )}
+                                </p>
+                                {errors.whatsapp && (
+                                    <p
+                                        id="whatsapp-error"
+                                        className="text-sm text-destructive"
+                                    >
+                                        {errors.whatsapp}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="grid gap-1.5">
                                 <Label htmlFor="primary_location_id">
                                     {t(
                                         'marketplace_details.location',
@@ -258,7 +290,7 @@ export default function MarketplaceDetailsPage({
                             <CardDescription>
                                 {t(
                                     'marketplace_details.visibility_description',
-                                    'Your details are only released to someone you have a live conversation with, and every release is recorded. These switches decide whether the number goes out when that happens.',
+                                    'Your details are released to a signed-in person when they choose to reveal them, and every release is recorded. These switches decide which channels can go out.',
                                 )}
                             </CardDescription>
                         </CardHeader>

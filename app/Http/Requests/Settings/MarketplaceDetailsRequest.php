@@ -48,6 +48,15 @@ class MarketplaceDetailsRequest extends FormRequest
                 'regex:/^\+?[0-9\s\-()]{6,32}$/',
             ],
 
+            'whatsapp' => [
+                'nullable',
+                'string',
+                'max:32',
+                // Optional: not everyone uses WhatsApp, and a consignor with no
+                // number simply has no WhatsApp action on their listing.
+                'regex:/^\+?[0-9\s\-()]{6,32}$/',
+            ],
+
             'primary_location_id' => [
                 'nullable',
                 'integer',
@@ -69,6 +78,7 @@ class MarketplaceDetailsRequest extends FormRequest
             'display_name.required' => 'Enter the name people will see when you post or offer a load.',
             'phone.required' => 'Enter a phone number — it is how a counterparty reaches you.',
             'phone.regex' => 'That does not look like a phone number.',
+            'whatsapp.regex' => 'That does not look like a WhatsApp number.',
             'primary_location_id.exists' => 'That location does not exist.',
         ];
     }

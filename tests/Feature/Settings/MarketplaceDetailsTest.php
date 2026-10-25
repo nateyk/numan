@@ -67,6 +67,42 @@ it('saves the details onto the profile', function () {
         ->and((bool) $profile->phone_visible)->toBeTrue();
 });
 
+it('saves a WhatsApp number separately from the phone', function () {
+    $user = detailsUser();
+
+    $this->actingAs($user)
+        ->patch('/settings/marketplace-details', [
+            'display_name' => 'WhatsApp Consignor',
+            'phone' => '+251911000006',
+            'whatsapp' => '+251922000007',
+            'phone_visible' => '1',
+            'whatsapp_visible' => '1',
+        ])
+        ->assertRedirect(route('settings.marketplace-details.edit'));
+
+    expect(Profile::where('user_id', $user->id)->value('whatsapp'))
+        ->toBe('+251922000007');
+
+    $this->actingAs($user)
+        ->get('/settings/marketplace-details')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('profile.whatsapp', '+251922000007')
+        );
+});
+
+it('rejects a WhatsApp number that is not a phone number', function () {
+    $user = detailsUser(['posts_freight' => true]);
+
+    $this->actingAs($user)
+        ->patch('/settings/marketplace-details', [
+            'display_name' => 'Someone',
+            'phone' => '+251911000007',
+            'whatsapp' => 'message me maybe',
+        ])
+        ->assertSessionHasErrors('whatsapp');
+});
+
 it('treats an absent checkbox as a refusal, not as consent', function () {
     // A checkbox that is not ticked is not submitted at all. Reading absence as
     // "keep the default of true" would mean clearing the box and pressing save

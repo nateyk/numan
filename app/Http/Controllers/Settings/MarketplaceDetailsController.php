@@ -47,6 +47,7 @@ class MarketplaceDetailsController extends Controller
             'profile' => [
                 'display_name' => $profile->display_name,
                 'phone' => $profile->phone,
+                'whatsapp' => $profile->whatsapp,
                 'primary_location_id' => $profile->primary_location_id,
                 'phone_visible' => (bool) $profile->phone_visible,
                 'whatsapp_visible' => (bool) $profile->whatsapp_visible,
@@ -78,6 +79,7 @@ class MarketplaceDetailsController extends Controller
         $profile->update([
             'display_name' => $data['display_name'] ?? null,
             'phone' => $data['phone'] ?? null,
+            'whatsapp' => $data['whatsapp'] ?? null,
             'primary_location_id' => $data['primary_location_id'] ?? null,
 
             // A checkbox that was never ticked arrives absent, not false. Treating
