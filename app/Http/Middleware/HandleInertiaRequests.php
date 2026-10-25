@@ -148,6 +148,10 @@ class HandleInertiaRequests extends Middleware
             // there is none to give.
             'reveal_blocked' => $request->session()->get('reveal_blocked'),
 
+            'marketplace' => [
+                'interests_enabled' => (bool) config('marketplace.interests_enabled'),
+            ],
+
             // The contact released by the action the user just took, so it
             // survives the redirect back.
             'revealed_contact' => $request->session()->get('revealed_contact'),

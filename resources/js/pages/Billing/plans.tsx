@@ -280,11 +280,6 @@ export default function PlansPage({
                                                 ? ''
                                                 : 's'
                                         }`,
-                                        `${formatLimit(free.free_interests_per_week)} interest${
-                                            free.free_interests_per_week === 1
-                                                ? ''
-                                                : 's'
-                                        } per week`,
                                         `${formatLimit(free.free_contact_reveals_per_week)} contact reveal${
                                             free.free_contact_reveals_per_week ===
                                             1

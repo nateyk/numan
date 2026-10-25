@@ -66,7 +66,12 @@ export function DiscoveryHeader({
     canRegister?: boolean;
 }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const currentUrl = usePage().url.split('?')[0];
+    const page = usePage<SharedData>();
+    const currentUrl = page.url.split('?')[0];
+    const interestsEnabled = page.props.marketplace?.interests_enabled ?? false;
+    const links = interestsEnabled
+        ? navLinks
+        : navLinks.filter((link) => link.label !== 'My Interests');
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
@@ -90,7 +95,7 @@ export function DiscoveryHeader({
                     aria-label="Freight"
                     className="hidden items-center gap-1 md:flex"
                 >
-                    {navLinks.map((link) => (
+                    {links.map((link) => (
                         <Link
                             key={link.href.url}
                             href={link.href}
@@ -113,10 +118,7 @@ export function DiscoveryHeader({
                     </span>
                 </nav>
 
-                <Sheet
-                    open={mobileMenuOpen}
-                    onOpenChange={setMobileMenuOpen}
-                >
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                     <SheetTrigger asChild>
                         <Button
                             variant="ghost"
@@ -127,15 +129,12 @@ export function DiscoveryHeader({
                             <Menu className="size-5" />
                         </Button>
                     </SheetTrigger>
-                    <SheetContent
-                        side="right"
-                        className="flex flex-col gap-4"
-                    >
+                    <SheetContent side="right" className="flex flex-col gap-4">
                         <nav
                             aria-label="Freight"
                             className="flex flex-col gap-1"
                         >
-                            {navLinks.map((link) => (
+                            {links.map((link) => (
                                 <Link
                                     key={link.href.url}
                                     href={link.href}
@@ -169,6 +168,9 @@ export function DiscoveryHeader({
 }
 
 export function DiscoveryFooter() {
+    const { marketplace } = usePage<SharedData>().props;
+    const interestsEnabled = marketplace?.interests_enabled ?? false;
+
     return (
         <footer className="border-t">
             <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:px-6 lg:px-8">
@@ -189,12 +191,14 @@ export function DiscoveryFooter() {
                     >
                         Post a load
                     </Link>
-                    <Link
-                        href={myInterests()}
-                        className="transition-colors hover:text-foreground"
-                    >
-                        My interests
-                    </Link>
+                    {interestsEnabled && (
+                        <Link
+                            href={myInterests()}
+                            className="transition-colors hover:text-foreground"
+                        >
+                            My interests
+                        </Link>
+                    )}
                 </nav>
             </div>
         </footer>

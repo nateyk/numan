@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { freightRoute } from '@/lib/freight-route';
 import type { SharedData } from '@/types';
-import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowRight,
@@ -125,7 +125,8 @@ export default function DiscoverIndex({
     userInterestMap = {},
     marketplaceEntitlement,
 }: Props) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, marketplace } = usePage<SharedData>().props;
+    const interestsEnabled = marketplace?.interests_enabled ?? false;
     const safeFilters = (
         filters && !Array.isArray(filters) ? filters : {}
     ) as Record<string, string>;
@@ -181,27 +182,28 @@ export default function DiscoverIndex({
     const [pendingInterest, setPendingInterest] = useState<Freight | null>(
         null,
     );
-    const {
-        post: postInterest,
-        processing: interestProcessing,
-    } = useForm({ message: '' });
+    const { post: postInterest, processing: interestProcessing } = useForm({
+        message: '',
+    });
     const pendingRoute = pendingInterest ? freightRoute(pendingInterest) : null;
 
     const confirmExpressInterest = () => {
-        if (!pendingInterest) return;
+        if (!interestsEnabled || !pendingInterest) return;
 
         postInterest(`/my-freight/${pendingInterest.ulid}/interests`, {
             preserveScroll: true,
             onFinish: () => setPendingInterest(null),
-            onSuccess: () =>
-                toast.success('Interest expressed successfully.'),
+            onSuccess: () => toast.success('Interest expressed successfully.'),
             onError: (errors) => {
-                const msg = (errors as Record<string, string>).interest ||
+                const msg =
+                    (errors as Record<string, string>).interest ||
                     (Object.values(errors)[0] as string);
                 if (msg) {
                     toast.error(msg);
                     if (
-                        String(msg).toLowerCase().includes('transporter profile')
+                        String(msg)
+                            .toLowerCase()
+                            .includes('transporter profile')
                     ) {
                         setTimeout(
                             () => router.visit('/my-transporter-profile'),
@@ -466,9 +468,11 @@ export default function DiscoverIndex({
                                                                         setSelectedSort(
                                                                             opt.id,
                                                                         );
-                                                                        doSearch({
-                                                                            sort: opt.id,
-                                                                        });
+                                                                        doSearch(
+                                                                            {
+                                                                                sort: opt.id,
+                                                                            },
+                                                                        );
                                                                     }}
                                                                     className={
                                                                         selectedSort ===
@@ -608,9 +612,11 @@ export default function DiscoverIndex({
                                                                         setSelectedCargo(
                                                                             c,
                                                                         );
-                                                                        doSearch({
-                                                                            cargo: c,
-                                                                        });
+                                                                        doSearch(
+                                                                            {
+                                                                                cargo: c,
+                                                                            },
+                                                                        );
                                                                     }}
                                                                     className={
                                                                         selectedCargo ===
@@ -752,25 +758,25 @@ export default function DiscoverIndex({
                                             safeFreight.data.length}{' '}
                                         of {resultTotal} results
                                     </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {updatingResults ? (
-                                        <>Updating results…</>
-                                    ) : (
-                                        <>
-                                            {'Sorted by '}
-                                            {
-                                                sortOptions.find(
-                                                    (s) =>
-                                                        s.id ===
-                                                        getStringFilter(
-                                                            'sort',
-                                                            'latest',
-                                                        ),
-                                                )?.label
-                                            }
-                                        </>
-                                    )}
-                                </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {updatingResults ? (
+                                            <>Updating results…</>
+                                        ) : (
+                                            <>
+                                                {'Sorted by '}
+                                                {
+                                                    sortOptions.find(
+                                                        (s) =>
+                                                            s.id ===
+                                                            getStringFilter(
+                                                                'sort',
+                                                                'latest',
+                                                            ),
+                                                    )?.label
+                                                }
+                                            </>
+                                        )}
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -900,8 +906,9 @@ export default function DiscoverIndex({
                                                       snapshot.duration_seconds,
                                                   )
                                                 : '';
-                                        const interest =
-                                            safeInterestMap?.[f.id];
+                                        const interest = interestsEnabled
+                                            ? safeInterestMap?.[f.id]
+                                            : undefined;
                                         const titleId = `freight-${f.ulid}-title`;
                                         return (
                                             <Card
@@ -965,7 +972,9 @@ export default function DiscoverIndex({
                                                             {(distanceText ||
                                                                 durationText) && (
                                                                 <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-                                                                    {distanceText}
+                                                                    {
+                                                                        distanceText
+                                                                    }
                                                                     {distanceText &&
                                                                         durationText && (
                                                                             <span
@@ -975,7 +984,9 @@ export default function DiscoverIndex({
                                                                                 ·
                                                                             </span>
                                                                         )}
-                                                                    {durationText}
+                                                                    {
+                                                                        durationText
+                                                                    }
                                                                 </span>
                                                             )}
                                                             {f.owner && (
@@ -1167,7 +1178,7 @@ export default function DiscoverIndex({
                                                                 ? interest.status
                                                                 : 'Leave'}
                                                         </Button>
-                                                    ) : (
+                                                    ) : interestsEnabled ? (
                                                         <Button
                                                             variant="secondary"
                                                             className="h-8 flex-1 text-xs"
@@ -1188,7 +1199,7 @@ export default function DiscoverIndex({
                                                         >
                                                             Express Interest
                                                         </Button>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </Card>
                                         );
@@ -1254,7 +1265,7 @@ export default function DiscoverIndex({
                 </main>
 
                 <Dialog
-                    open={pendingInterest !== null}
+                    open={interestsEnabled && pendingInterest !== null}
                     onOpenChange={(open) => {
                         if (!open && !interestProcessing) {
                             setPendingInterest(null);

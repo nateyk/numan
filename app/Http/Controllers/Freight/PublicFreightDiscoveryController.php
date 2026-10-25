@@ -172,22 +172,25 @@ class PublicFreightDiscoveryController extends Controller
 
         Gate::authorize('view', $post);
 
-        // Check if current user has already expressed interest
+        // Interest state is only collected when the loop is enabled. The board
+        // reveal below is independent of it.
         $user = $request->user();
+        $interestsEnabled = (bool) config('marketplace.interests_enabled');
         $hasInterest = false;
         $interestStatus = null;
         $interestId = null;
         $interestsCount = 0;
-        if ($user) {
+
+        if ($user && $interestsEnabled) {
             $interest = FreightInterest::where('freight_post_id', $post->id)->where('user_id', $user->id)->first();
             if ($interest) {
                 $hasInterest = true;
                 $interestStatus = $interest->status;
-                // The id, not just the fact. The page needs it to POST the reveal,
-                // and "hasInterest => true" alone cannot produce that URL.
+                // The id, not just the fact. The page needs it for the
+                // flag-on withdraw and re-express actions.
                 $interestId = (int) $interest->id;
             }
-            // For owner, provide interests count
+
             if ($user->id === $post->user_id) {
                 $interestsCount = FreightInterest::where('freight_post_id', $post->id)->count();
             }
@@ -196,21 +199,25 @@ class PublicFreightDiscoveryController extends Controller
         // Whether this viewer may reveal the consignor's contact from this page,
         // and what is already revealed.
         //
-        // canReveal() returns true when the viewer and the counterparty are the same
-        // person, so it is forced false for the owner: a "Reveal contact" button
-        // aimed at somebody revealing their own number is nonsense, and the owner
-        // gets an Edit action instead.
+        // The listing itself is the context: a signed-in non-owner may reveal
+        // without expressing interest. canReveal() still returns true when the
+        // viewer and the counterparty are the same person, so it is forced false
+        // for the owner — the owner gets an Edit action instead.
         $canReveal = false;
         $revealedContacts = null;
 
         if ($user && $user->id !== $post->user_id && $post->user) {
-            $canReveal = $this->reveals->canReveal($user, $post->user);
+            $canReveal = $this->reveals->canReveal($user, $post->user, $post);
 
             // Read-only. contactIfAlreadyRevealed() never records a reveal, so
             // loading this page cannot consume anybody's quota.
             $revealedContacts = $canReveal
-                ? $this->reveals->contactIfAlreadyRevealed($user, $post->user, $interest ?? null)
+                ? $this->reveals->contactIfAlreadyRevealed($user, $post->user, $post)
                 : null;
+        }
+
+        if (! $interestsEnabled) {
+            $interestsCount = null;
         }
 
         $marketplaceEntitlement = null;

@@ -465,8 +465,8 @@ export default function BillingIndex({
                                             Unlock more power
                                         </p>
                                         <p className="mb-6 px-6 text-sm leading-relaxed text-muted-foreground">
-                                            Unlimited freight posts, interests
-                                            and contact reveals, paid in ETB.
+                                            Unlimited freight posts and contact
+                                            reveals, paid in ETB.
                                         </p>
                                         <Button
                                             asChild

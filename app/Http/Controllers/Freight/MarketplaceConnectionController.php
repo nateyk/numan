@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Freight;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ConnectionResource;
 use App\Models\FreightInterest;
+use App\Models\FreightPost;
 use App\Models\MarketplaceConnection;
 use App\Models\User;
 use App\Services\ContactRevealService;
@@ -128,6 +129,40 @@ class MarketplaceConnectionController extends Controller
         }
 
         return $this->performReveal($request, $viewer, $counterparty, $interest);
+    }
+
+    /**
+     * Reveal the consignor's contact directly from a listing.
+     *
+     * The counterparty is the listing's owner. The hidden-post rule mirrors the
+     * public detail page: a lapsed-plan listing 404s for everyone except its
+     * owner and a superadmin. An owner POSTing their own reveal is refused
+     * after that check — the UI never offers it, and serving their own contact
+     * through a metered endpoint would make a nonsense ledger row.
+     */
+    public function revealFromPost(Request $request, string $ulid): RedirectResponse|JsonResponse
+    {
+        $post = FreightPost::with('user.profile')->where('ulid', $ulid)->firstOrFail();
+
+        $viewer = $request->user();
+
+        if ($post->isHidden() && ! ($viewer?->is_superadmin || $viewer?->id === $post->user_id)) {
+            abort(404);
+        }
+
+        Gate::authorize('view', $post);
+
+        $counterparty = $post->user;
+
+        if (! $counterparty || $viewer->id === $counterparty->id) {
+            abort(403);
+        }
+
+        if ($missing = $this->missingPhoneStep($request)) {
+            return $missing;
+        }
+
+        return $this->performReveal($request, $viewer, $counterparty, $post);
     }
 
     /**

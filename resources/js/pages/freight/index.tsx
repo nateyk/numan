@@ -42,6 +42,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
 import { freightRoute, routeLabel } from '@/lib/freight-route';
+import { type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
@@ -141,10 +142,13 @@ export default function FreightIndex({
     livePostLimit = -1,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
-    const { errors, flash } = usePage().props as unknown as {
+    const { errors, flash, marketplace } = usePage<SharedData>()
+        .props as unknown as {
         errors: Record<string, string>;
         flash?: { success?: string | null };
+        marketplace?: { interests_enabled?: boolean };
     };
+    const interestsEnabled = marketplace?.interests_enabled ?? false;
     // Open the limit dialog right away if the server just bounced a create
     // (e.g. the quota filled between page load and clicking Post).
     const [limitDialogOpen, setLimitDialogOpen] = useState(
@@ -630,24 +634,25 @@ export default function FreightIndex({
                                                                             </Link>
                                                                         </DropdownMenuItem>
                                                                     )}
-                                                                    {!isDraft && (
-                                                                        <DropdownMenuItem
-                                                                            asChild
-                                                                        >
-                                                                            <Link
-                                                                                href={`/my-freight/${p.ulid}/interests`}
-                                                                                className="cursor-pointer"
+                                                                    {interestsEnabled &&
+                                                                        !isDraft && (
+                                                                            <DropdownMenuItem
+                                                                                asChild
                                                                             >
-                                                                                <Users className="mr-2 size-4" />{' '}
-                                                                                Interests
-                                                                                (
-                                                                                {p.interests_count ??
-                                                                                    ''}
+                                                                                <Link
+                                                                                    href={`/my-freight/${p.ulid}/interests`}
+                                                                                    className="cursor-pointer"
+                                                                                >
+                                                                                    <Users className="mr-2 size-4" />{' '}
+                                                                                    Interests
+                                                                                    (
+                                                                                    {p.interests_count ??
+                                                                                        ''}
 
-                                                                                )
-                                                                            </Link>
-                                                                        </DropdownMenuItem>
-                                                                    )}
+                                                                                    )
+                                                                                </Link>
+                                                                            </DropdownMenuItem>
+                                                                        )}
                                                                     <DropdownMenuSeparator />
                                                                     {canDelete && (
                                                                         <DropdownMenuItem
@@ -920,9 +925,8 @@ export default function FreightIndex({
                                 Delete freight post?
                             </DialogTitle>
                             <DialogDescription>
-                                {deleteTarget?.label ?? 'This post'} and its
-                                interests will be permanently removed. This
-                                cannot be undone.
+                                {deleteTarget?.label ?? 'This post'} will be
+                                permanently removed. This cannot be undone.
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter className="gap-2">

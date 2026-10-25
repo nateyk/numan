@@ -32,7 +32,7 @@ interface Props {
     post: FreightDetailsPost & { owner: PostOwner };
     hasInterest: boolean;
     interestStatus: string | null;
-    /** Needed to build the reveal URL. Absent means no interest, so no button. */
+    /** Needed for the flag-on withdraw action, never for the reveal. */
     interestId: number | null;
     canReveal: boolean;
     revealedContacts: RevealedContacts;
@@ -82,9 +82,11 @@ export default function FreightShow({
 }: Props) {
     const {
         auth,
+        marketplace,
         reveal_blocked: revealBlocked,
         requires_phone: requiresPhone,
     } = usePage<SharedData>().props;
+    const interestsEnabled = marketplace?.interests_enabled ?? false;
     const [interestOpen, setInterestOpen] = useState(false);
     const [withdrawOpen, setWithdrawOpen] = useState(false);
 
@@ -119,13 +121,10 @@ export default function FreightShow({
 
     // Withdrawal is confirmed first, the way the interests page confirms the
     // carrier-facing side of the same action.
-    const { post: postWithdraw, processing: withdrawProcessing } =
-        useForm({});
+    const { post: postWithdraw, processing: withdrawProcessing } = useForm({});
 
     const handleReveal = () => {
-        if (interestId === null) return;
-
-        postReveal(`/interests/${interestId}/reveal`, {
+        postReveal(`/freight/${post.ulid}/reveal`, {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success('Contact revealed.');
@@ -320,89 +319,98 @@ export default function FreightShow({
                                         canReveal={canReveal}
                                         revealedContacts={revealedContacts}
                                         revealBlocked={blocked}
-                                        interestId={interestId}
                                         requiresPhone={requiresPhone}
                                         onRevealed={handleReveal}
                                         processing={revealProcessing}
                                         isOwnPost={isOwnPost}
                                         interestsCount={interestsCount}
+                                        interestsEnabled={interestsEnabled}
                                     />
 
                                     {/* On its own column so the primary call to action is
                                         not buried under a dozen detail rows. */}
-                                    {isOwnPost ? (
-                                        <>
-                                            <Button
-                                                variant="outline"
-                                                className="w-full"
-                                                asChild
+                                    {isOwnPost && (
+                                        <Button
+                                            variant="outline"
+                                            className="w-full"
+                                            asChild
+                                        >
+                                            <Link
+                                                href={`/my-freight/${post.ulid}`}
                                             >
-                                                <Link
-                                                    href={`/my-freight/${post.ulid}`}
-                                                >
-                                                    Manage Your Post
-                                                </Link>
-                                            </Button>
-                                        </>
-                                    ) : hasInterest ? (
+                                                Manage Your Post
+                                            </Link>
+                                        </Button>
+                                    )}
+
+                                    {!isOwnPost && interestsEnabled && (
                                         <>
-                                            <p
-                                                role="status"
-                                                className="rounded-md border bg-muted/30 px-4 py-3 text-sm"
-                                            >
-                                                {interestStatusCopy[
-                                                    interestStatus ?? ''
-                                                ] ??
-                                                    interestStatusCopy.submitted}
-                                            </p>
-                                            {canWithdraw && (
-                                                <Button
+                                            {hasInterest ? (
+                                                <>
+                                                    <p
+                                                        role="status"
+                                                        className="rounded-md border bg-muted/30 px-4 py-3 text-sm"
+                                                    >
+                                                        {interestStatusCopy[
+                                                            interestStatus ?? ''
+                                                        ] ??
+                                                            interestStatusCopy.submitted}
+                                                    </p>
+                                                    {canWithdraw && (
+                                                        <Button
+                                                            variant="outline"
+                                                            className="w-full"
+                                                            onClick={() =>
+                                                                setWithdrawOpen(
+                                                                    true,
+                                                                )
+                                                            }
+                                                        >
+                                                            Withdraw Interest
+                                                        </Button>
+                                                    )}
+                                                    {canReExpress && (
+                                                        <Button
+                                                            className="w-full"
+                                                            onClick={
+                                                                handleExpressInterest
+                                                            }
+                                                        >
+                                                            Express Interest
+                                                            Again
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="w-full"
+                                                        asChild
+                                                    >
+                                                        <Link href="/my-interests">
+                                                            <Users className="mr-1 size-4" />{' '}
+                                                            My Interests
+                                                        </Link>
+                                                    </Button>
+                                                </>
+                                            ) : post.status !== 'active' ? (
+                                                <Badge
                                                     variant="outline"
-                                                    className="w-full"
-                                                    onClick={() =>
-                                                        setWithdrawOpen(true)
-                                                    }
+                                                    className="justify-center py-2 capitalize"
                                                 >
-                                                    Withdraw Interest
-                                                </Button>
-                                            )}
-                                            {canReExpress && (
+                                                    Freight {post.status} — not
+                                                    available for interest
+                                                </Badge>
+                                            ) : (
                                                 <Button
-                                                    className="w-full"
                                                     onClick={
                                                         handleExpressInterest
                                                     }
+                                                    className="w-full"
+                                                    size="lg"
                                                 >
-                                                    Express Interest Again
+                                                    Express Interest
                                                 </Button>
                                             )}
-                                            <Button
-                                                variant="ghost"
-                                                className="w-full"
-                                                asChild
-                                            >
-                                                <Link href="/my-interests">
-                                                    <Users className="mr-1 size-4" />{' '}
-                                                    My Interests
-                                                </Link>
-                                            </Button>
                                         </>
-                                    ) : post.status !== 'active' ? (
-                                        <Badge
-                                            variant="outline"
-                                            className="justify-center py-2 capitalize"
-                                        >
-                                            Freight {post.status} — not
-                                            available for interest
-                                        </Badge>
-                                    ) : (
-                                        <Button
-                                            onClick={handleExpressInterest}
-                                            className="w-full"
-                                            size="lg"
-                                        >
-                                            Express Interest
-                                        </Button>
                                     )}
 
                                     {/* One dialog serves both triggers — the
@@ -410,7 +418,7 @@ export default function FreightShow({
                                         after a rejection or withdrawal — since
                                         they POST to the same endpoint. */}
                                     <Dialog
-                                        open={interestOpen}
+                                        open={interestsEnabled && interestOpen}
                                         onOpenChange={setInterestOpen}
                                     >
                                         {(canSubmitInterest ||
@@ -429,9 +437,8 @@ export default function FreightShow({
                                                         Send the consignor a
                                                         short message — your
                                                         profile contact details
-                                                        are shared only when
-                                                        you choose to reveal
-                                                        them.
+                                                        are shared only when you
+                                                        choose to reveal them.
                                                     </DialogDescription>
                                                 </DialogHeader>
 
@@ -525,7 +532,7 @@ export default function FreightShow({
                                     </Dialog>
 
                                     <Dialog
-                                        open={withdrawOpen}
+                                        open={interestsEnabled && withdrawOpen}
                                         onOpenChange={setWithdrawOpen}
                                     >
                                         <DialogContent className="sm:max-w-md">
@@ -534,11 +541,10 @@ export default function FreightShow({
                                                     Withdraw your interest?
                                                 </DialogTitle>
                                                 <DialogDescription>
-                                                    The consignor will see
-                                                    your interest as
-                                                    withdrawn. You can express
-                                                    interest again later, but
-                                                    it starts fresh.
+                                                    The consignor will see your
+                                                    interest as withdrawn. You
+                                                    can express interest again
+                                                    later, but it starts fresh.
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <DialogFooter>

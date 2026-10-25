@@ -28,6 +28,7 @@ import { useMemo } from 'react';
 const getMainNavItems = (
     t: (key: string, fallback: string) => string,
     isSuperadmin: boolean = false,
+    interestsEnabled: boolean = false,
 ): NavItem[] => {
     const items = [
         {
@@ -45,11 +46,15 @@ const getMainNavItems = (
             href: '/freight',
             icon: Search,
         },
-        {
-            title: t('navigation.my_interests', 'My Interests'),
-            href: '/my-interests',
-            icon: Heart,
-        },
+        ...(interestsEnabled
+            ? [
+                  {
+                      title: t('navigation.my_interests', 'My Interests'),
+                      href: '/my-interests',
+                      icon: Heart,
+                  },
+              ]
+            : []),
         {
             title: t('navigation.usage', 'Usage'),
             href: '/usage',
@@ -86,12 +91,13 @@ const getFooterNavItems = (
 
 export function AppSidebar() {
     const { t, i18n } = useTranslations();
-    const { auth } = usePage<SharedData>().props;
+    const { auth, marketplace } = usePage<SharedData>().props;
     const isSuperadmin = auth.user.is_superadmin === true;
+    const interestsEnabled = marketplace?.interests_enabled ?? false;
 
     const mainNavItems = useMemo(
-        () => getMainNavItems(t, isSuperadmin),
-        [t, isSuperadmin],
+        () => getMainNavItems(t, isSuperadmin, interestsEnabled),
+        [t, isSuperadmin, interestsEnabled],
     );
     const footerNavItems = useMemo(() => getFooterNavItems(t), [t]);
 

@@ -10,8 +10,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Link } from '@inertiajs/react';
-import { AlertCircle, Eye, ShieldCheck, User } from 'lucide-react';
+import { type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
+import { AlertCircle, Eye, LogIn, ShieldCheck, User } from 'lucide-react';
 import { useState } from 'react';
 
 /**
@@ -33,6 +34,7 @@ export type RevealedContacts = {
     name?: string | null;
     phone: string | null;
     email: string | null;
+    whatsapp?: string | null;
 } | null;
 
 export type RevealBlocked = {
@@ -54,6 +56,29 @@ function initialsFor(name: string | null): string {
         .map((part) => part[0])
         .join('')
         .toUpperCase();
+}
+
+/**
+ * Turn a stored number into a wa.me URL.
+ *
+ * Ethiopian numbers arrive in three shapes: +251…, 0…, and a bare 9… or 7….
+ * wa.me wants digits only, without a leading zero. International numbers are
+ * left alone apart from stripping their punctuation.
+ */
+function whatsappHref(raw: string): string {
+    let digits = raw.replace(/\D/g, '');
+
+    if (digits.startsWith('00')) {
+        digits = digits.slice(2);
+    }
+
+    if (digits.startsWith('0')) {
+        digits = `251${digits.slice(1)}`;
+    } else if (digits.length === 9 && /^[79]/.test(digits)) {
+        digits = `251${digits}`;
+    }
+
+    return `https://wa.me/${digits}`;
 }
 
 function VerificationBadge({ owner }: { owner: PostOwner }) {
@@ -86,28 +111,34 @@ function VerificationBadge({ owner }: { owner: PostOwner }) {
  * is allowed — that is the metered endpoint's job — this only offers the button when
  * the server says the viewer is eligible.
  *
- * When the viewer is not eligible the block renders nothing at all rather than a
- * "contact hidden" placeholder. A placeholder teaches people that a number lives
- * behind it, and on this page the number usually does not.
+ * A guest gets a sign-in link, not a "contact hidden" placeholder. The page is
+ * public, the contact is not, and the way forward is an account.
  */
 function ContactBlock({
     revealedContacts,
     canReveal,
-    interestId,
+    isOwnPost,
     requiresPhone,
     onRevealed,
     processing,
 }: {
     revealedContacts: RevealedContacts;
     canReveal: boolean;
-    interestId: number | null;
+    isOwnPost: boolean;
     requiresPhone: boolean;
     onRevealed: () => void;
     processing: boolean;
 }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const page = usePage<SharedData>();
+    const isGuest = !page.props.auth?.user;
 
     if (revealedContacts) {
+        const hasChannel =
+            revealedContacts.phone ||
+            revealedContacts.whatsapp ||
+            revealedContacts.email;
+
         return (
             <div className="space-y-1 rounded-md border bg-muted/30 p-3 text-sm">
                 {revealedContacts.phone && (
@@ -121,54 +152,66 @@ function ContactBlock({
                         </a>
                     </p>
                 )}
+                {revealedContacts.whatsapp && (
+                    <p>
+                        <span className="text-muted-foreground">WhatsApp</span>{' '}
+                        <a
+                            className="font-medium underline-offset-4 hover:underline"
+                            href={whatsappHref(revealedContacts.whatsapp)}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            {revealedContacts.whatsapp}
+                        </a>
+                    </p>
+                )}
                 {revealedContacts.email && (
                     <p className="break-all">
                         <span className="text-muted-foreground">Email</span>{' '}
-                        {revealedContacts.email}
+                        <a
+                            className="font-medium underline-offset-4 hover:underline"
+                            href={`mailto:${revealedContacts.email}`}
+                        >
+                            {revealedContacts.email}
+                        </a>
                     </p>
                 )}
-                {!revealedContacts.phone && !revealedContacts.email && (
+                {!hasChannel && (
                     <p className="text-muted-foreground">
-                        No phone or email on this profile, so transporters
-                        cannot reach you.
+                        This consignor has not shared a contact method yet.
                     </p>
                 )}
             </div>
         );
     }
 
-    // interestId is required, not optional: without it there is no URL to POST to,
-    // so a button here would be decoration.
-    if (canReveal && interestId !== null) {
-        // The reveal hands over a phone, so the viewer needs one too. The server
-        // keeps a missing phone as a redirect-with-flash rather than a hard
-        // block, and this is where that flash lands: an inline step with the
-        // field that fixes it — not a toast fired at a page with nowhere to
-        // put the number.
-        if (requiresPhone) {
-            return (
-                <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
-                    <p className="font-medium">
-                        Add your phone number to reveal this contact.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                        A consignor who calls you back needs a number that
-                        reaches you.
-                    </p>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        asChild
-                    >
-                        <Link href="/settings/marketplace-details">
-                            Add phone number
-                        </Link>
-                    </Button>
-                </div>
-            );
-        }
+    if (isOwnPost) {
+        return null;
+    }
 
+    // The reveal hands over a phone, so the viewer needs one too. The server
+    // keeps a missing phone as a redirect-with-flash rather than a hard block,
+    // and this is where that flash lands: an inline step with the field that
+    // fixes it — not a toast fired at a page with nowhere to put the number.
+    if (canReveal && requiresPhone) {
+        return (
+            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+                <p className="font-medium">
+                    Add your phone number to reveal this contact.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    We ask for a number before you see someone else’s.
+                </p>
+                <Button size="sm" variant="outline" className="w-full" asChild>
+                    <Link href="/settings/marketplace-details">
+                        Add phone number
+                    </Link>
+                </Button>
+            </div>
+        );
+    }
+
+    if (canReveal) {
         // The signature transaction, weighted like one: a primary action that
         // confirms before spending a scarce reveal.
         return (
@@ -188,9 +231,8 @@ function ContactBlock({
                                 Reveal this consignor’s contact?
                             </DialogTitle>
                             <DialogDescription>
-                                This uses one of your contact reveals and
-                                shares your phone number with them so they
-                                can call you back.
+                                This uses one of your contact reveals and shows
+                                the consignor’s phone, WhatsApp and email.
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>
@@ -213,14 +255,28 @@ function ContactBlock({
                     </DialogContent>
                 </Dialog>
                 <p className="text-xs text-muted-foreground">
-                    Uses one of your contact reveals. Your phone number is
-                    shared with this consignor when you do.
+                    Uses one of your contact reveals. Reopening this listing
+                    later does not spend another.
                 </p>
             </div>
         );
     }
 
-    return null;
+    if (!isGuest) {
+        return null;
+    }
+
+    return (
+        <Button variant="outline" className="w-full" asChild>
+            <Link
+                href={`/login?redirect=${encodeURIComponent(
+                    page.url.split('?')[0],
+                )}`}
+            >
+                <LogIn className="mr-2 size-4" /> Sign in to view contact
+            </Link>
+        </Button>
+    );
 }
 
 export default function ConsignorPosterCard({
@@ -229,25 +285,25 @@ export default function ConsignorPosterCard({
     canReveal,
     revealedContacts,
     revealBlocked,
-    interestId,
     requiresPhone = false,
     onRevealed,
     processing,
     isOwnPost,
     interestsCount,
+    interestsEnabled = false,
 }: {
     owner: PostOwner;
     ulid: string;
     canReveal: boolean;
     revealedContacts: RevealedContacts;
     revealBlocked: RevealBlocked;
-    interestId: number | null;
     /** Session flash from the reveal endpoint — the viewer has no phone of their own. */
     requiresPhone?: boolean;
     onRevealed: () => void;
     processing: boolean;
     isOwnPost: boolean;
     interestsCount: number | null;
+    interestsEnabled?: boolean;
 }) {
     return (
         <Card>
@@ -278,18 +334,15 @@ export default function ConsignorPosterCard({
                 <ContactBlock
                     revealedContacts={revealedContacts}
                     canReveal={canReveal}
-                    interestId={interestId}
+                    isOwnPost={isOwnPost}
                     requiresPhone={requiresPhone}
                     onRevealed={onRevealed}
                     processing={processing}
                 />
 
-                {/* Only where a reveal button could exist: interestId is the
-                    condition under which ContactBlock can render at all, and a
-                    contact already on screen needs no quota warning. Without
-                    these gates the card nagged anonymous visitors about a
-                    quota they cannot hold. */}
-                {revealBlocked && interestId !== null && !revealedContacts && (
+                {/* Only where a reveal is possible: a contact already on screen
+                    needs no quota warning, and a guest cannot hold a quota. */}
+                {canReveal && revealBlocked && !revealedContacts && (
                     <p className="flex items-start gap-2 text-xs text-destructive">
                         <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                         <span>
@@ -306,7 +359,7 @@ export default function ConsignorPosterCard({
                     </p>
                 )}
 
-                {isOwnPost && (
+                {isOwnPost && interestsEnabled && (
                     <>
                         <Separator />
                         <div className="flex items-center gap-2 rounded-md bg-muted/30 p-3">

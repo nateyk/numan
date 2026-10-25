@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ContactReveal;
 use App\Models\ContactRevealBlock;
 use App\Models\FreightInterest;
+use App\Models\FreightPost;
 use App\Models\MarketplaceConnection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -15,8 +16,10 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Decides whether one user may see another user's contact details.
  *
- * Gated on a real relationship: a live interest or an existing connection
- * between the two users. Metering is layered on top without changing the gate.
+ * Gated on a real relationship: a live interest, an existing connection, or a
+ * freight listing owned by the counterparty. Metering is layered on top without
+ * changing the gate. The listing branch is context-scoped, so it cannot widen
+ * the interest or connection endpoints.
  *
  * Contact details come from the person's profile and transporter profile, with
  * the legacy per-interest phone as a last resort. Bank columns are never read.
@@ -81,10 +84,18 @@ class ContactRevealService
 
     /**
      * Is this user entitled to see the other's contact details?
+     *
+     * $context is the listing, interest or connection the reveal came from. A
+     * listing opens the gate only when it belongs to the counterparty; passing
+     * somebody else's post must not reveal a third party.
      */
-    public function canReveal(User $viewer, User $counterparty): bool
+    public function canReveal(User $viewer, User $counterparty, ?Model $context = null): bool
     {
         if ($viewer->id === $counterparty->id) {
+            return true;
+        }
+
+        if ($context instanceof FreightPost && (int) $context->user_id === (int) $counterparty->id) {
             return true;
         }
 
@@ -119,7 +130,7 @@ class ContactRevealService
             return $this->result('allowed', $this->contactDetailsFor($viewer, $counterparty, $context), -1, 0, -1, 0);
         }
 
-        if (! $this->canReveal($viewer, $counterparty)) {
+        if (! $this->canReveal($viewer, $counterparty, $context)) {
             abort(403);
         }
 
@@ -254,6 +265,8 @@ class ContactRevealService
         } elseif ($context instanceof MarketplaceConnection) {
             $ids['connection_id'] = (int) $context->id;
             $ids['freight_post_id'] = (int) $context->freight_post_id;
+        } elseif ($context instanceof FreightPost) {
+            $ids['freight_post_id'] = (int) $context->id;
         }
 
         return $ids;
@@ -296,14 +309,15 @@ class ContactRevealService
      * Bank columns are never read. NumanFreight handles no payments, so
      * freight_interests.bank_* has no consumer at all and must not become one.
      *
-     * $context is the interest or connection the reveal came from, used only
-     * for the legacy step-3 fallback. Without it the fallback is skipped.
+     * $context is the listing, interest or connection the reveal came from. It
+     * decides whether a listing opens the gate, and supplies the legacy step-3
+     * fallback. Without it the fallback is skipped.
      *
      * @return array<string, string|null>|null
      */
     public function contactDetailsFor(User $viewer, User $counterparty, ?Model $context = null): ?array
     {
-        if (! $this->canReveal($viewer, $counterparty)) {
+        if (! $this->canReveal($viewer, $counterparty, $context)) {
             return null;
         }
 
@@ -368,7 +382,9 @@ class ContactRevealService
         );
 
         $email = $emailRefused ? null : ($transporter?->email ?: $counterparty->email);
-        $whatsapp = $whatsappRefused ? null : $transporter?->whatsapp;
+        $whatsapp = $whatsappRefused
+            ? null
+            : (filled($profile?->whatsapp) ? $profile->whatsapp : $transporter?->whatsapp);
 
         return [
             // The carrier record is the only name all four production carriers

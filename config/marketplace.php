@@ -5,6 +5,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Interests
+    |--------------------------------------------------------------------------
+    |
+    | The freight board's action is a metered contact reveal, not an interest.
+    | The interest routes and UI stay in the codebase but are hidden by default.
+    | Setting MARKETPLACE_INTERESTS_ENABLED=true restores them; pricing copy
+    | stays board-focused either way.
+    |
+    */
+
+    'interests_enabled' => env('MARKETPLACE_INTERESTS_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Scheduled expiry
     |--------------------------------------------------------------------------
     |
@@ -165,7 +179,7 @@ return [
         'standard' => [
             'name' => 'Standard',
             'slug' => 'standard',
-            'description' => 'Full access — unlimited posts, interests and contact reveals',
+            'description' => 'Full access — unlimited posts and contact reveals',
             'price_weekly_etb' => 149,
             'price_monthly_etb' => 449,
             'price_yearly_etb' => 3999,
@@ -182,7 +196,6 @@ return [
             ],
             'features' => [
                 'Unlimited active freight posts',
-                'Unlimited interests',
                 'Unlimited contact reveals',
             ],
             'faq' => [

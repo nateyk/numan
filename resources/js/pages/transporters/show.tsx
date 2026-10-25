@@ -1,17 +1,16 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import AdminLayout from '@/layouts/admin-layout';
 import { Head, router } from '@inertiajs/react';
-import {
-    Mail,
-    MapPin,
-    Package,
-    Phone,
-    ShieldCheck,
-    Truck,
-} from 'lucide-react';
+import { MapPin, Package, ShieldCheck, Truck } from 'lucide-react';
 
 interface TruckType {
     id: number;
@@ -22,14 +21,6 @@ interface TruckType {
 interface Route {
     origin_location: { name: string; region_name: string };
     destination_location: { name: string; region_name: string };
-}
-
-interface Document {
-    id: number;
-    name: string;
-    url: string;
-    type: string;
-    uploaded_at: string;
 }
 
 interface PrimaryLocation {
@@ -71,10 +62,13 @@ interface Props {
     truckTypes: TruckType[];
 }
 
-export default function TransporterShow({ profile, truckTypes }: Props) {
+export default function TransporterShow({ profile }: Props) {
     const verificationBadge =
         profile.verification_level === 'verified' ? (
-            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <Badge
+                variant="secondary"
+                className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+            >
                 <ShieldCheck className="mr-1 h-3 w-3" />
                 Verified
             </Badge>
@@ -95,7 +89,8 @@ export default function TransporterShow({ profile, truckTypes }: Props) {
                         <p className="text-sm text-muted-foreground">
                             {profile.total_routes} route
                             {profile.total_routes === 1 ? '' : 's'}
-                            {profile.rating !== null && ` \u00b7 rated ${profile.rating}`}
+                            {profile.rating !== null &&
+                                ` \u00b7 rated ${profile.rating}`}
                         </p>
                     </div>
                     <Badge variant="outline">{profile.status}</Badge>
@@ -146,9 +141,9 @@ export default function TransporterShow({ profile, truckTypes }: Props) {
                             <div className="space-y-2 rounded-md border bg-muted/30 p-3">
                                 <p className="text-sm text-muted-foreground">
                                     Contact details are never published on this
-                                    page. Express interest in a freight post, or
-                                    accept an interest, and then reveal them from
-                                    your interest list.
+                                    page. Open a freight listing and reveal the
+                                    consignor’s contact when you are ready to
+                                    call or message them.
                                 </p>
                             </div>
                         </CardContent>
@@ -191,10 +186,7 @@ export default function TransporterShow({ profile, truckTypes }: Props) {
                             <CardContent>
                                 <div className="flex flex-wrap gap-2">
                                     {profile.truck_types.map((t) => (
-                                        <Badge
-                                            key={t.id}
-                                            variant="outline"
-                                        >
+                                        <Badge key={t.id} variant="outline">
                                             {t.name}
                                         </Badge>
                                     ))}
@@ -272,7 +264,10 @@ export default function TransporterShow({ profile, truckTypes }: Props) {
                                                 </p>
                                             </div>
                                         </div>
-                                        <Badge variant="outline" className="text-[10px]">
+                                        <Badge
+                                            variant="outline"
+                                            className="text-[10px]"
+                                        >
                                             On file
                                         </Badge>
                                     </div>

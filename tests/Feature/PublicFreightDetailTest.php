@@ -136,7 +136,7 @@ it('never puts the consignor email in the payload for a signed-in viewer with no
     expect($json)->not->toContain('consignor.private@example.test');
 });
 
-it('does not offer a reveal to someone with no interest', function () {
+it('offers a reveal to a signed-in stranger without an interest', function () {
     $owner = User::factory()->create();
     $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
 
@@ -150,11 +150,66 @@ it('does not offer a reveal to someone with no interest', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('freight/show')
-            // No interest id to POST a reveal against, so the page cannot offer one
-            // even if it wanted to.
+            // The listing itself is now the context. An interest id is no
+            // longer needed to build a reveal URL, so a stranger gets the
+            // action without one.
             ->where('interestId', null)
-            ->where('canReveal', false)
+            ->where('canReveal', true)
             ->where('revealedContacts', null)
+        );
+});
+
+it('serves a listing-context contact without an interest', function () {
+    $owner = User::factory()->create();
+    $phone = '+251911000099';
+    $owner->profile()->create(['display_name' => 'Listing Consignor', 'phone' => $phone]);
+
+    $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
+
+    $transporter = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $transporter->id]);
+    $workspace->users()->attach($transporter->id, ['role' => 'owner']);
+    $transporter->update(['current_workspace_id' => $workspace->id]);
+
+    app(ContactRevealService::class)->reveal($transporter, $owner, $post);
+
+    $this->actingAs($transporter)
+        ->get("/freight/{$post->ulid}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('canReveal', true)
+            ->where('revealedContacts.phone', $phone)
+            ->where('interestId', null)
+        );
+});
+
+it('stops sending interest state when the flag is off', function () {
+    config(['marketplace.interests_enabled' => false]);
+
+    $owner = User::factory()->create();
+    $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
+
+    $viewer = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $viewer->id]);
+    $workspace->users()->attach($viewer->id, ['role' => 'owner']);
+    $viewer->update(['current_workspace_id' => $workspace->id]);
+
+    FreightInterest::create([
+        'freight_post_id' => $post->id,
+        'user_id' => $viewer->id,
+        'status' => 'submitted',
+        'message' => 'Hidden with the flag',
+    ]);
+
+    $this->actingAs($viewer)
+        ->get("/freight/{$post->ulid}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('hasInterest', false)
+            ->where('interestStatus', null)
+            ->where('interestId', null)
+            ->where('interestsCount', null)
+            ->where('canReveal', true)
         );
 });
 

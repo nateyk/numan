@@ -101,6 +101,7 @@ use App\Http\Controllers\WorkspaceInviteLinkController;
 use App\Http\Controllers\WorkspaceRetentionController;
 use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceTrashController;
+use App\Http\Middleware\EnsureInterestsEnabled;
 use App\Http\Middleware\RequireAdminTwoFactor;
 use App\Models\MarketplacePlan;
 use App\Services\MarketplaceSettingsService;
@@ -378,21 +379,27 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     Route::post('/my-freight/{ulid}/submit', [FreightReviewController::class, 'submit'])->name('freight.submit');
     Route::match(['get', 'post'], '/freight/routes/preview', [RoutePreviewController::class, 'preview'])->name('freight.routes.preview');
 
-    // Freight interests
-    Route::get('/my-freight/{ulid}/interests', [FreightInterestController::class, 'index'])->name('freight.interests.index');
-    Route::post('/my-freight/{ulid}/interests', [FreightInterestController::class, 'store'])->name('freight.interests.store');
-    Route::post('/interests/{interest}/withdraw', [TransporterMyInterestsController::class, 'withdraw'])->name('freight.interests.withdraw');
-    Route::post('/interests/{interest}/shortlist', [FreightInterestStatusController::class, 'shortlist'])->name('freight.interests.shortlist');
-    Route::post('/interests/{interest}/reject', [FreightInterestStatusController::class, 'reject'])->name('freight.interests.reject');
-    Route::post('/interests/{interest}/accept', [FreightInterestAcceptanceController::class, 'accept'])->name('freight.interests.accept');
-    Route::get('/my-interests', [TransporterMyInterestsController::class, 'index'])->name('freight.my-interests');
+    // The board's primary action: see the consignor's contact from the listing.
+    Route::post('/freight/{ulid}/reveal', [MarketplaceConnectionController::class, 'revealFromPost'])->name('freight.reveal');
+
+    // Freight interests — hidden unless the flag restores the loop. The
+    // controllers are untouched, so flag-on behaves exactly as before.
+    Route::middleware(EnsureInterestsEnabled::class)->group(function (): void {
+        Route::get('/my-freight/{ulid}/interests', [FreightInterestController::class, 'index'])->name('freight.interests.index');
+        Route::post('/my-freight/{ulid}/interests', [FreightInterestController::class, 'store'])->name('freight.interests.store');
+        Route::post('/interests/{interest}/withdraw', [TransporterMyInterestsController::class, 'withdraw'])->name('freight.interests.withdraw');
+        Route::post('/interests/{interest}/shortlist', [FreightInterestStatusController::class, 'shortlist'])->name('freight.interests.shortlist');
+        Route::post('/interests/{interest}/reject', [FreightInterestStatusController::class, 'reject'])->name('freight.interests.reject');
+        Route::post('/interests/{interest}/accept', [FreightInterestAcceptanceController::class, 'accept'])->name('freight.interests.accept');
+        Route::get('/my-interests', [TransporterMyInterestsController::class, 'index'])->name('freight.my-interests');
+        Route::post('/interests/{interest}/reveal', [MarketplaceConnectionController::class, 'revealFromInterest'])->name('freight.interests.reveal');
+    });
 
     // Connections
     Route::get('/connections', [MarketplaceConnectionController::class, 'index'])->name('connections.index');
     Route::get('/connections/{public_id}', [MarketplaceConnectionController::class, 'show'])->name('connections.show');
     Route::post('/connections/{public_id}/outcome', [MarketplaceConnectionOutcomeController::class, 'store'])->name('connections.outcome');
     Route::post('/connections/{public_id}/reveal', [MarketplaceConnectionController::class, 'reveal'])->name('connections.reveal');
-    Route::post('/interests/{interest}/reveal', [MarketplaceConnectionController::class, 'revealFromInterest'])->name('freight.interests.reveal');
 
     // Impersonation
     Route::post('/admin/impersonate/leave', [ImpersonationController::class, 'leave'])->name('admin.impersonate.leave');
