@@ -20,8 +20,8 @@ class MarketplaceSetting extends Model
 
     public static function defaultFor(string $key): int
     {
-        // The reveal window lives at the top level of the config rather than
-        // inside free_limits, because it is a period rather than a quota.
+        // Period settings live at the top level of the config rather than
+        // inside free_limits, because they are periods rather than quotas.
         $fallback = config('marketplace.'.$key);
 
         if (is_int($fallback)) {

@@ -22,7 +22,7 @@ class MarketplacePlanController extends Controller
     private const EDITABLE_LIMIT_KEYS = [
         'active_freight_posts',
         'interests_per_week',
-        'contact_reveals_per_week',
+        'contact_reveals',
     ];
 
     public function index(Request $request): Response
@@ -141,7 +141,7 @@ class MarketplacePlanController extends Controller
             'limits' => ['nullable', 'array'],
             'limits.active_freight_posts' => ['nullable', 'integer', 'min:-1'],
             'limits.interests_per_week' => ['nullable', 'integer', 'min:-1'],
-            'limits.contact_reveals_per_week' => ['nullable', 'integer', 'min:-1'],
+            'limits.contact_reveals' => ['nullable', 'integer', 'min:-1'],
             'features' => ['nullable', 'array'],
             'features.*' => ['string', 'max:100'],
             'faq' => ['nullable', 'array'],

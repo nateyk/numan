@@ -42,29 +42,88 @@ it('authenticated can view active freight detail and see hasInterest', function 
 // These assert on the resource contract rather than on rendered pixels, because
 // a component change must not be able to silently reintroduce a leak.
 
-it('sends the owner under the owner key, as a display name and nothing else', function () {
-    $owner = User::factory()->create(['name' => 'Real Name On The Account']);
+it('does not send the consignor identity to a guest', function () {
+    $owner = User::factory()->create(['name' => 'Account Name On File']);
+    $owner->profile()->create(['display_name' => 'Consignor Display Name']);
     $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
 
-    // Flat dotted paths rather than a nested closure: a closure-scoped has()
-    // resolves against a fresh scope in this version of the assertion helper, so
-    // ->has('post.owner', fn ($o) => $o->has('id')) fails on a key that is present.
-    // where() asserts the value, not just the key: etc(['post.owner.id']) passed
-    // while the resource nested the owner under {data: {...}}, which made the
-    // page's isOwnPost check compare an auth id against undefined and read every
-    // owner as a visitor. post.owner.id must equal the owner's id, flat.
-    $this->get("/freight/{$post->ulid}")
+    $response = $this->get("/freight/{$post->ulid}")->assertOk();
+
+    // The whole rendered payload, not just the owner key: a name that reaches
+    // any prop is still a name a guest can read in the page source.
+    expect($response->getContent())
+        ->not->toContain('Account Name On File')
+        ->not->toContain('Consignor Display Name');
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('freight/show')
+        ->missing('post.owner')
+        ->where('post.is_own_post', false)
+    );
+});
+
+it('does not send the consignor identity to a signed-in stranger', function () {
+    $owner = User::factory()->create(['name' => 'Account Name On File']);
+    $owner->profile()->create(['display_name' => 'Consignor Display Name']);
+    $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
+
+    $stranger = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $stranger->id]);
+    $workspace->users()->attach($stranger->id, ['role' => 'owner']);
+    $stranger->update(['current_workspace_id' => $workspace->id]);
+
+    $response = $this->actingAs($stranger)->get("/freight/{$post->ulid}")->assertOk();
+
+    expect($response->getContent())
+        ->not->toContain('Account Name On File')
+        ->not->toContain('Consignor Display Name');
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('freight/show')
+        ->missing('post.owner')
+        ->where('post.is_own_post', false)
+        ->where('canReveal', true)
+    );
+});
+
+it('sends the consignor identity only after the viewer has revealed them', function () {
+    $owner = User::factory()->create(['name' => 'Account Name On File']);
+    $owner->profile()->create(['display_name' => 'Revealed Consignor']);
+    $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
+
+    $viewer = User::factory()->create();
+    app(ContactRevealService::class)->reveal($viewer, $owner, $post);
+
+    $this->actingAs($viewer)
+        ->get("/freight/{$post->ulid}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('freight/show')
             ->where('post.owner.id', $owner->id)
-            ->where('post.owner.display_name', 'Real Name On The Account')
-            // None of these has ever been sent. The page read all five.
-            ->missing('post.owner.user')
-            ->missing('post.owner.name')
+            ->where('post.owner.display_name', 'Revealed Consignor')
+            ->where('post.is_own_post', false)
+            // Still display identity only. A reveal unlocks contact through
+            // revealedContacts, never by widening this key.
             ->missing('post.owner.email')
             ->missing('post.owner.phone')
-            ->missing('post.owner.avatar_url')
+            ->missing('post.owner.whatsapp')
+        );
+});
+
+it('sends the owner their own identity and marks the listing as theirs', function () {
+    $owner = User::factory()->create(['name' => 'Account Name On File']);
+    $owner->profile()->create(['display_name' => 'Owner Display Name']);
+    $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
+
+    $this->actingAs($owner)
+        ->get("/freight/{$post->ulid}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('freight/show')
+            ->where('post.owner.id', $owner->id)
+            ->where('post.owner.display_name', 'Owner Display Name')
+            ->where('post.is_own_post', true)
+            ->where('canReveal', false)
         );
 });
 

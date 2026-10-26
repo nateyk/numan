@@ -212,7 +212,7 @@ it('grants nothing while pending', function () {
     // And the entitlements are unchanged.
     $entitlements = app(MarketplaceEntitlementService::class);
     expect($entitlements->hasPaidSubscription($workspace))->toBeFalse();
-    expect($entitlements->getLimitValue($workspace, 'contact_reveals_per_week'))->toBe(3);
+    expect($entitlements->getLimitValue($workspace, 'contact_reveals'))->toBe(5);
 });
 
 it('normalises the payer phone and the reference', function () {

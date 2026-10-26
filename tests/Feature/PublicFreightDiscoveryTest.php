@@ -110,13 +110,13 @@ it('echoes back only a sort it actually honors', function () {
 });
 
 /**
- * The card draws these to let a carrier judge a lane without opening every
- * load. The payload must carry them flat — the page compares owner.id to the
- * viewer to detect "your own post", and a nested owner (or the never-sent
- * user key the page used to read) made that check permanently false.
+ * A browse card is a load, not a person. Guests and strangers get the lane,
+ * the distance and the route numbers — never who posted it. Own-post detection
+ * travels as a boolean so the identity itself never has to be sent.
  */
-it('sends the owner identity and route numbers every card draws', function () {
-    $owner = User::factory()->create();
+it('sends the route numbers but never the consignor identity on a card', function () {
+    $owner = User::factory()->create(['name' => 'Account Name On File']);
+    $owner->profile()->create(['display_name' => 'Hidden Consignor']);
     $post = FreightPost::factory()->create([
         'status' => FreightPostStatus::Active->value,
         'user_id' => $owner->id,
@@ -128,17 +128,43 @@ it('sends the owner identity and route numbers every card draws', function () {
     ]);
 
     $props = null;
-    $this->get('/freight')->assertOk()->assertInertia(function ($page) use (&$props) {
+    $response = $this->get('/freight')->assertOk()->assertInertia(function ($page) use (&$props) {
         $page->component('discover/index');
         $props = $page->toArray()['props'];
     });
 
     $card = $props['freight']['data'][0];
 
-    expect($card['owner']['id'])->toBe($owner->id)
-        ->and($card['owner']['display_name'])->not->toBeEmpty()
+    expect($card)->not->toHaveKey('owner')
+        ->and($card['is_own_post'])->toBeFalse()
         ->and($card['route_snapshot']['distance_meters'])->toBe(932000)
-        ->and($card['route_snapshot']['duration_seconds'])->toBe(50400);
+        ->and($card['route_snapshot']['duration_seconds'])->toBe(50400)
+        ->and($response->getContent())
+        ->not->toContain('Account Name On File')
+        ->not->toContain('Hidden Consignor');
+});
+
+it('marks the viewer own listing without sending its identity', function () {
+    $owner = User::factory()->create(['name' => 'Account Name On File']);
+    $owner->profile()->create(['display_name' => 'Owner Display Name']);
+    $post = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'user_id' => $owner->id,
+    ]);
+
+    $props = null;
+    $this->actingAs($owner)
+        ->get('/freight')
+        ->assertOk()
+        ->assertInertia(function ($page) use (&$props) {
+            $page->component('discover/index');
+            $props = $page->toArray()['props'];
+        });
+
+    $card = $props['freight']['data'][0];
+
+    expect($card)->not->toHaveKey('owner')
+        ->and($card['is_own_post'])->toBeTrue();
 });
 
 /**

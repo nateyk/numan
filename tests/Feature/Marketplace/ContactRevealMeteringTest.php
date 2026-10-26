@@ -116,18 +116,18 @@ function meterReveal($test, User $viewer, FreightInterest $interest)
 }
 
 /**
- * Three distinct counterparties the user may reveal, each with a live interest.
+ * Five distinct counterparties the user may reveal, each with a live interest.
  *
  * Creates the relationships only. Nothing is revealed, so the quota is still
  * untouched.
  *
  * @return list<FreightInterest>
  */
-function meterThreePartners(User $viewer): array
+function meterFivePartners(User $viewer): array
 {
     $interests = [];
 
-    for ($i = 0; $i < 3; $i++) {
+    for ($i = 0; $i < 5; $i++) {
         [$consignor] = meterUser();
         $interests[] = meterInterest($consignor, $viewer);
     }
@@ -136,13 +136,13 @@ function meterThreePartners(User $viewer): array
 }
 
 /**
- * Three counterparties created *and* revealed, so the free quota is spent.
+ * Five counterparties created *and* revealed, so the free quota is spent.
  *
  * @return list<FreightInterest>
  */
 function meterSpendQuota($test, User $viewer): array
 {
-    $interests = meterThreePartners($viewer);
+    $interests = meterFivePartners($viewer);
 
     foreach ($interests as $interest) {
         $test->actingAs($viewer)
@@ -155,35 +155,35 @@ function meterSpendQuota($test, User $viewer): array
 
 // ── quota ─────────────────────────────────────────────────────────────────
 
-it('lets a free user reveal three distinct counterparties in the window', function () {
+it('lets a free user reveal five distinct counterparties for life', function () {
     [$user] = meterUser(true);
 
-    foreach (meterThreePartners($user) as $interest) {
+    foreach (meterFivePartners($user) as $interest) {
         meterReveal($this, $user, $interest)
             ->assertOk()
             ->assertJsonPath('status', 'allowed');
     }
 
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(5);
 });
 
-it('blocks the fourth distinct reveal for a free user', function () {
+it('blocks the sixth distinct reveal for a free user', function () {
     [$user] = meterUser(true);
-    [$fourthConsignor] = meterUser();
+    [$sixthConsignor] = meterUser();
 
-    $interests = meterThreePartners($user);
-    $fourth = meterInterest($fourthConsignor, $user);
+    $interests = meterFivePartners($user);
+    $sixth = meterInterest($sixthConsignor, $user);
 
     foreach ($interests as $interest) {
         meterReveal($this, $user, $interest)->assertOk();
     }
 
-    meterReveal($this, $user, $fourth)
+    meterReveal($this, $user, $sixth)
         ->assertStatus(402)
         ->assertJsonPath('blocked', true);
 
-    // Only the three allowed ones are recorded.
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+    // Only the five allowed ones are recorded.
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(5);
 });
 
 it('the blocked response carries no contact keys and no contact strings', function () {
@@ -236,7 +236,7 @@ it('re-revealing the same partner is free even when the quota is spent', functio
 
     $interests = meterSpendQuota($this, $user);
 
-    // Quota spent, so a fourth distinct partner is refused.
+    // Quota spent, so a sixth distinct partner is refused.
     meterReveal($this, $user, meterInterest($consignor, $user))->assertStatus(402);
 
     // Going back to a partner already revealed is still free, and reports
@@ -249,14 +249,14 @@ it('re-revealing the same partner is free even when the quota is spent', functio
         ->assertOk()
         ->assertJsonPath('status', 'already');
 
-    // Three rows, not five.
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+    // Five rows, not seven.
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(5);
 
     // And the quota is still exactly full, not somehow refilled.
     meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertStatus(402);
 });
 
-it('a repeat reveal stays free even after the window has passed', function () {
+it('keeps a repeat reveal free forever', function () {
     [$user] = meterUser(true);
     [$consignor] = meterUser();
 
@@ -266,8 +266,9 @@ it('a repeat reveal stays free even after the window has passed', function () {
 
     ContactReveal::where('revealer_id', $user->id)->update(['created_at' => now()->subDays(400)]);
 
-    // Exhaust the quota with three fresh partners.
-    foreach (meterThreePartners($user) as $fresh) {
+    // Exhaust the allowance with four fresh partners (the first reveal is the
+    // one aged to a year ago).
+    foreach (array_slice(meterFivePartners($user), 0, 4) as $fresh) {
         meterReveal($this, $user, $fresh)->assertOk();
     }
 
@@ -281,90 +282,51 @@ it('a repeat reveal stays free even after the window has passed', function () {
         ->assertJsonPath('status', 'already');
 });
 
-it('resets the quota on day eight of a seven day window', function () {
+it('does not refill the free quota when time passes', function () {
+    // The password-expiry middleware would redirect a year-old session; this
+    // test is about the reveal allowance, not session age.
+    config(['auth.password_expiry_days' => 0]);
+
     [$user] = meterUser(true);
 
     meterSpendQuota($this, $user);
 
-    [$fourth] = meterUser();
-    $fourthInterest = meterInterest($fourth, $user);
+    [$sixth] = meterUser();
+    $sixthInterest = meterInterest($sixth, $user);
 
-    meterReveal($this, $user, $fourthInterest)->assertStatus(402);
+    meterReveal($this, $user, $sixthInterest)->assertStatus(402);
 
-    // Day six is unambiguously still inside a seven day window.
-    $this->travel(6)->days();
-    meterReveal($this, $user, $fourthInterest)->assertStatus(402);
+    // The old weekly window would have reset here. The free allowance is
+    // one-time, so it does not.
+    $this->travel(8)->days();
+    meterReveal($this, $user, $sixthInterest)->assertStatus(402);
 
-    // Day eight has dropped the first three out of it.
-    $this->travel(2)->days();
-    meterReveal($this, $user, $fourthInterest)
-        ->assertOk()
-        ->assertJsonPath('status', 'allowed');
+    $this->travel(1)->year();
+    meterReveal($this, $user, $sixthInterest)->assertStatus(402);
 
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(4);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(5);
 });
 
-it('honours an admin change to the free quota immediately', function () {
+it('honours an admin change to the free reveal allowance immediately', function () {
     [$user] = meterUser(true);
     meterSpendQuota($this, $user);
 
-    [$fourth] = meterUser();
-    $fourthInterest = meterInterest($fourth, $user);
+    [$sixth] = meterUser();
+    $sixthInterest = meterInterest($sixth, $user);
 
-    meterReveal($this, $user, $fourthInterest)->assertStatus(402);
+    meterReveal($this, $user, $sixthInterest)->assertStatus(402);
 
-    // The admin raises the quota; no cache, no restart.
+    // The admin raises the allowance; no cache, no restart.
     DB::table('marketplace_settings')
-        ->where('key', 'free_contact_reveals_per_week')
+        ->where('key', 'free_contact_reveals')
         ->update(['value' => 10]);
 
-    meterReveal($this, $user, $fourthInterest)->assertOk();
-});
-
-it('honours an admin change to the reveal window immediately', function () {
-    [$user] = meterUser(true);
-
-    meterSpendQuota($this, $user);
-    [$fourth] = meterUser();
-    meterReveal($this, $user, meterInterest($fourth, $user))->assertStatus(402);
-
-    // Two days later the seven day window still holds them.
-    $this->travel(2)->days();
-    meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertStatus(402);
-
-    // Narrowing the window to one day drops the earlier reveals out of it.
-    // No cache, no restart.
-    DB::table('marketplace_settings')
-        ->where('key', 'free_contact_reveal_window_days')
-        ->update(['value' => 1]);
-
-    meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertOk();
-});
-
-it('falls back to config when the window setting row is missing', function () {
-    DB::table('marketplace_settings')->where('key', 'free_contact_reveal_window_days')->delete();
-
-    config(['marketplace.free_contact_reveal_window_days' => 3]);
-
-    [$user] = meterUser(true);
-
-    meterSpendQuota($this, $user);
-
-    [$fourth] = meterUser();
-    $fourthInterest = meterInterest($fourth, $user);
-
-    meterReveal($this, $user, $fourthInterest)->assertStatus(402);
-
-    // With a three day window the reveals have aged out by day four.
-    $this->travel(4)->days();
-
-    meterReveal($this, $user, $fourthInterest)->assertOk();
+    meterReveal($this, $user, $sixthInterest)->assertOk();
 });
 
 it('does not reuse the interest window for reveals', function () {
     // Setting the interest window to 365 must not let a free user reveal
-    // without limit, and setting the reveal window must not change how long an
-    // interest stays open.
+    // without limit.
     DB::table('marketplace_settings')
         ->where('key', 'free_interest_window_days')
         ->update(['value' => 365]);
@@ -374,10 +336,10 @@ it('does not reuse the interest window for reveals', function () {
 
     meterSpendQuota($this, $user);
 
-    [$fourth] = meterUser();
-    meterReveal($this, $user, meterInterest($fourth, $user))->assertStatus(402);
+    [$sixth] = meterUser();
+    meterReveal($this, $user, meterInterest($sixth, $user))->assertStatus(402);
 
-    expect($entitlements->revealWindowDays($user->currentWorkspace))->toBe(7);
+    expect($entitlements->getLimitValue($user->currentWorkspace, 'contact_reveals'))->toBe(5);
 });
 
 // ── paid ──────────────────────────────────────────────────────────────────
@@ -410,8 +372,10 @@ it('stops being unlimited once the paid period ends', function () {
         'current_period_ends_at' => now()->subDay(),
     ]);
 
-    // The free quota of three now applies, and the two reveals already spent
-    // count against it — so exactly one more is allowed.
+    // The free allowance of five now applies, and the two reveals already
+    // spent count against it — so exactly three more are allowed.
+    meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertOk();
+    meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertOk();
     meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertOk();
     meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertStatus(402);
 });
@@ -422,7 +386,7 @@ it('a superseded plan subscriber keeps their limits', function () {
 
     $sub->update(['status' => 'superseded', 'ends_at' => now()->addMonths(5)]);
 
-    for ($i = 0; $i < 3; $i++) {
+    for ($i = 0; $i < 5; $i++) {
         meterReveal($this, $user, meterInterest(meterUser()[0], $user))->assertOk();
     }
 
@@ -451,20 +415,20 @@ it('meters the transporter revealing the consignor', function () {
 
     $interests = [];
 
-    for ($i = 0; $i < 4; $i++) {
+    for ($i = 0; $i < 6; $i++) {
         [$consignor] = meterUser();
         $interests[] = meterInterest($consignor, $transporter);
     }
 
-    for ($i = 0; $i < 3; $i++) {
+    for ($i = 0; $i < 5; $i++) {
         meterReveal($this, $transporter, $interests[$i])->assertOk();
     }
 
-    meterReveal($this, $transporter, $interests[3])->assertStatus(402);
+    meterReveal($this, $transporter, $interests[5])->assertStatus(402);
 
     // The ledger is per (revealer, revealed), so it does not care which side
     // the viewer is on.
-    expect(ContactReveal::where('revealer_id', $transporter->id)->count())->toBe(3);
+    expect(ContactReveal::where('revealer_id', $transporter->id)->count())->toBe(5);
 });
 
 it('meters each direction independently', function () {
@@ -661,7 +625,7 @@ it('a backfilled pair keeps access without using quota', function () {
 
     // Even with the free quota already spent by other partners, the backfilled
     // partner is still reachable.
-    meterThreePartners($consignor);
+    meterFivePartners($consignor);
     foreach (ContactReveal::where('revealer_id', $consignor->id)
         ->where('revealed_id', '!=', $transporter->id)
         ->get() as $_) {
@@ -757,10 +721,10 @@ it('counts reveals and blocks per day over thirty days, zero filled', function (
     $daily = app(ContactRevealAnalyticsService::class)->daily(30);
 
     expect($daily['days'])->toHaveCount(30);
-    expect($daily['totals']['reveals'])->toBe(3);
+    expect($daily['totals']['reveals'])->toBe(5);
     expect($daily['totals']['blocks'])->toBe(1);
 
-    expect($daily['days'][26]['reveals'])->toBe(3);
+    expect($daily['days'][26]['reveals'])->toBe(5);
     expect($daily['days'][26]['blocks'])->toBe(0);
     expect($daily['days'][19]['blocks'])->toBe(1);
 });
@@ -821,9 +785,8 @@ it('a blocked reveal from the browser flashes the numbers and a subscribe link',
         ->post(route('freight.interests.reveal', ['interest' => $blocked->id]))
         ->assertRedirect()
         ->assertSessionHas('reveal_blocked', [
-            'limit' => 3,
-            'used' => 3,
-            'window_days' => 7,
+            'limit' => 5,
+            'used' => 5,
         ])
         ->assertSessionHasErrors('contact');
 
@@ -836,7 +799,7 @@ it('the blocked notice reaches the interest list the viewer is on', function () 
 
     meterSpendQuota($this, $consignor);
 
-    // A fourth interest on the consignor's OWN post, so the notice lands on a
+    // A sixth interest on the consignor's OWN post, so the notice lands on a
     // page they are allowed to see.
     $blocked = meterInterest($consignor, meterUser(true)[0]);
 
@@ -848,8 +811,8 @@ it('the blocked notice reaches the interest list the viewer is on', function () 
         ->get(route('freight.interests.index', ['ulid' => $blocked->freightPost->ulid]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('reveal_blocked.limit', 3)
-            ->where('reveal_blocked.window_days', 7));
+            ->where('reveal_blocked.limit', 5)
+            ->missing('reveal_blocked.window_days'));
 });
 
 it('the admin analytics page is superadmin only and returns counts', function () {
@@ -873,9 +836,9 @@ it('the admin analytics page is superadmin only and returns counts', function ()
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('admin/marketplace/reveal-analytics')
-            ->where('summary.totals.reveals', 3)
+            ->where('summary.totals.reveals', 5)
             ->where('summary.daily', fn ($days) => count($days) === 30)
-            ->where('summary.ledger_rows', 3)
+            ->where('summary.ledger_rows', 5)
             ->where('summary.blocked_rows', 0)
             ->where('summary.conversion.blocked_users', 0));
 });
@@ -928,13 +891,13 @@ it('blocks the last remaining slot exactly once, for two different pairs', funct
     // same-pair case idempotent regardless.
     [$user] = meterUser(true);
 
-    // Spend two of the three slots.
+    // Spend five of the five slots.
     meterSpendQuota($this, $user);
 
     ContactReveal::query()->where('revealer_id', $user->id)->limit(1)->delete();
     ContactRevealBlock::query()->delete();
 
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(2);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(4);
 
     // Two fresh partners, neither revealed yet.
     [$first] = meterUser();
@@ -945,17 +908,17 @@ it('blocks the last remaining slot exactly once, for two different pairs', funct
 
     // The last slot goes to the first.
     meterReveal($this, $user, $firstInterest)->assertOk()->assertJsonPath('status', 'allowed');
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(5);
 
-    // The second finds the window full, because it can see the row above.
+    // The second finds the allowance full, because it can see the row above.
     meterReveal($this, $user, $secondInterest)
         ->assertStatus(402)
-        ->assertJsonPath('used', 3)
-        ->assertJsonPath('limit', 3);
+        ->assertJsonPath('used', 5)
+        ->assertJsonPath('limit', 5);
 
     // And the refusal was recorded rather than swallowed.
     expect(ContactRevealBlock::where('user_id', $user->id)->count())->toBe(1);
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(5);
 });
 
 it('two different pairs cannot both take the last slot, whichever order they arrive', function () {
@@ -978,7 +941,7 @@ it('two different pairs cannot both take the last slot, whichever order they arr
 
     expect($statuses)->toContain(200);
     expect($statuses)->toContain(402);
-    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(3);
+    expect(ContactReveal::where('revealer_id', $user->id)->count())->toBe(5);
 });
 
 it('the ledger cannot hold the same pair twice, whatever the code path', function () {

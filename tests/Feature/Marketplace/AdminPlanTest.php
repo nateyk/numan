@@ -163,19 +163,19 @@ it('superadmin can update the free limits', function () {
     $this->actingAs($this->superadmin)->put('/admin/marketplace-settings', [
         'free_active_posts' => 5,
         'free_interests_per_week' => 12,
-        'free_contact_reveals_per_week' => 7,
+        'free_contact_reveals' => 7,
     ])->assertRedirect();
 
     expect(MarketplaceSetting::where('key', 'free_active_posts')->value('value'))->toBe(5);
     expect(MarketplaceSetting::where('key', 'free_interests_per_week')->value('value'))->toBe(12);
-    expect(MarketplaceSetting::where('key', 'free_contact_reveals_per_week')->value('value'))->toBe(7);
+    expect(MarketplaceSetting::where('key', 'free_contact_reveals')->value('value'))->toBe(7);
 });
 
 it('rejects free limits below -1', function () {
     $this->actingAs($this->superadmin)->put('/admin/marketplace-settings', [
         'free_active_posts' => -5,
         'free_interests_per_week' => 3,
-        'free_contact_reveals_per_week' => 3,
+        'free_contact_reveals' => 3,
     ])->assertSessionHasErrors('free_active_posts');
 });
 

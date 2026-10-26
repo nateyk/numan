@@ -22,11 +22,8 @@ class MarketplaceSettingController extends Controller
         $data = $request->validate([
             'free_active_posts' => ['required', 'integer', 'min:-1'],
             'free_interests_per_week' => ['required', 'integer', 'min:-1'],
-            'free_contact_reveals_per_week' => ['required', 'integer', 'min:-1'],
+            'free_contact_reveals' => ['required', 'integer', 'min:-1'],
             'free_interest_window_days' => ['nullable', 'integer', 'min:1', 'max:365'],
-            // The reveal window is editable and separate from the interest
-            // window. Editing one must never quietly change the other.
-            'free_contact_reveal_window_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
 
         $data = array_filter($data, fn ($value) => $value !== null);

@@ -66,6 +66,7 @@ it('renders the manage URL as the owners own post, with the interest count', fun
     $response->assertInertia(fn ($page) => $page
         ->component('freight/show')
         ->where('post.owner.id', $owner->id)
+        ->where('post.is_own_post', true)
         ->where('hasInterest', false)
         ->where('canReveal', false)
         ->where('interestId', null)

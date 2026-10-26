@@ -47,7 +47,7 @@ it('gives a free workspace the configured free limits', function () {
     expect($this->entitlement->getPlanForWorkspace($workspace)['slug'])->toBe('free');
     expect($this->entitlement->getLimitValue($workspace, 'active_freight_posts'))->toBe(1);
     expect($this->entitlement->getLimitValue($workspace, 'interests_per_week'))->toBe(3);
-    expect($this->entitlement->getLimitValue($workspace, 'contact_reveals_per_week'))->toBe(3);
+    expect($this->entitlement->getLimitValue($workspace, 'contact_reveals'))->toBe(5);
 });
 
 it('reads free limits from settings so an admin change applies immediately', function () {
@@ -67,10 +67,10 @@ it('falls back to config defaults when a setting row is missing', function () {
 
     $service = app(MarketplaceEntitlementService::class);
 
-    // Must not crash and must fall back to the configured defaults (5 / 3 / 3).
+    // Must not crash and must fall back to the configured defaults (5 / 3 / 5).
     expect($service->getLimitValue($workspace, 'active_freight_posts'))->toBe(5);
     expect($service->getLimitValue($workspace, 'interests_per_week'))->toBe(3);
-    expect($service->getLimitValue($workspace, 'contact_reveals_per_week'))->toBe(3);
+    expect($service->getLimitValue($workspace, 'contact_reveals'))->toBe(5);
 });
 
 it('blocks a free user from creating a second live post', function () {
@@ -203,7 +203,7 @@ it('gives the standard plan unlimited limits', function () {
 
     expect($service->getLimitValue($workspace, 'active_freight_posts'))->toBe(-1);
     expect($service->getLimitValue($workspace, 'interests_per_week'))->toBe(-1);
-    expect($service->getLimitValue($workspace, 'contact_reveals_per_week'))->toBe(-1);
+    expect($service->getLimitValue($workspace, 'contact_reveals'))->toBe(-1);
     expect($service->remainingLivePosts($workspace))->toBe(-1);
     expect($service->canCreateFreightPost($workspace))->toBeTrue();
     expect($service->canExpressInterest($workspace))->toBeTrue();
@@ -310,12 +310,12 @@ it('reports usage with live posts and the correct interest window', function () 
     expect($usage['active_freight_posts']['limit'])->toBe(1);
     expect($usage['active_freight_posts']['remaining'])->toBe(0);
     expect($usage['interests_per_week']['limit'])->toBe(3);
-    expect($usage['contact_reveals_per_week']['limit'])->toBe(3);
+    expect($usage['contact_reveals']['limit'])->toBe(5);
 });
 
 it('exposes free limits through the settings service', function () {
     $settings = app(MarketplaceSettingsService::class)->all();
 
-    expect($settings)->toHaveKeys(['free_active_posts', 'free_interests_per_week', 'free_contact_reveals_per_week']);
+    expect($settings)->toHaveKeys(['free_active_posts', 'free_interests_per_week', 'free_contact_reveals']);
     expect($settings['free_active_posts'])->toBe(1);
 });

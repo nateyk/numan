@@ -38,7 +38,7 @@ interface MarketplacePlan {
 interface FreeLimits {
     free_active_posts: number;
     free_interests_per_week: number;
-    free_contact_reveals_per_week: number;
+    free_contact_reveals: number;
 }
 
 interface PlansPageProps {
@@ -102,9 +102,9 @@ export default function PlansPage({
     ];
 
     const free: FreeLimits = freeLimits ?? {
-        free_active_posts: 1,
+        free_active_posts: 5,
         free_interests_per_week: 3,
-        free_contact_reveals_per_week: 3,
+        free_contact_reveals: 5,
     };
 
     /**
@@ -280,12 +280,11 @@ export default function PlansPage({
                                                 ? ''
                                                 : 's'
                                         }`,
-                                        `${formatLimit(free.free_contact_reveals_per_week)} contact reveal${
-                                            free.free_contact_reveals_per_week ===
-                                            1
+                                        `${formatLimit(free.free_contact_reveals)} contact reveal${
+                                            free.free_contact_reveals === 1
                                                 ? ''
                                                 : 's'
-                                        } per week`,
+                                        } (one-time)`,
                                     ].map((label) => (
                                         <li
                                             key={label}

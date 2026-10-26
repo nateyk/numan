@@ -31,7 +31,7 @@ export default function Welcome({
     freeLimits?: {
         free_active_posts: number;
         free_interests_per_week: number;
-        free_contact_reveals_per_week: number;
+        free_contact_reveals: number;
     };
 }) {
     const { t } = useTranslations();

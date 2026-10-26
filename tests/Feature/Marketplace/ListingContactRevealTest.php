@@ -221,29 +221,28 @@ it('honours a refused whatsapp on the profile', function () {
         ->and($contact['email'])->toBe($owner->email);
 });
 
-it('blocks the fourth reveal through the listing endpoint', function () {
+it('blocks the sixth reveal through the listing endpoint', function () {
     [$viewer] = listingUser();
     $service = app(ContactRevealService::class);
 
-    for ($i = 0; $i < 3; $i++) {
+    for ($i = 0; $i < 5; $i++) {
         [$consignor] = listingUser();
         $post = listingPost($consignor);
 
         $service->reveal($viewer, $consignor, $post);
     }
 
-    [$fourth] = listingUser();
-    $blocked = listingPost($fourth);
+    [$sixth] = listingUser();
+    $blocked = listingPost($sixth);
 
     $this->actingAs($viewer)
         ->post(route('freight.reveal', $blocked->ulid))
         ->assertRedirect()
         ->assertSessionHas('reveal_blocked', [
-            'limit' => 3,
-            'used' => 3,
-            'window_days' => 7,
+            'limit' => 5,
+            'used' => 5,
         ])
         ->assertSessionHasErrors('contact');
 
-    expect(ContactReveal::count())->toBe(3);
+    expect(ContactReveal::count())->toBe(5);
 });

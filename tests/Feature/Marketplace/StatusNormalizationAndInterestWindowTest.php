@@ -240,7 +240,7 @@ it('admin can still edit the free interest window setting', function () {
     $this->actingAs($admin)->put('/admin/marketplace-settings', [
         'free_active_posts' => 1,
         'free_interests_per_week' => 3,
-        'free_contact_reveals_per_week' => 3,
+        'free_contact_reveals' => 3,
         'free_interest_window_days' => 14,
     ])->assertRedirect();
 

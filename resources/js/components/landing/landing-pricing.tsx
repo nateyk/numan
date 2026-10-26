@@ -26,7 +26,7 @@ interface MarketplacePlan {
 interface FreeLimits {
     free_active_posts: number;
     free_interests_per_week: number;
-    free_contact_reveals_per_week: number;
+    free_contact_reveals: number;
 }
 
 type Period = 'weekly' | 'monthly' | 'yearly';
@@ -44,9 +44,9 @@ export function LandingPricing({
     const [period, setPeriod] = useState<Period>('monthly');
 
     const free: FreeLimits = freeLimits ?? {
-        free_active_posts: 1,
+        free_active_posts: 5,
         free_interests_per_week: 3,
-        free_contact_reveals_per_week: 3,
+        free_contact_reveals: 5,
     };
 
     const priceFor = (plan: MarketplacePlan, chosen: Period): number => {
@@ -142,11 +142,11 @@ export function LandingPricing({
                                     `${formatLimit(free.free_active_posts)} active freight post${
                                         free.free_active_posts === 1 ? '' : 's'
                                     }`,
-                                    `${formatLimit(free.free_contact_reveals_per_week)} contact reveal${
-                                        free.free_contact_reveals_per_week === 1
+                                    `${formatLimit(free.free_contact_reveals)} contact reveal${
+                                        free.free_contact_reveals === 1
                                             ? ''
                                             : 's'
-                                    } per week`,
+                                    } (one-time)`,
                                 ].map((label) => (
                                     <li key={label} className="flex gap-2">
                                         <Check className="h-4 w-4 shrink-0 text-green-600" />

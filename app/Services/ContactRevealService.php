@@ -121,13 +121,13 @@ class ContactRevealService
      * is treated as "already revealed", which is the correct outcome anyway
      * because both requests were for the same pair.
      *
-     * @return array{status: 'already'|'allowed'|'blocked', contact: array<string, string|null>|null, limit: int, used: int, remaining: int, window_days: int}
+     * @return array{status: 'already'|'allowed'|'blocked', contact: array<string, string|null>|null, limit: int, used: int, remaining: int}
      */
     public function reveal(User $viewer, User $counterparty, ?Model $context = null): array
     {
         if ($viewer->id === $counterparty->id) {
             // Revealing yourself is not a metering event.
-            return $this->result('allowed', $this->contactDetailsFor($viewer, $counterparty, $context), -1, 0, -1, 0);
+            return $this->result('allowed', $this->contactDetailsFor($viewer, $counterparty, $context), -1, 0, -1);
         }
 
         if (! $this->canReveal($viewer, $counterparty, $context)) {
@@ -135,15 +135,14 @@ class ContactRevealService
         }
 
         $workspace = $viewer->currentWorkspace;
-        $limit = $this->entitlements->getLimitValue($workspace, 'contact_reveals_per_week');
-        $windowDays = $this->entitlements->revealWindowDays($workspace);
+        $limit = $this->entitlements->getLimitValue($workspace, 'contact_reveals');
 
         $contextIds = $this->contextIds($context);
 
-        $outcome = DB::transaction(function () use ($viewer, $counterparty, $windowDays, $limit, $contextIds): array {
+        $outcome = DB::transaction(function () use ($viewer, $counterparty, $limit, $contextIds): array {
             // Lock the REVEALER'S user row for the duration of this
             // transaction. Every reveal by this user serialises behind it, so
-            // two concurrent requests cannot both read the same window count
+            // two concurrent requests cannot both read the same count
             // and both decide there is room. Locking the contact_reveals rows
             // instead would not work: the rows being counted may not exist yet,
             // and a row lock cannot be taken on an absence.
@@ -161,7 +160,7 @@ class ContactRevealService
                 ->first();
 
             // Re-revealing a partner is free, forever. Checked first and inside
-            // the transaction so it cannot race with the quota check below.
+            // the transaction so it cannot race with the allowance check below.
             $existing = ContactReveal::query()
                 ->where('revealer_id', $viewer->id)
                 ->where('revealed_id', $counterparty->id)
@@ -173,9 +172,10 @@ class ContactRevealService
             }
 
             if ($limit !== -1) {
+                // All-time, deliberately. The free allowance is five reveals
+                // ever, not five per week. No time-based reset exists.
                 $used = ContactReveal::query()
                     ->where('revealer_id', $viewer->id)
-                    ->where('created_at', '>=', now()->subDays($windowDays))
                     ->count();
 
                 if ($used >= $limit) {
@@ -204,18 +204,16 @@ class ContactRevealService
         });
 
         if ($outcome['status'] === 'blocked') {
-            return $this->result('blocked', null, $limit, $outcome['used'], 0, $windowDays);
+            return $this->result('blocked', null, $limit, $outcome['used'], 0);
         }
 
         $contact = $this->contactDetailsFor($viewer, $counterparty, $context);
 
-        $used = $outcome['status'] === 'already'
-            ? $this->usedInWindow($viewer, $windowDays)
-            : $this->usedInWindow($viewer, $windowDays);
+        $used = $this->usedReveals($viewer);
 
         $remaining = $limit === -1 ? -1 : max(0, $limit - $used);
 
-        return $this->result($outcome['status'], $contact, $limit, $used, $remaining, $windowDays);
+        return $this->result($outcome['status'], $contact, $limit, $used, $remaining);
     }
 
     /**
@@ -272,18 +270,17 @@ class ContactRevealService
         return $ids;
     }
 
-    private function usedInWindow(User $viewer, int $windowDays): int
+    private function usedReveals(User $viewer): int
     {
         return ContactReveal::query()
             ->where('revealer_id', $viewer->id)
-            ->where('created_at', '>=', now()->subDays($windowDays))
             ->count();
     }
 
     /**
-     * @return array{status: string, contact: array<string, string|null>|null, limit: int, used: int, remaining: int, window_days: int}
+     * @return array{status: string, contact: array<string, string|null>|null, limit: int, used: int, remaining: int}
      */
-    private function result(string $status, ?array $contact, int $limit, int $used, int $remaining, int $windowDays): array
+    private function result(string $status, ?array $contact, int $limit, int $used, int $remaining): array
     {
         return [
             'status' => $status,
@@ -291,7 +288,6 @@ class ContactRevealService
             'limit' => $limit,
             'used' => $used,
             'remaining' => $remaining,
-            'window_days' => $windowDays,
         ];
     }
 

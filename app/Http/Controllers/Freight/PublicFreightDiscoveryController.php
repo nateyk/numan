@@ -230,17 +230,22 @@ class PublicFreightDiscoveryController extends Controller
             ];
         }
 
+        // Identity is released only to the owner and to a viewer who has
+        // already paid a reveal for this consignor. Guests and strangers get
+        // the load, never the person. The revealed contact block carries the
+        // name too, so a viewer sees it as part of what they unlocked.
+        $postPayload = (new FreightPostResource($post))->resolve();
+        $isOwner = $user !== null && (int) $user->id === (int) $post->user_id;
+
+        if ($post->user && ($isOwner || $revealedContacts !== null)) {
+            $postPayload['owner'] = PostOwnerSummary::flat($post->user);
+        }
+
         return Inertia::render('freight/show', [
             // Explicit columns only: the owner's email must not reach the page.
-            // The owner is resolved flat rather than through the resource, which
-            // nests it under a "data" key and leaves post.owner.id undefined —
-            // the page compares that id to the viewer's to detect the owner, so
-            // a nested owner read every owner as a visitor and offered them an
-            // Express Interest button on their own load.
-            'post' => array_merge(
-                (new FreightPostResource($post))->resolve(),
-                $post->user ? ['owner' => PostOwnerSummary::flat($post->user)] : [],
-            ),
+            // The public resource carries no owner identity at all; it is added
+            // above only when this viewer is allowed to see it.
+            'post' => $postPayload,
             'hasInterest' => $hasInterest,
             'interestStatus' => $interestStatus,
             'interestId' => $interestId,

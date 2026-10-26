@@ -27,7 +27,7 @@ it('gives every duration identical features and unlimited limits', function () {
     expect($plan->limits)->toBe([
         'active_freight_posts' => -1,
         'interests_per_week' => -1,
-        'contact_reveals_per_week' => -1,
+        'contact_reveals' => -1,
         'interest_window_days' => 7,
     ]);
 });
@@ -47,7 +47,7 @@ it('seeds the free limit settings', function () {
 
     expect(MarketplaceSetting::where('key', 'free_active_posts')->value('value'))->toBe(5);
     expect(MarketplaceSetting::where('key', 'free_interests_per_week')->value('value'))->toBe(3);
-    expect(MarketplaceSetting::where('key', 'free_contact_reveals_per_week')->value('value'))->toBe(3);
+    expect(MarketplaceSetting::where('key', 'free_contact_reveals')->value('value'))->toBe(5);
 });
 
 it('seeding twice does not revert an admin edited price', function () {

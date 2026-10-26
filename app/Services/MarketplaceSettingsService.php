@@ -12,10 +12,8 @@ class MarketplaceSettingsService
      * Every admin-editable Free setting, keyed by setting name.
      *
      * The union of the free_limits quotas and the free_settings periods. The
-     * reveal window is a period rather than a quota, so it lives outside
-     * free_limits — but it is still admin-editable and still stored here, so it
-     * has to be included explicitly or its row would be read but never written
-     * back, and an admin change to it would silently do nothing.
+     * interest window is a period rather than a quota, so it lives outside
+     * free_limits and is included explicitly here.
      *
      * @return array<string, int>
      */

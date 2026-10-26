@@ -12,7 +12,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { AlertCircle, Eye, LogIn, ShieldCheck, User } from 'lucide-react';
+import { AlertCircle, Eye, Lock, LogIn, ShieldCheck, User } from 'lucide-react';
 import { useState } from 'react';
 
 /**
@@ -40,7 +40,6 @@ export type RevealedContacts = {
 export type RevealBlocked = {
     limit: number;
     used: number;
-    window_days: number;
 } | null;
 
 function initialsFor(name: string | null): string {
@@ -81,15 +80,12 @@ function whatsappHref(raw: string): string {
     return `https://wa.me/${digits}`;
 }
 
-function VerificationBadge({ owner }: { owner: PostOwner }) {
-    // Was hardcoded to "Verified consignor" on every post, unverified ones
-    // included. Now it says what is actually true and stays quiet when it is not.
-    if (!owner?.is_verified) {
-        return (
-            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                <User className="size-3" /> Consignor · identity not verified
-            </p>
-        );
+function VerificationBadge({ owner }: { owner: NonNullable<PostOwner> }) {
+    // Verified is the only state worth saying. "Identity not verified" on every
+    // unverified card read as a warning attached to a person the visitor was
+    // not allowed to see anyway.
+    if (!owner.is_verified) {
+        return null;
     }
 
     const level = owner.verification_level
@@ -305,31 +301,76 @@ export default function ConsignorPosterCard({
     interestsCount: number | null;
     interestsEnabled?: boolean;
 }) {
+    // A guest or stranger gets a locked shell: no name, no initials, no
+    // verification state. The server omits the owner for them, and this branch
+    // keeps the card from dressing the absence up as a person called
+    // "Consignor".
+    const identityVisible = isOwnPost || owner !== null;
+
     return (
         <Card>
             <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                    <User className="size-4" /> Consignor Poster
+                    {identityVisible ? (
+                        <User className="size-4" />
+                    ) : (
+                        <Lock className="size-4" />
+                    )}{' '}
+                    Consignor Poster
                 </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                    <Avatar className="size-12">
-                        {/* No avatar_url: the resource does not send one. The page
-                            used to request it and render a broken image beside a
-                            blank name. */}
-                        <AvatarFallback>
-                            {initialsFor(owner?.display_name ?? null)}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                        <p className="truncate leading-none font-semibold">
-                            {owner?.display_name ?? 'Consignor'}
-                        </p>
-                        <VerificationBadge owner={owner} />
+                {identityVisible ? (
+                    <div className="flex items-center gap-3">
+                        <Avatar className="size-12">
+                            {/* No avatar_url: the resource does not send one. The page
+                                used to request it and render a broken image beside a
+                                blank name. */}
+                            <AvatarFallback>
+                                {initialsFor(owner?.display_name ?? null)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                            <p className="truncate leading-none font-semibold">
+                                {owner?.display_name ?? 'Consignor'}
+                            </p>
+                            {owner && <VerificationBadge owner={owner} />}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <Avatar className="size-12">
+                            <AvatarFallback
+                                aria-hidden="true"
+                                className="blur-[2px] select-none"
+                            >
+                                ?
+                            </AvatarFallback>
+                        </Avatar>
+                        <div
+                            className="min-w-0 flex-1 space-y-2"
+                            aria-hidden="true"
+                        >
+                            <div className="h-3.5 w-28 rounded bg-foreground/20 blur-[4px]" />
+                            <div className="h-3 w-40 rounded bg-foreground/10 blur-[4px]" />
+                        </div>
+                        <Lock
+                            className="size-4 shrink-0 text-muted-foreground"
+                            aria-hidden="true"
+                        />
+                        <span className="sr-only">
+                            Consignor identity is locked.
+                        </span>
+                    </div>
+                )}
+
+                {!identityVisible && (
+                    <p className="text-xs text-muted-foreground">
+                        Who posted this load stays hidden until you reveal their
+                        contact.
+                    </p>
+                )}
 
                 <ContactBlock
                     revealedContacts={revealedContacts}
@@ -346,15 +387,15 @@ export default function ConsignorPosterCard({
                     <p className="flex items-start gap-2 text-xs text-destructive">
                         <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                         <span>
-                            You have used all {revealBlocked.limit} contact
-                            reveals in the last {revealBlocked.window_days}{' '}
-                            days.{' '}
+                            You have used all {revealBlocked.limit} free contact
+                            reveals.{' '}
                             <a
                                 href="/billing/plans"
                                 className="underline underline-offset-4"
                             >
                                 See plans
-                            </a>
+                            </a>{' '}
+                            for unlimited reveals.
                         </span>
                     </p>
                 )}

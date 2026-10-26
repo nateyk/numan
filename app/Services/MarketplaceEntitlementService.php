@@ -118,6 +118,18 @@ class MarketplaceEntitlementService
             return (int) $limits[$key];
         }
 
+        // Plans written before the lifetime reveal change carry the old
+        // *_per_week key. Honour it until the migration has rewritten the row,
+        // so a paid subscriber is never briefly downgraded to the free five.
+        $legacyKey = match ($key) {
+            'contact_reveals' => 'contact_reveals_per_week',
+            default => null,
+        };
+
+        if ($legacyKey !== null && array_key_exists($legacyKey, $limits)) {
+            return (int) $limits[$legacyKey];
+        }
+
         $settingKey = $this->settingKeyFor($key);
 
         if ($settingKey !== null) {
@@ -135,9 +147,9 @@ class MarketplaceEntitlementService
         return match ($key) {
             'active_freight_posts', 'free_active_posts' => 'free_active_posts',
             'interests_per_week', 'interests_per_month', 'free_interests_per_week' => 'free_interests_per_week',
-            'contact_reveals_per_week', 'free_contact_reveals_per_week' => 'free_contact_reveals_per_week',
+            'contact_reveals', 'free_contact_reveals',
+            'contact_reveals_per_week', 'free_contact_reveals_per_week' => 'free_contact_reveals',
             'interest_window_days', 'free_interest_window_days' => 'free_interest_window_days',
-            'contact_reveal_window_days', 'free_contact_reveal_window_days' => 'free_contact_reveal_window_days',
             default => null,
         };
     }
@@ -233,24 +245,6 @@ class MarketplaceEntitlementService
         return (int) $window;
     }
 
-    /**
-     * The rolling window, in days, over which reveals count against the quota.
-     *
-     * Its own setting, never interest_window_days: that is how long an interest
-     * stays open, and coupling the two would make an unrelated admin change
-     * silently alter how often someone could look at a contact.
-     */
-    public function revealWindowDays(?Workspace $workspace): int
-    {
-        $window = $this->getLimitValue($workspace, 'contact_reveal_window_days');
-
-        if ($window === -1) {
-            return (int) config('marketplace.free_contact_reveal_window_days', 7);
-        }
-
-        return $window;
-    }
-
     public function canExpressInterest(?Workspace $workspace): bool
     {
         if (! $workspace) {
@@ -278,20 +272,19 @@ class MarketplaceEntitlementService
     }
 
     /**
-     * Distinct counterparties revealed inside the window, for every member of
-     * the workspace.
+     * Distinct counterparties revealed by every member of the workspace.
      *
-     * Counts revealer/revealed pairs rather than ledger rows, because the
-     * ledger is keyed on the pair and a repeat cannot create a second row.
+     * The free allowance is one-time, so this is an all-time count. Counts
+     * revealer/revealed pairs rather than ledger rows, because the ledger is
+     * keyed on the pair and a repeat cannot create a second row.
      */
-    public function revealCount(?Workspace $workspace, int $days): int
+    public function revealCount(?Workspace $workspace): int
     {
         if (! $workspace) {
             return 0;
         }
 
         return ContactReveal::whereIn('revealer_id', $workspace->users()->pluck('users.id'))
-            ->where('created_at', '>=', now()->subDays($days))
             ->count();
     }
 
@@ -311,9 +304,8 @@ class MarketplaceEntitlementService
         $interestWindow = $this->interestWindowDays($workspace);
         $interestCount = $this->interestCount($workspace, $interestWindow);
 
-        $revealLimit = $this->getLimitValue($workspace, 'contact_reveals_per_week');
-        $revealWindow = $this->revealWindowDays($workspace);
-        $revealCount = $this->revealCount($workspace, $revealWindow);
+        $revealLimit = $this->getLimitValue($workspace, 'contact_reveals');
+        $revealCount = $this->revealCount($workspace);
 
         $rows = [
             'active_freight_posts' => [
@@ -327,8 +319,8 @@ class MarketplaceEntitlementService
                 'count' => $interestCount,
                 'limit' => $interestLimit,
             ],
-            'contact_reveals_per_week' => [
-                'label' => "Contact Reveals ({$revealWindow}d)",
+            'contact_reveals' => [
+                'label' => 'Contact Reveals',
                 'count' => $revealCount,
                 'limit' => $revealLimit,
             ],

@@ -50,28 +50,20 @@ return [
     'free_limits' => [
         'free_active_posts' => 5,
         'free_interests_per_week' => 3,
-        'free_contact_reveals_per_week' => 3,
+        'free_contact_reveals' => 5,
         'free_interest_window_days' => 7,
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Contact reveal window
+    | Contact reveals
     |--------------------------------------------------------------------------
     |
-    | The rolling window, in days, over which contact reveals are counted
-    | against the quota. Seeded into marketplace_settings as
-    | free_contact_reveal_window_days and editable by an admin; this is the
-    | fallback for when the setting row is missing.
-    |
-    | Deliberately its own number, not interest_window_days. That one is how
-    | long an interest stays open. Coupling them would mean changing how long an
-    | interest lives silently changed how often somebody could look at a
-    | contact.
+    | A free account gets five contact reveals in total, not five per week.
+    | Re-revealing somebody already in the ledger is free forever, and no
+    | passage of time refills the allowance. A paid plan removes the limit.
     |
     */
-
-    'free_contact_reveal_window_days' => 7,
 
     /*
     |--------------------------------------------------------------------------
@@ -86,7 +78,6 @@ return [
 
     'free_settings' => [
         'free_interest_window_days',
-        'free_contact_reveal_window_days',
         'free_manual_payment_expiry_days',
     ],
 
@@ -188,7 +179,7 @@ return [
             'limits' => [
                 'active_freight_posts' => -1,
                 'interests_per_week' => -1,
-                'contact_reveals_per_week' => -1,
+                'contact_reveals' => -1,
                 // Rolling window for the interest counter. Explicit rather than
                 // inferred from which limit keys exist, so adding an
                 // interests_per_month key can never change the window.

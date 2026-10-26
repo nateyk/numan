@@ -1,7 +1,7 @@
-import { Head, Link, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
+import { Head, Link, router } from '@inertiajs/react';
 
 interface Connection {
     public_id: string;
@@ -42,13 +42,12 @@ interface Props {
     revealedContacts?: ContactDetails | null;
     // Flash from the reveal action, so a fresh reveal survives the redirect.
     revealed_contact?: ContactDetails | null;
-    reveal_blocked?: { limit: number; used: number; window_days: number } | null;
+    reveal_blocked?: { limit: number; used: number } | null;
 }
 
 export default function ConnectionShow({
     connection,
     canReveal,
-    alreadyRevealed,
     counterparty,
     revealedContacts,
     revealed_contact,
@@ -76,14 +75,19 @@ export default function ConnectionShow({
                     </div>
                     <div>
                         <span className="text-muted-foreground">Route:</span>{' '}
-                        {connection.freight_post?.origin ?? '—'} → {connection.freight_post?.destination ?? '—'}
+                        {connection.freight_post?.origin ?? '—'} →{' '}
+                        {connection.freight_post?.destination ?? '—'}
                     </div>
                     <div>
-                        <span className="text-muted-foreground">Consignor:</span>{' '}
+                        <span className="text-muted-foreground">
+                            Consignor:
+                        </span>{' '}
                         {connection.consignor?.display_name ?? '—'}
                     </div>
                     <div>
-                        <span className="text-muted-foreground">Transporter:</span>{' '}
+                        <span className="text-muted-foreground">
+                            Transporter:
+                        </span>{' '}
                         {connection.transporter?.display_name ?? '—'}
                     </div>
                     <div>
@@ -94,8 +98,12 @@ export default function ConnectionShow({
 
                 {counterparty && (
                     <div className="flex items-center gap-2 rounded-md border p-4">
-                        <span className="font-medium">{counterparty.display_name}</span>
-                        {counterparty.is_verified && <Badge variant="secondary">Verified</Badge>}
+                        <span className="font-medium">
+                            {counterparty.display_name}
+                        </span>
+                        {counterparty.is_verified && (
+                            <Badge variant="secondary">Verified</Badge>
+                        )}
                     </div>
                 )}
 
@@ -104,36 +112,48 @@ export default function ConnectionShow({
                         <h3 className="font-semibold">Contact Details</h3>
                         <div>Name: {contact.name}</div>
                         {contact.phone && <div>Phone: {contact.phone}</div>}
-                        {contact.whatsapp && <div>WhatsApp: {contact.whatsapp}</div>}
+                        {contact.whatsapp && (
+                            <div>WhatsApp: {contact.whatsapp}</div>
+                        )}
                         {contact.email && <div>Email: {contact.email}</div>}
                     </div>
                 ) : reveal_blocked ? (
                     <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
                         <p className="text-sm">
-                            You have used all {reveal_blocked.limit} contact reveals in the
-                            last {reveal_blocked.window_days} days.
+                            You have used all {reveal_blocked.limit} free
+                            contact reveals. Your free allowance is one-time;
+                            subscribing makes reveals unlimited.
                         </p>
                         <Button asChild>
-                            <Link href="/billing/plans">Subscribe for unlimited reveals</Link>
+                            <Link href="/billing/plans">
+                                Subscribe for unlimited reveals
+                            </Link>
                         </Button>
                     </div>
                 ) : canReveal ? (
                     <div className="space-y-2 rounded-md border p-4">
                         <p className="text-sm text-muted-foreground">
-                            Contact details are released only when you ask for them, so they are never
-                            sitting in the page waiting to be read.
+                            Contact details are released only when you ask for
+                            them, so they are never sitting in the page waiting
+                            to be read.
                         </p>
                         <form
                             onSubmit={(e) => {
                                 e.preventDefault();
-                                router.post(`/connections/${connection.public_id}/reveal`, {}, { preserveScroll: true });
+                                router.post(
+                                    `/connections/${connection.public_id}/reveal`,
+                                    {},
+                                    { preserveScroll: true },
+                                );
                             }}
                         >
                             <Button type="submit">Reveal contact</Button>
                         </form>
                     </div>
                 ) : (
-                    <p className="text-sm text-muted-foreground">Contact details are not available.</p>
+                    <p className="text-sm text-muted-foreground">
+                        Contact details are not available.
+                    </p>
                 )}
             </div>
         </AppLayout>

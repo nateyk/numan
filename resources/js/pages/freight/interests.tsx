@@ -1,15 +1,46 @@
-import { useState } from 'react';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
 import { freightRoute } from '@/lib/freight-route';
-import { Phone, Mail, User, MoreHorizontal, Eye, Check, X, Star, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    Check,
+    CheckCircle2,
+    Eye,
+    Mail,
+    MoreHorizontal,
+    Phone,
+    Star,
+    User,
+    X,
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface RevealedContact {
     name: string;
@@ -28,7 +59,11 @@ interface Interest {
         id: number;
         display_name: string;
         is_verified: boolean;
-        routes: Array<{ id: number; origin: string | null; destination: string | null }>;
+        routes: Array<{
+            id: number;
+            origin: string | null;
+            destination: string | null;
+        }>;
     } | null;
 }
 
@@ -51,7 +86,6 @@ interface FreightPost {
 interface BlockedReveal {
     limit: number;
     used: number;
-    window_days: number;
 }
 
 interface Counts {
@@ -87,7 +121,16 @@ const statusColor = (status: string) => {
     }
 };
 
-export default function FreightInterests({ interests, total, links, counts, canReveal, revealedContacts, reveal_blocked, post }: Props) {
+export default function FreightInterests({
+    interests,
+    total,
+    links,
+    counts,
+    canReveal,
+    revealedContacts,
+    reveal_blocked,
+    post,
+}: Props) {
     const { origin, destination } = freightRoute(post);
 
     const { errors, flash } = usePage().props as unknown as {
@@ -97,20 +140,28 @@ export default function FreightInterests({ interests, total, links, counts, canR
 
     // Accept and Reject are both terminal — a carrier cannot be un-selected or
     // un-rejected — so neither fires on a single click.
-    const [pendingAction, setPendingAction] = useState<{ interest: Interest; action: 'accept' | 'reject' } | null>(null);
+    const [pendingAction, setPendingAction] = useState<{
+        interest: Interest;
+        action: 'accept' | 'reject';
+    } | null>(null);
     const { post: postAction, processing } = useForm({});
 
     const confirmPendingAction = () => {
         if (!pendingAction) return;
 
-        postAction(`/interests/${pendingAction.interest.id}/${pendingAction.action}`, {
-            onFinish: () => setPendingAction(null),
-        });
+        postAction(
+            `/interests/${pendingAction.interest.id}/${pendingAction.action}`,
+            {
+                onFinish: () => setPendingAction(null),
+            },
+        );
     };
 
     return (
         <AppLayout>
-            <Head title={`Interests — ${origin?.name ?? ''} → ${destination?.name ?? ''}`} />
+            <Head
+                title={`Interests — ${origin?.name ?? ''} → ${destination?.name ?? ''}`}
+            />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 {flash?.success && (
                     <div
@@ -129,7 +180,9 @@ export default function FreightInterests({ interests, total, links, counts, canR
                         role="alert"
                         className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm"
                     >
-                        <p className="font-medium text-destructive">That didn’t go through</p>
+                        <p className="font-medium text-destructive">
+                            That didn’t go through
+                        </p>
                         <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
                             {Object.entries(errors).map(([key, message]) => (
                                 <li key={key}>{message}</li>
@@ -139,33 +192,61 @@ export default function FreightInterests({ interests, total, links, counts, canR
                 )}
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" asChild>
-                        <Link href="/my-freight"><ArrowLeft className="size-4" /></Link>
+                        <Link href="/my-freight">
+                            <ArrowLeft className="size-4" />
+                        </Link>
                     </Button>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Interests for {origin?.name ?? '—'} → {destination?.name ?? '—'}</h1>
-                        <p className="text-sm text-muted-foreground">ULID {post.ulid.slice(0, 8)} • {post.item_name ?? 'General cargo'} • {total} total</p>
+                        <h1 className="text-2xl font-bold tracking-tight">
+                            Interests for {origin?.name ?? '—'} →{' '}
+                            {destination?.name ?? '—'}
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            ULID {post.ulid.slice(0, 8)} •{' '}
+                            {post.item_name ?? 'General cargo'} • {total} total
+                        </p>
                     </div>
                 </div>
 
                 {reveal_blocked && (
                     <div className="flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
                         <p className="text-sm">
-                            You have used all {reveal_blocked.limit} contact reveals in the last{' '}
-                            {reveal_blocked.window_days} days. Subscribing makes them unlimited.
+                            You have used all {reveal_blocked.limit} free
+                            contact reveals. Your free allowance is one-time;
+                            subscribing makes reveals unlimited.
                         </p>
                         <div>
                             <Button size="sm" asChild>
-                                <Link href="/billing/plans">Subscribe for unlimited reveals</Link>
+                                <Link href="/billing/plans">
+                                    Subscribe for unlimited reveals
+                                </Link>
                             </Button>
                         </div>
                     </div>
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="px-2.5 py-1">All: {counts.all}</Badge>
-                    <Badge variant="outline" className={statusColor('submitted')}>Submitted: {counts.submitted}</Badge>
-                    <Badge variant="outline" className={statusColor('shortlisted')}>Shortlisted: {counts.shortlisted}</Badge>
-                    <Badge variant="outline" className={statusColor('selected')}>Selected: {counts.selected}</Badge>
+                    <Badge variant="secondary" className="px-2.5 py-1">
+                        All: {counts.all}
+                    </Badge>
+                    <Badge
+                        variant="outline"
+                        className={statusColor('submitted')}
+                    >
+                        Submitted: {counts.submitted}
+                    </Badge>
+                    <Badge
+                        variant="outline"
+                        className={statusColor('shortlisted')}
+                    >
+                        Shortlisted: {counts.shortlisted}
+                    </Badge>
+                    <Badge
+                        variant="outline"
+                        className={statusColor('selected')}
+                    >
+                        Selected: {counts.selected}
+                    </Badge>
                 </div>
 
                 {interests.length === 0 ? (
@@ -175,7 +256,11 @@ export default function FreightInterests({ interests, total, links, counts, canR
                                 <Users className="size-6 text-muted-foreground" />
                             </div>
                             <h3 className="font-semibold">No interests yet</h3>
-                            <p className="max-w-md text-sm text-muted-foreground">When transporters express interest on this freight, they will appear here for you to review, shortlist, or accept.</p>
+                            <p className="max-w-md text-sm text-muted-foreground">
+                                When transporters express interest on this
+                                freight, they will appear here for you to
+                                review, shortlist, or accept.
+                            </p>
                         </CardContent>
                     </Card>
                 ) : (
@@ -190,7 +275,9 @@ export default function FreightInterests({ interests, total, links, counts, canR
                                             <TableHead>Message</TableHead>
                                             <TableHead>Contact</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -199,67 +286,207 @@ export default function FreightInterests({ interests, total, links, counts, canR
                                                 <TableCell>
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="size-8">
-                                                            <AvatarFallback>{(i.transporter?.display_name ?? '?').slice(0, 2).toUpperCase()}</AvatarFallback>
+                                                            <AvatarFallback>
+                                                                {(
+                                                                    i
+                                                                        .transporter
+                                                                        ?.display_name ??
+                                                                    '?'
+                                                                )
+                                                                    .slice(0, 2)
+                                                                    .toUpperCase()}
+                                                            </AvatarFallback>
                                                         </Avatar>
                                                         <div>
-                                                            <div className="font-medium">{i.transporter?.display_name ?? '—'}</div>
-                                                            {i.transporter?.is_verified && (
-                                                                <div className="text-xs text-muted-foreground">Verified</div>
-                                                            )}
-                                                            {i.transporter?.routes?.map((r) => (
-                                                                <div key={r.id} className="text-xs text-muted-foreground">
-                                                                    {r.origin ?? '—'} → {r.destination ?? '—'}
+                                                            <div className="font-medium">
+                                                                {i.transporter
+                                                                    ?.display_name ??
+                                                                    '—'}
+                                                            </div>
+                                                            {i.transporter
+                                                                ?.is_verified && (
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    Verified
                                                                 </div>
-                                                            ))}
+                                                            )}
+                                                            {i.transporter?.routes?.map(
+                                                                (r) => (
+                                                                    <div
+                                                                        key={
+                                                                            r.id
+                                                                        }
+                                                                        className="text-xs text-muted-foreground"
+                                                                    >
+                                                                        {r.origin ??
+                                                                            '—'}{' '}
+                                                                        →{' '}
+                                                                        {r.destination ??
+                                                                            '—'}
+                                                                    </div>
+                                                                ),
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="max-w-[200px]">
-                                                    <div className="truncate text-sm">{i.message ?? '—'}</div>
-                                                    {i.created_at && <div className="text-xs text-muted-foreground">{new Date(i.created_at).toLocaleDateString()}</div>}
+                                                    <div className="truncate text-sm">
+                                                        {i.message ?? '—'}
+                                                    </div>
+                                                    {i.created_at && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {new Date(
+                                                                i.created_at,
+                                                            ).toLocaleDateString()}
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="text-sm">
                                                         <div className="flex items-center gap-1">
-                                                            <User className="size-3" /> {i.transporter?.display_name ?? '—'}
+                                                            <User className="size-3" />{' '}
+                                                            {i.transporter
+                                                                ?.display_name ??
+                                                                '—'}
                                                         </div>
-                                                        {revealedContacts?.[String(i.id)] ? (
+                                                        {revealedContacts?.[
+                                                            String(i.id)
+                                                        ] ? (
                                                             <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                                                                 <div className="flex items-center gap-1">
-                                                                    <Phone className="size-3" /> {revealedContacts[String(i.id)]?.phone ?? '—'}
+                                                                    <Phone className="size-3" />{' '}
+                                                                    {revealedContacts[
+                                                                        String(
+                                                                            i.id,
+                                                                        )
+                                                                    ]?.phone ??
+                                                                        '—'}
                                                                 </div>
                                                                 <div className="flex items-center gap-1">
-                                                                    <Mail className="size-3" /> {revealedContacts[String(i.id)]?.email ?? '—'}
+                                                                    <Mail className="size-3" />{' '}
+                                                                    {revealedContacts[
+                                                                        String(
+                                                                            i.id,
+                                                                        )
+                                                                    ]?.email ??
+                                                                        '—'}
                                                                 </div>
                                                             </div>
-                                                        ) : canReveal?.[String(i.id)] ? (
+                                                        ) : canReveal?.[
+                                                              String(i.id)
+                                                          ] ? (
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
                                                                 className="mt-1 h-7 text-xs"
-                                                                onClick={() => router.post(`/interests/${i.id}/reveal`)}
+                                                                onClick={() =>
+                                                                    router.post(
+                                                                        `/interests/${i.id}/reveal`,
+                                                                    )
+                                                                }
                                                             >
                                                                 Reveal contact
                                                             </Button>
                                                         ) : (
-                                                            <span className="text-xs text-muted-foreground">Not available</span>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                Not available
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="secondary" className={`${statusColor(i.status)} capitalize`}>{i.status}</Badge>
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className={`${statusColor(i.status)} capitalize`}
+                                                    >
+                                                        {i.status}
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="size-7"><MoreHorizontal className="size-4" /></Button>
+                                                        <DropdownMenuTrigger
+                                                            asChild
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-7"
+                                                            >
+                                                                <MoreHorizontal className="size-4" />
+                                                            </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-48">
-                                                            <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/shortlist`)} disabled={i.status !== 'submitted'} className="cursor-pointer"><Star className="mr-2 size-4" /> Shortlist</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setPendingAction({ interest: i, action: 'accept' })} disabled={i.status === 'selected' || i.status === 'rejected'} className="cursor-pointer"><Check className="mr-2 size-4" /> Accept & Connect</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setPendingAction({ interest: i, action: 'reject' })} disabled={i.status === 'rejected' || i.status === 'selected'} className="cursor-pointer"><X className="mr-2 size-4" /> Reject</DropdownMenuItem>
+                                                        <DropdownMenuContent
+                                                            align="end"
+                                                            className="w-48"
+                                                        >
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    router.post(
+                                                                        `/interests/${i.id}/shortlist`,
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    i.status !==
+                                                                    'submitted'
+                                                                }
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <Star className="mr-2 size-4" />{' '}
+                                                                Shortlist
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    setPendingAction(
+                                                                        {
+                                                                            interest:
+                                                                                i,
+                                                                            action: 'accept',
+                                                                        },
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    i.status ===
+                                                                        'selected' ||
+                                                                    i.status ===
+                                                                        'rejected'
+                                                                }
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <Check className="mr-2 size-4" />{' '}
+                                                                Accept & Connect
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    setPendingAction(
+                                                                        {
+                                                                            interest:
+                                                                                i,
+                                                                            action: 'reject',
+                                                                        },
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    i.status ===
+                                                                        'rejected' ||
+                                                                    i.status ===
+                                                                        'selected'
+                                                                }
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <X className="mr-2 size-4" />{' '}
+                                                                Reject
+                                                            </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
-                                                            <DropdownMenuItem asChild><Link href={`/freight/${post.ulid}`} className="cursor-pointer"><Eye className="mr-2 size-4" /> View Freight</Link></DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                asChild
+                                                            >
+                                                                <Link
+                                                                    href={`/freight/${post.ulid}`}
+                                                                    className="cursor-pointer"
+                                                                >
+                                                                    <Eye className="mr-2 size-4" />{' '}
+                                                                    View Freight
+                                                                </Link>
+                                                            </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </TableCell>
@@ -277,27 +504,98 @@ export default function FreightInterests({ interests, total, links, counts, canR
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex items-center gap-3">
                                             <Avatar className="size-8">
-                                                <AvatarFallback>{(i.transporter?.display_name ?? '?').slice(0, 2).toUpperCase()}</AvatarFallback>
+                                                <AvatarFallback>
+                                                    {(
+                                                        i.transporter
+                                                            ?.display_name ??
+                                                        '?'
+                                                    )
+                                                        .slice(0, 2)
+                                                        .toUpperCase()}
+                                                </AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <div className="font-medium">{i.transporter?.display_name ?? '—'}</div>
-                                                <div className="text-xs text-muted-foreground">{i.message ?? '—'}</div>
+                                                <div className="font-medium">
+                                                    {i.transporter
+                                                        ?.display_name ?? '—'}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {i.message ?? '—'}
+                                                </div>
                                             </div>
                                         </div>
-                                        <Badge variant="secondary" className={`${statusColor(i.status)} capitalize text-xs`}>{i.status}</Badge>
+                                        <Badge
+                                            variant="secondary"
+                                            className={`${statusColor(i.status)} text-xs capitalize`}
+                                        >
+                                            {i.status}
+                                        </Badge>
                                     </div>
                                     {revealedContacts?.[String(i.id)] && (
                                         <div className="mt-3 rounded-md border bg-muted/20 p-2 text-sm">
-                                            <div className="font-medium">{revealedContacts[String(i.id)]?.name}</div>
+                                            <div className="font-medium">
+                                                {
+                                                    revealedContacts[
+                                                        String(i.id)
+                                                    ]?.name
+                                                }
+                                            </div>
                                             <div className="text-xs text-muted-foreground">
-                                                {revealedContacts[String(i.id)]?.phone ?? '—'} • {revealedContacts[String(i.id)]?.email ?? '—'}
+                                                {revealedContacts[String(i.id)]
+                                                    ?.phone ?? '—'}{' '}
+                                                •{' '}
+                                                {revealedContacts[String(i.id)]
+                                                    ?.email ?? '—'}
                                             </div>
                                         </div>
                                     )}
                                     <div className="mt-3 flex gap-2">
-                                        <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => router.post(`/interests/${i.id}/shortlist`)} disabled={i.status !== 'submitted'}>Shortlist</Button>
-                                        <Button size="sm" className="flex-1 h-8" onClick={() => setPendingAction({ interest: i, action: 'accept' })} disabled={i.status === 'selected' || i.status === 'rejected'}>Accept</Button>
-                                        <Button size="sm" variant="destructive" className="h-8" onClick={() => setPendingAction({ interest: i, action: 'reject' })} disabled={i.status === 'rejected' || i.status === 'selected'}>Reject</Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 flex-1"
+                                            onClick={() =>
+                                                router.post(
+                                                    `/interests/${i.id}/shortlist`,
+                                                )
+                                            }
+                                            disabled={i.status !== 'submitted'}
+                                        >
+                                            Shortlist
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            className="h-8 flex-1"
+                                            onClick={() =>
+                                                setPendingAction({
+                                                    interest: i,
+                                                    action: 'accept',
+                                                })
+                                            }
+                                            disabled={
+                                                i.status === 'selected' ||
+                                                i.status === 'rejected'
+                                            }
+                                        >
+                                            Accept
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            className="h-8"
+                                            onClick={() =>
+                                                setPendingAction({
+                                                    interest: i,
+                                                    action: 'reject',
+                                                })
+                                            }
+                                            disabled={
+                                                i.status === 'rejected' ||
+                                                i.status === 'selected'
+                                            }
+                                        >
+                                            Reject
+                                        </Button>
                                     </div>
                                 </Card>
                             ))}
@@ -306,8 +604,28 @@ export default function FreightInterests({ interests, total, links, counts, canR
                         {links && links.length > 3 && (
                             <div className="flex flex-wrap gap-1">
                                 {links.map((link, idx) => (
-                                    <Button key={idx} variant={link.active ? 'default' : 'outline'} size="sm" disabled={!link.url} onClick={() => link.url && router.get(link.url, {}, { preserveState: true })} className="h-7 px-2.5 text-xs">
-                                        <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                                    <Button
+                                        key={idx}
+                                        variant={
+                                            link.active ? 'default' : 'outline'
+                                        }
+                                        size="sm"
+                                        disabled={!link.url}
+                                        onClick={() =>
+                                            link.url &&
+                                            router.get(
+                                                link.url,
+                                                {},
+                                                { preserveState: true },
+                                            )
+                                        }
+                                        className="h-7 px-2.5 text-xs"
+                                    >
+                                        <span
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
+                                        />
                                     </Button>
                                 ))}
                             </div>
@@ -327,7 +645,9 @@ export default function FreightInterests({ interests, total, links, counts, canR
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {pendingAction?.action === 'accept' ? 'Accept this carrier?' : 'Reject this carrier?'}
+                            {pendingAction?.action === 'accept'
+                                ? 'Accept this carrier?'
+                                : 'Reject this carrier?'}
                         </DialogTitle>
                         <DialogDescription>
                             {pendingAction?.action === 'accept'
@@ -336,11 +656,19 @@ export default function FreightInterests({ interests, total, links, counts, canR
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setPendingAction(null)} disabled={processing}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setPendingAction(null)}
+                            disabled={processing}
+                        >
                             Cancel
                         </Button>
                         <Button
-                            variant={pendingAction?.action === 'accept' ? 'default' : 'destructive'}
+                            variant={
+                                pendingAction?.action === 'accept'
+                                    ? 'default'
+                                    : 'destructive'
+                            }
                             onClick={confirmPendingAction}
                             disabled={processing}
                         >
@@ -359,6 +687,22 @@ export default function FreightInterests({ interests, total, links, counts, canR
 
 function Users(props: React.ComponentProps<'svg'>) {
     return (
-        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
     );
 }

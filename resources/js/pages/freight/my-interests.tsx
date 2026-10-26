@@ -1,19 +1,43 @@
-import { Head, Link, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
 import {
     freightRoute,
     nestedFreightPost,
     postUlid,
     type FreightRow,
 } from '@/lib/freight-route';
-import { Package, MapPin, Calendar, Truck, ArrowRight, MoreHorizontal, Eye, X } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import {
+    ArrowRight,
+    Eye,
+    MapPin,
+    MoreHorizontal,
+    Package,
+    X,
+} from 'lucide-react';
 
 interface Interest {
     id: number;
@@ -37,8 +61,16 @@ interface Props {
     total?: number;
     links?: Array<{ url: string | null; label: string; active: boolean }>;
     canReveal?: Record<string, boolean>;
-    revealedContacts?: Record<string, { name: string; phone: string | null; email: string | null; whatsapp: string | null }>;
-    reveal_blocked?: { limit: number; used: number; window_days: number } | null;
+    revealedContacts?: Record<
+        string,
+        {
+            name: string;
+            phone: string | null;
+            email: string | null;
+            whatsapp: string | null;
+        }
+    >;
+    reveal_blocked?: { limit: number; used: number } | null;
     sort: string;
     counts: Record<string, number>;
 }
@@ -57,8 +89,20 @@ const statusColor = (status: string) => {
     }
 };
 
-export default function MyInterests({ interests, links, canReveal, revealedContacts, reveal_blocked, sort, counts }: Props) {
-    const safeCounts = (counts && typeof counts === 'object' && !Array.isArray(counts) ? counts : {}) as Record<string, number>;
+export default function MyInterests({
+    interests,
+    links,
+    canReveal,
+    revealedContacts,
+    reveal_blocked,
+    sort,
+    counts,
+}: Props) {
+    const safeCounts = (
+        counts && typeof counts === 'object' && !Array.isArray(counts)
+            ? counts
+            : {}
+    ) as Record<string, number>;
     const safeSort = typeof sort === 'string' && sort ? sort : 'latest';
     const interestData = Array.isArray(interests) ? interests : [];
 
@@ -67,33 +111,69 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
             <Head title="My Interests — Manage" />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-2xl font-bold tracking-tight">My Interests</h1>
-                    <p className="text-muted-foreground">Track your expressed interests — submitted, shortlisted, and selected freight.</p>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        My Interests
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Track your expressed interests — submitted, shortlisted,
+                        and selected freight.
+                    </p>
                 </div>
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     {reveal_blocked && (
                         <div className="flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
                             <p className="text-sm">
-                                You have used all {reveal_blocked.limit} contact reveals in the last{' '}
-                                {reveal_blocked.window_days} days. Subscribing makes them unlimited.
+                                You have used all {reveal_blocked.limit} free
+                                contact reveals. Your free allowance is
+                                one-time; subscribing makes reveals unlimited.
                             </p>
                             <div>
                                 <Button size="sm" asChild>
-                                    <Link href="/billing/plans">Subscribe for unlimited reveals</Link>
+                                    <Link href="/billing/plans">
+                                        Subscribe for unlimited reveals
+                                    </Link>
                                 </Button>
                             </div>
                         </div>
                     )}
 
                     <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary" className="px-2.5 py-1">All: {safeCounts.all ?? interestData.length}</Badge>
-                        <Badge variant="outline" className={statusColor('submitted')}>Submitted: {safeCounts.submitted ?? 0}</Badge>
-                        <Badge variant="outline" className={statusColor('shortlisted')}>Shortlisted: {safeCounts.shortlisted ?? 0}</Badge>
-                        <Badge variant="outline" className={statusColor('selected')}>Selected: {safeCounts.selected ?? 0}</Badge>
+                        <Badge variant="secondary" className="px-2.5 py-1">
+                            All: {safeCounts.all ?? interestData.length}
+                        </Badge>
+                        <Badge
+                            variant="outline"
+                            className={statusColor('submitted')}
+                        >
+                            Submitted: {safeCounts.submitted ?? 0}
+                        </Badge>
+                        <Badge
+                            variant="outline"
+                            className={statusColor('shortlisted')}
+                        >
+                            Shortlisted: {safeCounts.shortlisted ?? 0}
+                        </Badge>
+                        <Badge
+                            variant="outline"
+                            className={statusColor('selected')}
+                        >
+                            Selected: {safeCounts.selected ?? 0}
+                        </Badge>
                     </div>
-                    <Select value={safeSort} onValueChange={(v) => router.get('/my-interests', { sort: v }, { preserveState: true })}>
-                        <SelectTrigger className="w-40"><SelectValue placeholder="Sort" /></SelectTrigger>
+                    <Select
+                        value={safeSort}
+                        onValueChange={(v) =>
+                            router.get(
+                                '/my-interests',
+                                { sort: v },
+                                { preserveState: true },
+                            )
+                        }
+                    >
+                        <SelectTrigger className="w-40">
+                            <SelectValue placeholder="Sort" />
+                        </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="latest">Latest</SelectItem>
                             <SelectItem value="oldest">Oldest</SelectItem>
@@ -109,7 +189,17 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                 <Package className="size-6 text-muted-foreground" />
                             </div>
                             <h3 className="font-semibold">No interests yet</h3>
-                            <p className="max-w-md text-sm text-muted-foreground">Browse freight at <Link href="/freight" className="text-primary hover:underline">Discover Freight</Link> and express interest. Your contact will be shared only when shortlisted.</p>
+                            <p className="max-w-md text-sm text-muted-foreground">
+                                Browse freight at{' '}
+                                <Link
+                                    href="/freight"
+                                    className="text-primary hover:underline"
+                                >
+                                    Discover Freight
+                                </Link>{' '}
+                                and express interest. Your contact will be
+                                shared only when shortlisted.
+                            </p>
                             <Button asChild>
                                 <Link href="/freight">Discover Freight</Link>
                             </Button>
@@ -125,7 +215,9 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                             <TableHead>Freight</TableHead>
                                             <TableHead>Route</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -139,10 +231,18 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                             } = freightRoute(fp);
                                             if (!ulid) {
                                                 return (
-                                                    <TableRow key={i.id} className="opacity-60">
+                                                    <TableRow
+                                                        key={i.id}
+                                                        className="opacity-60"
+                                                    >
                                                         <TableCell colSpan={4}>
                                                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                                <Package className="size-4" /> Freight unavailable (removed) — Interest #{i.id} • {i.status}
+                                                                <Package className="size-4" />{' '}
+                                                                Freight
+                                                                unavailable
+                                                                (removed) —
+                                                                Interest #{i.id}{' '}
+                                                                • {i.status}
                                                             </div>
                                                         </TableCell>
                                                     </TableRow>
@@ -151,47 +251,145 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                             return (
                                                 <TableRow key={i.id}>
                                                     <TableCell>
-                                                        <div className="font-medium flex items-center gap-2">
-                                                            <MapPin className="size-4 text-primary" /> {origin?.name ?? '—'} <ArrowRight className="size-3 text-muted-foreground" /> {destination?.name ?? '—'}
+                                                        <div className="flex items-center gap-2 font-medium">
+                                                            <MapPin className="size-4 text-primary" />{' '}
+                                                            {origin?.name ??
+                                                                '—'}{' '}
+                                                            <ArrowRight className="size-3 text-muted-foreground" />{' '}
+                                                            {destination?.name ??
+                                                                '—'}
                                                         </div>
-                                                        <div className="text-xs text-muted-foreground">{ulid.slice(0, 8)} • {cargoType?.name ?? 'General'}</div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {ulid.slice(0, 8)} •{' '}
+                                                            {cargoType?.name ??
+                                                                'General'}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="text-sm">{i.message ?? '—'}</div>
-                                                        <div className="text-xs text-muted-foreground">{i.created_at ? new Date(i.created_at).toLocaleDateString() : ''}</div>
+                                                        <div className="text-sm">
+                                                            {i.message ?? '—'}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {i.created_at
+                                                                ? new Date(
+                                                                      i.created_at,
+                                                                  ).toLocaleDateString()
+                                                                : ''}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Badge variant="secondary" className={`${statusColor(i.status)} capitalize`}>{i.status}</Badge>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className={`${statusColor(i.status)} capitalize`}
+                                                        >
+                                                            {i.status}
+                                                        </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex flex-col items-end gap-1">
                                                             <div className="flex items-center justify-end gap-1">
-                                                                <Button variant="ghost" size="icon" className="size-7" asChild>
-                                                                    <Link href={`/freight/${ulid}`}><Eye className="size-4" /></Link>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="size-7"
+                                                                    asChild
+                                                                >
+                                                                    <Link
+                                                                        href={`/freight/${ulid}`}
+                                                                    >
+                                                                        <Eye className="size-4" />
+                                                                    </Link>
                                                                 </Button>
                                                                 <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="size-7"><MoreHorizontal className="size-4" /></Button>
+                                                                    <DropdownMenuTrigger
+                                                                        asChild
+                                                                    >
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="size-7"
+                                                                        >
+                                                                            <MoreHorizontal className="size-4" />
+                                                                        </Button>
                                                                     </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" className="w-40">
-                                                                        <DropdownMenuItem asChild><Link href={`/freight/${ulid}`} className="cursor-pointer"><Eye className="mr-2 size-4" /> View Freight</Link></DropdownMenuItem>
-                                                                        <DropdownMenuItem onClick={() => router.post(`/interests/${i.id}/withdraw`)} disabled={i.status === 'withdrawn' || i.status === 'selected'} className="cursor-pointer"><X className="mr-2 size-4" /> Withdraw</DropdownMenuItem>
+                                                                    <DropdownMenuContent
+                                                                        align="end"
+                                                                        className="w-40"
+                                                                    >
+                                                                        <DropdownMenuItem
+                                                                            asChild
+                                                                        >
+                                                                            <Link
+                                                                                href={`/freight/${ulid}`}
+                                                                                className="cursor-pointer"
+                                                                            >
+                                                                                <Eye className="mr-2 size-4" />{' '}
+                                                                                View
+                                                                                Freight
+                                                                            </Link>
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem
+                                                                            onClick={() =>
+                                                                                router.post(
+                                                                                    `/interests/${i.id}/withdraw`,
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                i.status ===
+                                                                                    'withdrawn' ||
+                                                                                i.status ===
+                                                                                    'selected'
+                                                                            }
+                                                                            className="cursor-pointer"
+                                                                        >
+                                                                            <X className="mr-2 size-4" />{' '}
+                                                                            Withdraw
+                                                                        </DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>
                                                             </div>
-                                                            {revealedContacts?.[String(i.id)] ? (
+                                                            {revealedContacts?.[
+                                                                String(i.id)
+                                                            ] ? (
                                                                 <div className="text-right text-xs text-muted-foreground">
-                                                                    <div>{revealedContacts[String(i.id)]?.phone ?? 'No phone'}</div>
-                                                                    <div>{revealedContacts[String(i.id)]?.email ?? ''}</div>
+                                                                    <div>
+                                                                        {revealedContacts[
+                                                                            String(
+                                                                                i.id,
+                                                                            )
+                                                                        ]
+                                                                            ?.phone ??
+                                                                            'No phone'}
+                                                                    </div>
+                                                                    <div>
+                                                                        {revealedContacts[
+                                                                            String(
+                                                                                i.id,
+                                                                            )
+                                                                        ]
+                                                                            ?.email ??
+                                                                            ''}
+                                                                    </div>
                                                                 </div>
-                                                            ) : canReveal?.[String(i.id)] ? (
+                                                            ) : canReveal?.[
+                                                                  String(i.id)
+                                                              ] ? (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
                                                                     className="h-7 text-xs"
-                                                                    onClick={() => router.post(`/interests/${i.id}/reveal`, {}, { preserveScroll: true })}
+                                                                    onClick={() =>
+                                                                        router.post(
+                                                                            `/interests/${i.id}/reveal`,
+                                                                            {},
+                                                                            {
+                                                                                preserveScroll: true,
+                                                                            },
+                                                                        )
+                                                                    }
                                                                 >
-                                                                    Reveal contact
+                                                                    Reveal
+                                                                    contact
                                                                 </Button>
                                                             ) : null}
                                                         </div>
@@ -212,23 +410,62 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                                     freightRoute(fp);
                                 if (!ulid) {
                                     return (
-                                        <Card key={i.id} className="p-4 opacity-60">
-                                            <div className="text-sm text-muted-foreground">Freight unavailable — Interest #{i.id} • {i.status}</div>
+                                        <Card
+                                            key={i.id}
+                                            className="p-4 opacity-60"
+                                        >
+                                            <div className="text-sm text-muted-foreground">
+                                                Freight unavailable — Interest #
+                                                {i.id} • {i.status}
+                                            </div>
                                         </Card>
                                     );
                                 }
                                 return (
                                     <Card key={i.id} className="p-4">
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="font-medium flex items-center gap-2">
-                                                <MapPin className="size-4 text-primary" /> {origin?.name ?? '—'} <ArrowRight className="size-3 text-muted-foreground" /> {destination?.name ?? '—'}
+                                            <div className="flex items-center gap-2 font-medium">
+                                                <MapPin className="size-4 text-primary" />{' '}
+                                                {origin?.name ?? '—'}{' '}
+                                                <ArrowRight className="size-3 text-muted-foreground" />{' '}
+                                                {destination?.name ?? '—'}
                                             </div>
-                                            <Badge variant="secondary" className={`${statusColor(i.status)} capitalize text-xs`}>{i.status}</Badge>
+                                            <Badge
+                                                variant="secondary"
+                                                className={`${statusColor(i.status)} text-xs capitalize`}
+                                            >
+                                                {i.status}
+                                            </Badge>
                                         </div>
-                                        <div className="mt-2 text-sm text-muted-foreground truncate">{i.message ?? '—'}</div>
+                                        <div className="mt-2 truncate text-sm text-muted-foreground">
+                                            {i.message ?? '—'}
+                                        </div>
                                         <div className="mt-3 flex gap-2">
-                                            <Button variant="outline" size="sm" className="flex-1 h-8" asChild><Link href={`/freight/${ulid}`}>View</Link></Button>
-                                            <Button size="sm" variant="outline" className="h-8" onClick={() => router.post(`/interests/${i.id}/withdraw`)} disabled={i.status === 'withdrawn'}>Withdraw</Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 flex-1"
+                                                asChild
+                                            >
+                                                <Link href={`/freight/${ulid}`}>
+                                                    View
+                                                </Link>
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `/interests/${i.id}/withdraw`,
+                                                    )
+                                                }
+                                                disabled={
+                                                    i.status === 'withdrawn'
+                                                }
+                                            >
+                                                Withdraw
+                                            </Button>
                                         </div>
                                     </Card>
                                 );
@@ -238,8 +475,28 @@ export default function MyInterests({ interests, links, canReveal, revealedConta
                         {links && links.length > 3 && (
                             <div className="flex flex-wrap gap-1">
                                 {links.map((link, idx) => (
-                                    <Button key={idx} variant={link.active ? 'default' : 'outline'} size="sm" disabled={!link.url} onClick={() => link.url && router.get(link.url, {}, { preserveState: true })} className="h-7 px-2.5 text-xs">
-                                        <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                                    <Button
+                                        key={idx}
+                                        variant={
+                                            link.active ? 'default' : 'outline'
+                                        }
+                                        size="sm"
+                                        disabled={!link.url}
+                                        onClick={() =>
+                                            link.url &&
+                                            router.get(
+                                                link.url,
+                                                {},
+                                                { preserveState: true },
+                                            )
+                                        }
+                                        className="h-7 px-2.5 text-xs"
+                                    >
+                                        <span
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
+                                        />
                                     </Button>
                                 ))}
                             </div>

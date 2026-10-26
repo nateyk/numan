@@ -183,10 +183,9 @@ class MarketplaceConnectionController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'blocked' => true,
-                    'message' => "You have used all {$outcome['limit']} contact reveals in the last {$outcome['window_days']} days.",
+                    'message' => "You have used all {$outcome['limit']} free contact reveals.",
                     'limit' => $outcome['limit'],
                     'used' => $outcome['used'],
-                    'window_days' => $outcome['window_days'],
                     'subscribe_url' => route('billing.plans'),
                 ], 402);
             }
@@ -195,9 +194,8 @@ class MarketplaceConnectionController extends Controller
                 ->with('reveal_blocked', [
                     'limit' => $outcome['limit'],
                     'used' => $outcome['used'],
-                    'window_days' => $outcome['window_days'],
                 ])
-                ->withErrors(['contact' => 'You have used all your contact reveals for now.']);
+                ->withErrors(['contact' => 'You have used all your free contact reveals.']);
         }
 
         if ($request->wantsJson()) {
@@ -206,7 +204,6 @@ class MarketplaceConnectionController extends Controller
                 'status' => $outcome['status'],
                 'remaining' => $outcome['remaining'],
                 'limit' => $outcome['limit'],
-                'window_days' => $outcome['window_days'],
             ]);
         }
 

@@ -29,7 +29,10 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface Props {
-    post: FreightDetailsPost & { owner: PostOwner };
+    post: FreightDetailsPost & {
+        owner?: PostOwner;
+        is_own_post: boolean;
+    };
     hasInterest: boolean;
     interestStatus: string | null;
     /** Needed for the flag-on withdraw action, never for the reveal. */
@@ -90,7 +93,10 @@ export default function FreightShow({
     const [interestOpen, setInterestOpen] = useState(false);
     const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-    const isOwnPost = auth?.user?.id === post.owner?.id;
+    // Server-decided. The owner identity is omitted from the payload for
+    // everyone else, so comparing auth ids here would read every locked
+    // stranger as a visitor — and every own post as somebody else's.
+    const isOwnPost = post.is_own_post;
 
     const {
         data: interestData,
@@ -314,7 +320,7 @@ export default function FreightShow({
 
                                 <div className="space-y-4 lg:col-span-5">
                                     <ConsignorPosterCard
-                                        owner={post.owner}
+                                        owner={post.owner ?? null}
                                         ulid={post.ulid}
                                         canReveal={canReveal}
                                         revealedContacts={revealedContacts}

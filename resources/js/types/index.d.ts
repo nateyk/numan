@@ -132,7 +132,6 @@ export interface SharedData {
     reveal_blocked?: {
         limit: number;
         used: number;
-        window_days: number;
     } | null;
     locale?: string;
     features?: Record<string, boolean>;

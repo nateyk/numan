@@ -99,11 +99,11 @@ it('never overwrites a limit an admin has edited', function () {
 });
 
 it('tops up a missing free setting', function () {
-    MarketplaceSetting::where('key', 'free_contact_reveals_per_week')->delete();
+    MarketplaceSetting::where('key', 'free_contact_reveals')->delete();
 
     $this->artisan('marketplace:install')->assertSuccessful();
 
-    expect(MarketplaceSetting::where('key', 'free_contact_reveals_per_week')->exists())->toBeTrue();
+    expect(MarketplaceSetting::where('key', 'free_contact_reveals')->exists())->toBeTrue();
 });
 
 it('writes nothing on a dry run', function () {

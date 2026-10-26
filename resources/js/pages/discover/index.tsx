@@ -38,7 +38,6 @@ import {
     MapPin,
     Package,
     Search,
-    ShieldCheck,
     SlidersHorizontal,
     Truck,
     Weight,
@@ -81,15 +80,11 @@ interface Freight {
         duration_seconds: number;
     } | null;
     /**
-     * PostOwnerSummary::flat() — display identity only. No email, no phone:
-     * contact data is released only through the metered reveal.
+     * The only owner-related fact a browse card receives. The identity itself
+     * is never sent here; the detail page unlocks it for the owner or after a
+     * reveal.
      */
-    owner?: {
-        id: number;
-        display_name: string | null;
-        verification_level: string | null;
-        is_verified: boolean;
-    };
+    is_own_post: boolean;
 }
 
 interface Props {
@@ -889,9 +884,7 @@ export default function DiscoverIndex({
                                             cargoType,
                                             truckType,
                                         } = freightRoute(f);
-                                        const isOwn =
-                                            auth?.user?.id &&
-                                            f.owner?.id === auth.user.id;
+                                        const isOwn = f.is_own_post;
                                         const snapshot =
                                             f.route_snapshot ?? f.routeSnapshot;
                                         const distanceText =
@@ -966,8 +959,7 @@ export default function DiscoverIndex({
                                                         </Badge>
                                                     </div>
                                                     {(distanceText ||
-                                                        durationText ||
-                                                        f.owner) && (
+                                                        durationText) && (
                                                         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                                                             {(distanceText ||
                                                                 durationText) && (
@@ -987,32 +979,6 @@ export default function DiscoverIndex({
                                                                     {
                                                                         durationText
                                                                     }
-                                                                </span>
-                                                            )}
-                                                            {f.owner && (
-                                                                <span className="ml-auto inline-flex items-center gap-1">
-                                                                    <span className="truncate font-medium text-foreground/80">
-                                                                        {f.owner
-                                                                            .display_name ??
-                                                                            'Consignor'}
-                                                                    </span>
-                                                                    {f.owner
-                                                                        .is_verified ? (
-                                                                        <span className="inline-flex items-center gap-0.5 text-green-600">
-                                                                            <ShieldCheck
-                                                                                className="size-3"
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                            Verified
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span>
-                                                                            ·
-                                                                            identity
-                                                                            not
-                                                                            verified
-                                                                        </span>
-                                                                    )}
                                                                 </span>
                                                             )}
                                                         </div>

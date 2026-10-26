@@ -8,9 +8,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * A freight post as shown publicly.
  *
- * The owner is reduced to a display name and verification level. No email, no
- * phone. Hidden posts are excluded by the controller's visible() scope rather
- * than here.
+ * Deliberately carries no owner identity. Who posted a load is released only
+ * by the detail controller, to the owner or to a viewer already in the reveal
+ * ledger. is_own_post is the single fact the listing needs so the owner can
+ * recognise their own load without the identity travelling with every card.
+ *
+ * Hidden posts are excluded by the controller's visible() scope rather than
+ * here.
  */
 class FreightPostResource extends JsonResource
 {
@@ -43,6 +47,12 @@ class FreightPostResource extends JsonResource
             'destination_site_note' => $this->destination_site_note,
             'completion_score' => $this->completion_score,
             'created_at' => optional($this->created_at)->toIso8601String(),
+
+            // The only owner-related fact a public listing may carry. The page
+            // uses it to offer Manage instead of Reveal on the viewer's own
+            // load; the identity itself stays out of this payload.
+            'is_own_post' => $request->user() !== null
+                && (int) $this->user_id === (int) $request->user()->id,
 
             'origin' => $this->whenLoaded('originLocation', fn () => [
                 'id' => $this->originLocation?->id,
@@ -85,13 +95,6 @@ class FreightPostResource extends JsonResource
                 'geometry' => $this->routeSnapshot->geometry,
                 'routing_provider' => $this->routeSnapshot->routing_provider,
             ] : null),
-
-            // Display identity only.
-            //
-            // Resolved through PostOwnerSummary::flat(): emitting the resource
-            // object here nests the owner under a {data: …} key on the
-            // collection path, and every page compares owner.id to the viewer.
-            'owner' => $this->whenLoaded('user', fn () => $this->user ? PostOwnerSummary::flat($this->user) : null),
         ];
     }
 }

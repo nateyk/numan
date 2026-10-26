@@ -37,7 +37,7 @@ interface PlanItem {
 interface FreeLimits {
     free_active_posts: number;
     free_interests_per_week: number;
-    free_contact_reveals_per_week: number;
+    free_contact_reveals: number;
 }
 
 interface Props {
@@ -48,7 +48,7 @@ interface Props {
 const DEFAULT_PLAN_LIMITS = {
     active_freight_posts: -1,
     interests_per_week: -1,
-    contact_reveals_per_week: -1,
+    contact_reveals: -1,
 } as Record<string, number>;
 
 export default function AdminMarketplacePlans({ plans, freeLimits }: Props) {
@@ -60,9 +60,7 @@ export default function AdminMarketplacePlans({ plans, freeLimits }: Props) {
         free_interests_per_week: String(
             freeLimits.free_interests_per_week ?? 3,
         ),
-        free_contact_reveals_per_week: String(
-            freeLimits.free_contact_reveals_per_week ?? 3,
-        ),
+        free_contact_reveals: String(freeLimits.free_contact_reveals ?? 5),
     });
 
     const form = useForm({
@@ -419,35 +417,31 @@ export default function AdminMarketplacePlans({ plans, freeLimits }: Props) {
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label>
-                                            Contact Reveals / week (-1
-                                            unlimited)
+                                            Contact Reveals (-1 unlimited)
                                         </Label>
                                         <Input
                                             type="number"
                                             value={String(
                                                 form.data.limits
-                                                    .contact_reveals_per_week ??
-                                                    -1,
+                                                    .contact_reveals ?? -1,
                                             )}
                                             onChange={(e) =>
                                                 form.setData('limits', {
                                                     ...form.data.limits,
-                                                    contact_reveals_per_week:
-                                                        parseInt(
-                                                            e.target.value ||
-                                                                '-1',
-                                                            10,
-                                                        ),
+                                                    contact_reveals: parseInt(
+                                                        e.target.value || '-1',
+                                                        10,
+                                                    ),
                                                 })
                                             }
                                         />
                                         {form.errors[
-                                            'limits.contact_reveals_per_week'
+                                            'limits.contact_reveals'
                                         ] && (
                                             <p className="text-xs text-destructive">
                                                 {
                                                     form.errors[
-                                                        'limits.contact_reveals_per_week'
+                                                        'limits.contact_reveals'
                                                     ]
                                                 }
                                             </p>
@@ -591,30 +585,23 @@ export default function AdminMarketplacePlans({ plans, freeLimits }: Props) {
                                 )}
                             </div>
                             <div className="space-y-1.5">
-                                <Label htmlFor="free_contact_reveals_per_week">
-                                    Contact reveals per week
+                                <Label htmlFor="free_contact_reveals">
+                                    Contact reveals (one-time free allowance)
                                 </Label>
                                 <Input
-                                    id="free_contact_reveals_per_week"
+                                    id="free_contact_reveals"
                                     type="number"
-                                    value={
-                                        freeForm.data
-                                            .free_contact_reveals_per_week
-                                    }
+                                    value={freeForm.data.free_contact_reveals}
                                     onChange={(e) =>
                                         freeForm.setData(
-                                            'free_contact_reveals_per_week',
+                                            'free_contact_reveals',
                                             e.target.value,
                                         )
                                     }
                                 />
-                                {freeForm.errors
-                                    .free_contact_reveals_per_week && (
+                                {freeForm.errors.free_contact_reveals && (
                                     <p className="text-xs text-destructive">
-                                        {
-                                            freeForm.errors
-                                                .free_contact_reveals_per_week
-                                        }
+                                        {freeForm.errors.free_contact_reveals}
                                     </p>
                                 )}
                             </div>
@@ -706,9 +693,8 @@ export default function AdminMarketplacePlans({ plans, freeLimits }: Props) {
                                         {plan.limits?.interests_per_week ?? '-'}
                                     </span>
                                     <span className="text-muted-foreground">
-                                        • Reveals/wk:{' '}
-                                        {plan.limits
-                                            ?.contact_reveals_per_week ?? '-'}
+                                        • Reveals:{' '}
+                                        {plan.limits?.contact_reveals ?? '-'}
                                     </span>
                                     <span className="text-muted-foreground">
                                         • {plan.subscription_count}{' '}
