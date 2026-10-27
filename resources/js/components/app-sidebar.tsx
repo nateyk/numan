@@ -22,6 +22,7 @@ import {
     Search,
     Settings,
     ShieldAlert,
+    UserRound,
 } from 'lucide-react';
 import { useMemo } from 'react';
 
@@ -45,6 +46,11 @@ const getMainNavItems = (
             title: t('navigation.discover_freight', 'Discover Freight'),
             href: '/freight',
             icon: Search,
+        },
+        {
+            title: t('navigation.my_profile', 'My Profile'),
+            href: '/public-profile',
+            icon: UserRound,
         },
         ...(interestsEnabled
             ? [

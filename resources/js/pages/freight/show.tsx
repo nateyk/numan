@@ -109,9 +109,9 @@ export default function FreightShow({
         message: string;
         /**
          * Never sent. Declared because the server validates the whole submission
-         * and returns failures under this key — a missing transporter profile, for
-         * one — and reading an undeclared key off a typed form is an error the
-         * compiler is right to raise.
+         * and returns failures under this key — an incomplete public profile,
+         * for one — and reading an undeclared key off a typed form is an error
+         * the compiler is right to raise.
          */
         interest?: string;
     }>({
@@ -462,7 +462,7 @@ export default function FreightShow({
                                                             )
                                                                 .toLowerCase()
                                                                 .includes(
-                                                                    'transporter profile',
+                                                                    'public profile',
                                                                 ) && (
                                                                 <div className="mt-2">
                                                                     <Button
@@ -470,12 +470,12 @@ export default function FreightShow({
                                                                         variant="outline"
                                                                         onClick={() =>
                                                                             router.visit(
-                                                                                '/my-transporter-profile',
+                                                                                '/public-profile',
                                                                             )
                                                                         }
                                                                     >
-                                                                        Create
-                                                                        Transporter
+                                                                        Complete
+                                                                        Public
                                                                         Profile
                                                                     </Button>
                                                                 </div>

@@ -271,6 +271,19 @@ class PublicProfileController extends Controller
                     'destination_location_id' => $route->destination_location_id,
                 ])
                 ->all(),
+            // The owner may see and manage their own document list. The public
+            // page only ever receives the two document booleans.
+            'documents' => $profile->documents()
+                ->latest()
+                ->get(['id', 'type', 'original_name', 'status', 'created_at'])
+                ->map(fn ($document): array => [
+                    'id' => $document->id,
+                    'type' => $document->type,
+                    'name' => $document->original_name,
+                    'status' => $document->status,
+                    'uploaded_at' => $document->created_at?->toIso8601String(),
+                ])
+                ->all(),
         ];
     }
 }

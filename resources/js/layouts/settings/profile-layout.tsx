@@ -37,11 +37,8 @@ const getNavSections = (
                 icon: User,
             },
             {
-                title: t(
-                    'navigation.marketplace_details',
-                    'Marketplace details',
-                ),
-                href: '/settings/marketplace-details',
+                title: t('navigation.my_profile', 'My Profile'),
+                href: '/public-profile',
                 icon: Briefcase,
             },
             {

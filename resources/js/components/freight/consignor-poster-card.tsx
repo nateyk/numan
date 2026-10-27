@@ -193,9 +193,7 @@ function ContactBlock({
                     We ask for a number before you see someone else’s.
                 </p>
                 <Button size="sm" variant="outline" className="w-full" asChild>
-                    <Link href="/settings/marketplace-details">
-                        Add phone number
-                    </Link>
+                    <Link href="/public-profile">Add phone number</Link>
                 </Button>
             </div>
         );

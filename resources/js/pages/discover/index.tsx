@@ -195,22 +195,12 @@ export default function DiscoverIndex({
                     (Object.values(errors)[0] as string);
                 if (msg) {
                     toast.error(msg);
-                    if (
-                        String(msg)
-                            .toLowerCase()
-                            .includes('transporter profile')
-                    ) {
-                        setTimeout(
-                            () => router.visit('/my-transporter-profile'),
-                            1500,
-                        );
+                    if (String(msg).toLowerCase().includes('public profile')) {
+                        setTimeout(() => router.visit('/public-profile'), 1500);
                     } else if (
                         String(msg).toLowerCase().includes('phone number')
                     ) {
-                        setTimeout(
-                            () => router.visit('/settings/profile'),
-                            1500,
-                        );
+                        setTimeout(() => router.visit('/public-profile'), 1500);
                     } else if (
                         String(msg).toLowerCase().includes('not active')
                     ) {
