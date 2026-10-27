@@ -1,6 +1,7 @@
+import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTranslations } from '@/hooks/use-translations';
-import { MapPinned, Quote, Star, Truck } from 'lucide-react';
+import { MapPinned, Quote, Star } from 'lucide-react';
 
 export function LandingTestimonials() {
     const { t } = useTranslations();
@@ -82,7 +83,10 @@ export function LandingTestimonials() {
                                 'Shippers & Carriers',
                             )}
                         </span>{' '}
-                        {t('landing.testimonials.title.part3', 'Across Ethiopia')}
+                        {t(
+                            'landing.testimonials.title.part3',
+                            'Across Ethiopia',
+                        )}
                     </h2>
                     <p className="mt-4 text-lg text-muted-foreground">
                         {t(
@@ -164,18 +168,15 @@ export function LandingTestimonials() {
                         )}
                     </p>
                     <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                        <a
-                            href="/dashboard"
-                            className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
-                        >
-                            <Truck className="h-4 w-4" />
-                            {t(
+                        <PostFreightButton
+                            className="flex h-auto items-center gap-2 rounded-md border bg-transparent px-3 py-1.5 text-sm font-medium text-foreground shadow-none hover:bg-muted"
+                            label={t(
                                 'landing.testimonials.community.star',
                                 'Post a Load',
                             )}
-                        </a>
+                        />
                         <a
-                            href="/dashboard"
+                            href="/transporters"
                             className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
                         >
                             <MapPinned className="h-4 w-4" />
@@ -185,7 +186,7 @@ export function LandingTestimonials() {
                             )}
                         </a>
                         <a
-                            href="/dashboard"
+                            href="/freight"
                             className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
                         >
                             {t(

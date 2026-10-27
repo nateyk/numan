@@ -7,6 +7,7 @@ import {
     formatDuration,
 } from '@/components/freight/format-route';
 import LocationSearchInput from '@/components/maps/location-search-input';
+import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -849,11 +850,7 @@ export default function DiscoverIndex({
                                                 </Link>
                                             </Button>
                                         ) : (
-                                            <Button asChild>
-                                                <Link href="/my-freight">
-                                                    Post Freight
-                                                </Link>
-                                            </Button>
+                                            <PostFreightButton />
                                         )}
                                     </CardContent>
                                 </Card>

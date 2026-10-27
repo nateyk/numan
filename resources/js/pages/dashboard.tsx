@@ -1,5 +1,6 @@
 import { OnboardingChecklist } from '@/components/onboarding-checklist';
 import { ProductTour } from '@/components/product-tour';
+import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -331,29 +332,51 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            {quickActions.map((action) => (
-                                <Link
-                                    key={action.title}
-                                    href={action.href}
-                                    id={action.id}
-                                    className="group flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                                >
-                                    <div
-                                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted ${action.color}`}
+                            {quickActions.map((action) =>
+                                action.href === '/my-freight' ? (
+                                    <PostFreightButton
+                                        key={action.title}
+                                        className="group flex h-auto items-start gap-4 rounded-lg border bg-transparent p-4 text-left font-normal text-foreground shadow-none transition-colors hover:bg-muted/50"
                                     >
-                                        <action.icon className="h-5 w-5" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="font-medium">
-                                            {action.title}
-                                        </p>
-                                        <p className="truncate text-sm text-muted-foreground">
-                                            {action.description}
-                                        </p>
-                                    </div>
-                                    <ArrowRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                                </Link>
-                            ))}
+                                        <div
+                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted ${action.color}`}
+                                        >
+                                            <action.icon className="h-5 w-5" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-medium">
+                                                {action.title}
+                                            </p>
+                                            <p className="truncate text-sm text-muted-foreground">
+                                                {action.description}
+                                            </p>
+                                        </div>
+                                        <ArrowRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                                    </PostFreightButton>
+                                ) : (
+                                    <Link
+                                        key={action.title}
+                                        href={action.href}
+                                        id={action.id}
+                                        className="group flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                                    >
+                                        <div
+                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted ${action.color}`}
+                                        >
+                                            <action.icon className="h-5 w-5" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-medium">
+                                                {action.title}
+                                            </p>
+                                            <p className="truncate text-sm text-muted-foreground">
+                                                {action.description}
+                                            </p>
+                                        </div>
+                                        <ArrowRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                                    </Link>
+                                ),
+                            )}
                         </div>
                     </CardContent>
                 </Card>

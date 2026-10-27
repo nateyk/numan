@@ -55,7 +55,7 @@ it('redirects with an explanation instead of a raw 403 when the free post limit 
 
     $this->actingAs($user)
         ->post('/my-freight')
-        ->assertRedirect()
+        ->assertRedirect('/my-freight')
         ->assertSessionHasErrors('freight');
 
     // No draft may be created as a side effect of the denied request.

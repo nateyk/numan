@@ -1,3 +1,4 @@
+import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,7 +57,6 @@ import {
     MoreHorizontal,
     Package,
     Pencil,
-    Plus,
     Search,
     Trash2,
     Truck,
@@ -142,12 +142,14 @@ export default function FreightIndex({
     livePostLimit = -1,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
-    const { errors, flash, marketplace } = usePage<SharedData>()
+    const { errors, flash, marketplace, profile_setup } = usePage<SharedData>()
         .props as unknown as {
         errors: Record<string, string>;
         flash?: { success?: string | null };
         marketplace?: { interests_enabled?: boolean };
+        profile_setup?: { required?: boolean } | null;
     };
+    const setupRequired = profile_setup?.required ?? false;
     const interestsEnabled = marketplace?.interests_enabled ?? false;
     // Open the limit dialog right away if the server just bounced a create
     // (e.g. the quota filled between page load and clicking Post).
@@ -178,12 +180,12 @@ export default function FreightIndex({
         });
     };
 
-    const createDraft = () => {
+    const allowPost = () => {
         if (!canPost) {
             setLimitDialogOpen(true);
-            return;
+            return false;
         }
-        router.post('/my-freight');
+        return true;
     };
     const filterBy = (status: string) =>
         router.get(
@@ -225,6 +227,18 @@ export default function FreightIndex({
                         </p>
                         <Button asChild size="sm" className="shrink-0">
                             <Link href="/billing/plans">Subscribe</Link>
+                        </Button>
+                    </div>
+                )}
+                {setupRequired && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-sky-300 bg-sky-50 px-4 py-3 text-sm dark:border-sky-800 dark:bg-sky-950/40">
+                        <p className="flex items-center gap-2 font-medium">
+                            <AlertTriangle className="size-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                            Posting needs a public profile so carriers know who
+                            is asking.
+                        </p>
+                        <Button asChild size="sm" className="shrink-0">
+                            <Link href="/public-profile">Finish profile</Link>
                         </Button>
                     </div>
                 )}
@@ -289,13 +303,10 @@ export default function FreightIndex({
                                             ))}
                                         </div>
                                     </div>
-                                    <Button
-                                        onClick={createDraft}
+                                    <PostFreightButton
+                                        onBeforePost={allowPost}
                                         className="w-full"
-                                    >
-                                        <Plus className="mr-2 size-4" /> Post
-                                        Freight
-                                    </Button>
+                                    />
                                 </div>
                             </SheetContent>
                         </Sheet>
@@ -333,19 +344,16 @@ export default function FreightIndex({
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button
-                            onClick={createDraft}
+                        <PostFreightButton
+                            onBeforePost={allowPost}
                             className="hidden sm:flex"
-                        >
-                            <Plus className="mr-1 size-4" /> Post Freight
-                        </Button>
-                        <Button
-                            onClick={createDraft}
+                        />
+                        <PostFreightButton
+                            onBeforePost={allowPost}
                             size="icon"
                             className="sm:hidden"
-                        >
-                            <Plus className="size-4" />
-                        </Button>
+                            label="Post Freight"
+                        />
                     </div>
                 </div>
 
@@ -433,14 +441,11 @@ export default function FreightIndex({
                                                             : ''}{' '}
                                                         posts yet.
                                                     </p>
-                                                    <Button
-                                                        onClick={createDraft}
+                                                    <PostFreightButton
+                                                        onBeforePost={allowPost}
                                                         size="sm"
                                                         className="mt-2"
-                                                    >
-                                                        <Plus className="mr-1 size-4" />{' '}
-                                                        Post Freight
-                                                    </Button>
+                                                    />
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -698,10 +703,10 @@ export default function FreightIndex({
                                 <p className="text-sm font-medium">
                                     No freight in this filter
                                 </p>
-                                <Button onClick={createDraft} size="sm">
-                                    <Plus className="mr-1 size-4" /> Post
-                                    Freight
-                                </Button>
+                                <PostFreightButton
+                                    onBeforePost={allowPost}
+                                    size="sm"
+                                />
                             </CardContent>
                         </Card>
                     ) : (

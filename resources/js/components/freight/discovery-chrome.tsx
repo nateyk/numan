@@ -1,7 +1,8 @@
+import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { dashboard, login, register } from '@/routes';
-import { discovery, index as myFreight, myInterests } from '@/routes/freight';
+import { discovery, myInterests } from '@/routes/freight';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Menu, Truck } from 'lucide-react';
@@ -19,9 +20,11 @@ import { useState } from 'react';
 
 const navLinks = [
     { href: discovery(), label: 'Browse' },
-    { href: myFreight(), label: 'Post a Load' },
     { href: myInterests(), label: 'My Interests' },
 ];
+
+const postLinkClass =
+    'h-auto bg-transparent p-0 text-sm font-medium text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground';
 
 function AccountLinks({
     canRegister = true,
@@ -113,6 +116,10 @@ export function DiscoveryHeader({
                             {link.label}
                         </Link>
                     ))}
+                    <PostFreightButton
+                        label="Post a Load"
+                        className={postLinkClass}
+                    />
                     <span className="ml-2 flex items-center gap-2">
                         <AccountLinks canRegister={canRegister} />
                     </span>
@@ -153,6 +160,14 @@ export function DiscoveryHeader({
                                     {link.label}
                                 </Link>
                             ))}
+                            <PostFreightButton
+                                label="Post a Load"
+                                className={`${postLinkClass} justify-start px-3 py-2`}
+                                onBeforePost={() => {
+                                    setMobileMenuOpen(false);
+                                    return true;
+                                }}
+                            />
                         </nav>
                         <div className="flex flex-col gap-2 border-t pt-4">
                             <AccountLinks
@@ -185,12 +200,10 @@ export function DiscoveryFooter() {
                     >
                         Browse freight
                     </Link>
-                    <Link
-                        href={myFreight()}
-                        className="transition-colors hover:text-foreground"
-                    >
-                        Post a load
-                    </Link>
+                    <PostFreightButton
+                        label="Post a load"
+                        className={`${postLinkClass} text-xs`}
+                    />
                     {interestsEnabled && (
                         <Link
                             href={myInterests()}

@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Announcement;
 use App\Models\SeoMetadata;
 use App\Services\FeatureService;
+use App\Services\MarketplaceReadiness;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -149,6 +150,30 @@ class HandleInertiaRequests extends Middleware
             'marketplace' => [
                 'interests_enabled' => (bool) config('marketplace.interests_enabled'),
             ],
+
+            // The first-post dialog reads this. Setup is required until the
+            // profile can actually post, and a superadmin never sees the prompt
+            // because they manage other people's profiles rather than trade.
+            'profile_setup' => function () use ($user): ?array {
+                if (! $user) {
+                    return null;
+                }
+
+                $profile = $user->profile;
+                $readiness = app(MarketplaceReadiness::class)->for($user);
+
+                return [
+                    'required' => ! $user->is_superadmin
+                        && ! $readiness['ready']['posts_freight'],
+                    'profile' => [
+                        'display_name' => $profile?->display_name ?? $user->name,
+                        'account_type' => $profile?->account_type,
+                        'phone' => $profile?->phone,
+                        'provides_transport' => (bool) $profile?->provides_transport,
+                        'primary_location_id' => $profile?->primary_location_id,
+                    ],
+                ];
+            },
 
             // The contact released by the action the user just took, so it
             // survives the redirect back.

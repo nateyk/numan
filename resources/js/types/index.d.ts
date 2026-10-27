@@ -122,6 +122,20 @@ export interface SharedData {
     marketplace: {
         interests_enabled: boolean;
     };
+    /**
+     * The first-post dialog. `required` is true until the profile can publish a
+     * load; `profile` supplies the values it opens with.
+     */
+    profile_setup?: {
+        required: boolean;
+        profile: {
+            display_name: string;
+            account_type: string | null;
+            phone: string | null;
+            provides_transport: boolean;
+            primary_location_id: number | null;
+        } | null;
+    } | null;
     // Set when an action bounced the user back for a missing phone number.
     requires_phone?: boolean;
     requires_phone_reason?: string | null;

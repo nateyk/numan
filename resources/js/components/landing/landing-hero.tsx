@@ -1,10 +1,8 @@
+import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/hooks/use-translations';
-import { register } from '@/routes';
-import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import {
-    ArrowRight,
     CheckCircle,
     CreditCard,
     MapPinned,
@@ -13,7 +11,6 @@ import {
 } from 'lucide-react';
 
 export function LandingHero() {
-    const { auth } = usePage<SharedData>().props;
     const { t } = useTranslations();
 
     const stats = [
@@ -91,31 +88,23 @@ export function LandingHero() {
 
                     {/* CTA Buttons */}
                     <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                        <Button
+                        <PostFreightButton
                             size="lg"
-                            asChild
                             className="h-11 px-7 text-sm font-semibold"
-                        >
-                            <Link href={auth.user ? '/dashboard' : register()}>
-                                {t(
-                                    'landing.hero.cta.get_started',
-                                    'Post a Load Free',
-                                )}
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
+                            label={t(
+                                'landing.hero.cta.get_started',
+                                'Post a Load Free',
+                            )}
+                        />
                         <Button
                             size="lg"
                             variant="outline"
                             asChild
                             className="h-11 px-7 text-sm"
                         >
-                            <Link href={auth.user ? '/dashboard' : register()}>
+                            <Link href="/transporters">
                                 <Truck className="mr-2 h-4 w-4" />
-                                {t(
-                                    'landing.hero.cta.github',
-                                    'Find Trucks',
-                                )}
+                                {t('landing.hero.cta.github', 'Find Trucks')}
                             </Link>
                         </Button>
                     </div>

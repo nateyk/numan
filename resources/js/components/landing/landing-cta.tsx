@@ -1,12 +1,10 @@
+import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/hooks/use-translations';
-import { register } from '@/routes';
-import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { ArrowRight, MapPinned } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { MapPinned } from 'lucide-react';
 
 export function LandingCta() {
-    const { auth } = usePage<SharedData>().props;
     const { t } = useTranslations();
 
     return (
@@ -37,30 +35,21 @@ export function LandingCta() {
                         </p>
 
                         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                            <Button
+                            <PostFreightButton
                                 size="lg"
-                                asChild
                                 className="h-11 bg-accent px-7 text-sm font-semibold text-foreground hover:bg-accent/90"
-                            >
-                                <Link
-                                    href={auth.user ? '/dashboard' : register()}
-                                >
-                                    {t(
-                                        'landing.cta.get_started',
-                                        'Post a Load Free',
-                                    )}
-                                    <ArrowRight className="ml-2 h-4 w-4" />
-                                </Link>
-                            </Button>
+                                label={t(
+                                    'landing.cta.get_started',
+                                    'Post a Load Free',
+                                )}
+                            />
                             <Button
                                 size="lg"
                                 variant="outline"
                                 asChild
                                 className="h-11 border-white/20 bg-transparent px-7 text-sm text-white hover:bg-white/10 hover:text-white"
                             >
-                                <Link
-                                    href={auth.user ? '/dashboard' : register()}
-                                >
+                                <Link href="/freight">
                                     {t('landing.cta.github', 'Browse Loads')}
                                 </Link>
                             </Button>

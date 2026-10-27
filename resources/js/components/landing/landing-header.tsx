@@ -3,7 +3,7 @@ import { LanguageSwitcher } from '@/components/language-switcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useTranslations } from '@/hooks/use-translations';
-import { dashboard, login, register } from '@/routes';
+import { login, register } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Menu, Sparkles } from 'lucide-react';
@@ -71,8 +71,11 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                     <AppearanceToggleDropdown />
                     {auth.user ? (
                         <Button asChild>
-                            <Link href={dashboard()}>
-                                {t('landing.nav.dashboard', 'Dashboard')}
+                            <Link href="/freight">
+                                {t(
+                                    'landing.nav.browse_freight',
+                                    'Browse Freight',
+                                )}
                             </Link>
                         </Button>
                     ) : (
@@ -148,10 +151,10 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                 <div className="flex flex-col gap-3">
                                     {auth.user ? (
                                         <Button asChild className="w-full">
-                                            <Link href={dashboard()}>
+                                            <Link href="/freight">
                                                 {t(
-                                                    'landing.nav.dashboard',
-                                                    'Dashboard',
+                                                    'landing.nav.browse_freight',
+                                                    'Browse Freight',
                                                 )}
                                             </Link>
                                         </Button>

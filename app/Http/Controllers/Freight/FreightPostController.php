@@ -105,7 +105,8 @@ class FreightPostController extends Controller
             $entitlement = app(MarketplaceEntitlementService::class);
 
             if ($workspace && ! $entitlement->canCreateFreightPost($workspace)) {
-                return back()
+                return redirect()
+                    ->route('freight.index')
                     ->with('limit_reached', [
                         'live' => $entitlement->livePostCount($workspace),
                         'limit' => $entitlement->getLimitValue($workspace, 'active_freight_posts'),
