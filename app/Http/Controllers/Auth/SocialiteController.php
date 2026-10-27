@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ConnectedAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\WorkspaceService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -75,7 +76,11 @@ class SocialiteController extends Controller
 
                 $user->markEmailAsVerified();
 
-                // Workspace creation is natively deferred to the Onboarding Wizard
+                // The personal workspace belongs to the account, so create it
+                // before onboarding has had a chance to run.
+                if ($user->workspaces()->count() === 0) {
+                    app(WorkspaceService::class)->createPersonalWorkspace($user);
+                }
 
                 DB::commit();
             } catch (\Exception $e) {

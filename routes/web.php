@@ -77,6 +77,10 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PhoneNumberController;
+use App\Http\Controllers\ProfileDocumentController;
+use App\Http\Controllers\ProfileSetupController;
+use App\Http\Controllers\ProfileVerificationController;
+use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\ResolveOsmLocationController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Settings\WorkspaceLogoController;
@@ -180,6 +184,20 @@ Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept
 // Public invite link routes
 Route::get('/join/{token}', [WorkspaceInviteLinkController::class, 'show'])->name('invite-links.show');
 Route::post('/join/{token}', [WorkspaceInviteLinkController::class, 'join'])->middleware('auth')->name('invite-links.join');
+
+// The public profile must be reachable before verification, onboarding, and 2FA.
+// It is the surface a brand-new account lands on from the first-post dialog, so
+// this group deliberately carries only `auth` and `workspace`.
+Route::middleware(['auth', 'workspace'])->group(function () {
+    Route::get('/public-profile', [PublicProfileController::class, 'edit'])->name('public-profile.edit');
+    Route::patch('/public-profile', [PublicProfileController::class, 'update'])->name('public-profile.update');
+    Route::put('/public-profile/transport', [PublicProfileController::class, 'updateTransport'])->name('public-profile.transport.update');
+    Route::post('/public-profile/setup', [ProfileSetupController::class, 'store'])->name('public-profile.setup');
+    Route::post('/public-profile/verification', [ProfileVerificationController::class, 'store'])->name('public-profile.verification.store');
+    Route::post('/public-profile/documents', [ProfileDocumentController::class, 'store'])->name('public-profile.documents.store');
+    Route::delete('/public-profile/documents/{document}', [ProfileDocumentController::class, 'destroy'])->name('public-profile.documents.destroy');
+    Route::get('/public-profile/documents/{document}/download', [ProfileDocumentController::class, 'download'])->name('public-profile.documents.download');
+});
 
 Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', 'workspace.ip', 'workspace.suspended'])->group(function () {
     Route::get('dashboard', function () {

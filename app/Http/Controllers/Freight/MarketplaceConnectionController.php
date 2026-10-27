@@ -124,6 +124,13 @@ class MarketplaceConnectionController extends Controller
             abort(403);
         }
 
+        // Authorise before offering the phone step. A stranger is not a party to
+        // this interest, and prompting them to add a number implies they are one
+        // step away from a reveal they will never be allowed to make.
+        if (! $this->reveals->canReveal($viewer, $counterparty, $interest)) {
+            abort(403);
+        }
+
         if ($missing = $this->missingPhoneStep($request)) {
             return $missing;
         }

@@ -39,7 +39,13 @@ class ContactRevealService
     public const BLOCKED_INTEREST_STATUSES = ['rejected', 'withdrawn'];
 
     /**
-     * Does a live interest exist between these two users?
+     * Does a live interest connect these two users?
+     *
+     * Both halves matter: one of them expressed the interest, and the other
+     * owns the freight it was expressed on. Asking only whether either user
+     * appears on any live interest is true for every stranger as soon as the
+     * counterparty has ever expressed interest in anybody, which is how a
+     * stranger could reveal a contact.
      */
     public function hasLiveInterest(int $aUserId, int $bUserId): bool
     {
@@ -48,15 +54,14 @@ class ContactRevealService
         }
 
         return FreightInterest::query()
-            ->whereIn('user_id', [$aUserId, $bUserId])
             ->whereNotIn('status', self::BLOCKED_INTEREST_STATUSES)
             ->where(function ($query) use ($aUserId, $bUserId): void {
                 $query->where(function ($inner) use ($aUserId, $bUserId): void {
-                    $inner->whereIn('user_id', [$aUserId, $bUserId]);
-                })->orWhereIn('freight_post_id', function ($postQuery) use ($aUserId, $bUserId): void {
-                    $postQuery->select('id')
-                        ->from('freight_posts')
-                        ->whereIn('user_id', [$aUserId, $bUserId]);
+                    $inner->where('user_id', $aUserId)
+                        ->whereHas('freightPost', fn ($post) => $post->where('user_id', $bUserId));
+                })->orWhere(function ($inner) use ($aUserId, $bUserId): void {
+                    $inner->where('user_id', $bUserId)
+                        ->whereHas('freightPost', fn ($post) => $post->where('user_id', $aUserId));
                 });
             })
             ->exists();

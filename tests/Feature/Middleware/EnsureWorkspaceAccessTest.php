@@ -4,7 +4,6 @@ use App\Http\Middleware\EnsureWorkspaceAccess;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 it('redirects unauthenticated users to login', function () {
     $request = Request::create('/test');
@@ -49,15 +48,25 @@ it('falls back to personal workspace when current workspace is null', function (
     expect($user->current_workspace_id)->toBe($workspace->id);
 });
 
-it('aborts 403 when user has no workspaces at all', function () {
+it('creates a personal workspace when user has none at all', function () {
+    // The public profile is reachable before onboarding finishes, so a missing
+    // workspace can no longer be a dead end. The middleware is the backstop for
+    // accounts created by a factory, a seeder, or a legacy path.
     $user = User::factory()->create(['current_workspace_id' => null]);
 
     $request = Request::create('/test');
     $request->setUserResolver(fn () => $user);
 
     $middleware = new EnsureWorkspaceAccess;
-    $middleware->handle($request, fn () => response('OK'));
-})->throws(HttpException::class);
+    $response = $middleware->handle($request, fn () => response('OK'));
+
+    expect($response->getStatusCode())->toBe(200);
+
+    $user->refresh();
+    expect($user->workspaces()->count())->toBe(1)
+        ->and($user->current_workspace_id)->not->toBeNull()
+        ->and($user->currentWorkspace->personal_workspace)->toBeTrue();
+});
 
 it('switches to another workspace when user does not belong to current', function () {
     $user = User::factory()->create();

@@ -43,7 +43,12 @@ class CreateNewUser implements CreatesNewUsers
                 'password' => $input['password'],
             ]);
 
-            // Workspace creation is now handled exclusively via the Onboarding Wizard
+            // The personal workspace is part of the account, not the onboarding
+            // wizard. A user who never finishes onboarding still needs one for
+            // every authenticated surface.
+            if ($user->workspaces()->count() === 0) {
+                $this->workspaceService->createPersonalWorkspace($user);
+            }
 
             return $user;
         });
