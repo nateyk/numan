@@ -14,6 +14,8 @@ use App\Services\WorkspaceService;
  */
 it('does not gate the dashboard behind an onboarding flag', function () {
     $user = User::factory()->unonboarded()->create(['email_verified_at' => now()]);
+    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    $workspace->users()->attach(User::factory()->create()->id, ['role' => 'member']);
 
     $this->actingAs($user)->get('/dashboard')->assertOk();
 });

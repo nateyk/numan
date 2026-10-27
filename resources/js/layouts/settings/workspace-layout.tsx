@@ -38,6 +38,7 @@ const getNavSections = (
     t: (key: string, fallback: string) => string,
     workspace?: Workspace | null,
     userRole?: WorkspaceRole | null,
+    isIndividual: boolean = false,
 ): NavSection[] => {
     const workspaceItems: NavItemWithRole[] = [
         {
@@ -124,38 +125,51 @@ const getNavSections = (
         });
     };
 
-    const sections: NavSection[] = [
-        {
-            title: t('navigation.workspace', 'Workspace'),
-            items: filterItems(workspaceItems),
-        },
-    ];
+    const sections: NavSection[] = [];
 
-    // Only show team section if there are visible items
-    const visibleTeam = filterItems(teamItems);
-    if (visibleTeam.length > 0) {
+    // An individual has no team-shaped workspace settings. Billing stays,
+    // because it is an account concern rather than a team one.
+    const visibleWorkspace = filterItems(
+        isIndividual
+            ? workspaceItems.filter((item) => item.href === '/billing')
+            : workspaceItems,
+    );
+    if (visibleWorkspace.length > 0) {
         sections.push({
-            title: t('navigation.team', 'Team'),
-            items: visibleTeam,
+            title: isIndividual
+                ? t('navigation.account', 'Account')
+                : t('navigation.workspace', 'Workspace'),
+            items: visibleWorkspace,
         });
     }
 
-    // Only show analytics if there are visible items
-    const visibleAnalytics = filterItems(analyticsItems);
-    if (visibleAnalytics.length > 0) {
-        sections.push({
-            title: t('navigation.analytics', 'Analytics'),
-            items: visibleAnalytics,
-        });
-    }
+    if (!isIndividual) {
+        // Only show team section if there are visible items
+        const visibleTeam = filterItems(teamItems);
+        if (visibleTeam.length > 0) {
+            sections.push({
+                title: t('navigation.team', 'Team'),
+                items: visibleTeam,
+            });
+        }
 
-    // Only show security if there are visible items
-    const visibleSecurity = filterItems(securityItems);
-    if (visibleSecurity.length > 0) {
-        sections.push({
-            title: t('navigation.security', 'Security'),
-            items: visibleSecurity,
-        });
+        // Only show analytics if there are visible items
+        const visibleAnalytics = filterItems(analyticsItems);
+        if (visibleAnalytics.length > 0) {
+            sections.push({
+                title: t('navigation.analytics', 'Analytics'),
+                items: visibleAnalytics,
+            });
+        }
+
+        // Only show security if there are visible items
+        const visibleSecurity = filterItems(securityItems);
+        if (visibleSecurity.length > 0) {
+            sections.push({
+                title: t('navigation.security', 'Security'),
+                items: visibleSecurity,
+            });
+        }
     }
 
     return sections;
@@ -174,11 +188,11 @@ export default function WorkspaceLayout({
     fullWidth = false,
 }: WorkspaceLayoutProps) {
     const { t, i18n } = useTranslations();
-    const { currentWorkspace } = usePage<SharedData>().props;
+    const { currentWorkspace, is_individual } = usePage<SharedData>().props;
     const userRole = currentWorkspace?.role;
     const navSections = useMemo(
-        () => getNavSections(t, currentWorkspace, userRole),
-        [t, currentWorkspace, userRole],
+        () => getNavSections(t, currentWorkspace, userRole, is_individual),
+        [t, currentWorkspace, userRole, is_individual],
     );
 
     const defaultTitle =

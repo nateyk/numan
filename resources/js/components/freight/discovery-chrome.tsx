@@ -1,8 +1,10 @@
 import { PostFreightButton } from '@/components/profile/post-freight-button';
+import { PublicAccountMenu } from '@/components/public-account-menu';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { dashboard, login, register } from '@/routes';
+import { login, register } from '@/routes';
 import { discovery, myInterests } from '@/routes/freight';
+import { index as transporters } from '@/routes/transporters';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Menu, Truck } from 'lucide-react';
@@ -20,6 +22,7 @@ import { useState } from 'react';
 
 const navLinks = [
     { href: discovery(), label: 'Browse' },
+    { href: transporters(), label: 'Transporters' },
     { href: myInterests(), label: 'My Interests' },
 ];
 
@@ -36,13 +39,7 @@ function AccountLinks({
     const { auth } = usePage<SharedData>().props;
 
     if (auth.user) {
-        return (
-            <Button size="sm" asChild>
-                <Link href={dashboard()} onClick={onNavigate}>
-                    Dashboard
-                </Link>
-            </Button>
-        );
+        return <PublicAccountMenu onNavigate={onNavigate} />;
     }
 
     return (
@@ -199,6 +196,12 @@ export function DiscoveryFooter() {
                         className="transition-colors hover:text-foreground"
                     >
                         Browse freight
+                    </Link>
+                    <Link
+                        href={transporters()}
+                        className="transition-colors hover:text-foreground"
+                    >
+                        Transporters
                     </Link>
                     <PostFreightButton
                         label="Post a load"

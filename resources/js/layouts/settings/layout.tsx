@@ -47,6 +47,7 @@ const getNavSections = (
     t: (key: string, fallback: string) => string,
     workspace?: Workspace | null,
     userRole?: WorkspaceRole | null,
+    isIndividual: boolean = false,
 ): NavSection[] => {
     const workspaceItems: NavItemWithRole[] = [
         {
@@ -124,6 +125,17 @@ const getNavSections = (
     ];
 
     const accountItems: NavItemWithRole[] = [
+        // Billing is an account concern, so an individual keeps it even
+        // though the workspace section it normally lives in is hidden.
+        ...(isIndividual
+            ? [
+                  {
+                      title: t('navigation.billing', 'Billing'),
+                      href: '/billing',
+                      icon: CreditCard,
+                  },
+              ]
+            : []),
         {
             title: t('navigation.general', 'General'),
             href: edit(),
@@ -180,20 +192,22 @@ const getNavSections = (
         });
     };
 
-    const sections: NavSection[] = [
-        {
-            title: t('navigation.workspace', 'Workspace'),
-            items: filterItems(workspaceItems),
-        },
-        {
-            title: t('navigation.team', 'Team'),
-            items: filterItems(teamItems),
-        },
-    ];
+    const sections: NavSection[] = isIndividual
+        ? []
+        : [
+              {
+                  title: t('navigation.workspace', 'Workspace'),
+                  items: filterItems(workspaceItems),
+              },
+              {
+                  title: t('navigation.team', 'Team'),
+                  items: filterItems(teamItems),
+              },
+          ];
 
     // Only show analytics if there are visible items
     const visibleAnalytics = filterItems(analyticsItems);
-    if (visibleAnalytics.length > 0) {
+    if (!isIndividual && visibleAnalytics.length > 0) {
         sections.push({
             title: t('navigation.analytics', 'Analytics'),
             items: visibleAnalytics,
@@ -202,7 +216,7 @@ const getNavSections = (
 
     // Only show security if there are visible items
     const visibleSecurity = filterItems(securityItems);
-    if (visibleSecurity.length > 0) {
+    if (!isIndividual && visibleSecurity.length > 0) {
         sections.push({
             title: t('navigation.security', 'Security'),
             items: visibleSecurity,
@@ -230,11 +244,11 @@ export default function SettingsLayout({
     fullWidth = false,
 }: SettingsLayoutProps) {
     const { t, i18n } = useTranslations();
-    const { currentWorkspace } = usePage<SharedData>().props;
+    const { currentWorkspace, is_individual } = usePage<SharedData>().props;
     const userRole = currentWorkspace?.role;
     const navSections = useMemo(
-        () => getNavSections(t, currentWorkspace, userRole),
-        [t, currentWorkspace, userRole],
+        () => getNavSections(t, currentWorkspace, userRole, is_individual),
+        [t, currentWorkspace, userRole, is_individual],
     );
 
     const defaultTitle = title ?? t('settings.title', 'Settings');

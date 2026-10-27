@@ -1,9 +1,11 @@
 import AppearanceToggleDropdown from '@/components/appearance-dropdown';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { PublicAccountMenu } from '@/components/public-account-menu';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useTranslations } from '@/hooks/use-translations';
 import { login, register } from '@/routes';
+import { index as transporters } from '@/routes/transporters';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Menu, Sparkles } from 'lucide-react';
@@ -64,20 +66,19 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                             {link.label}
                         </a>
                     ))}
+                    <Link
+                        href={transporters()}
+                        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        {t('landing.nav.transporters', 'Transporters')}
+                    </Link>
                 </nav>
 
                 <div className="hidden items-center gap-3 md:flex">
                     <LanguageSwitcher currentLocale={locale} />
                     <AppearanceToggleDropdown />
                     {auth.user ? (
-                        <Button asChild>
-                            <Link href="/freight">
-                                {t(
-                                    'landing.nav.browse_freight',
-                                    'Browse Freight',
-                                )}
-                            </Link>
-                        </Button>
+                        <PublicAccountMenu />
                     ) : (
                         <>
                             <Button variant="ghost" asChild>
@@ -147,17 +148,25 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                             {link.label}
                                         </a>
                                     ))}
+                                    <Link
+                                        href={transporters()}
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-lg font-medium text-foreground"
+                                    >
+                                        {t(
+                                            'landing.nav.transporters',
+                                            'Transporters',
+                                        )}
+                                    </Link>
                                 </nav>
                                 <div className="flex flex-col gap-3">
                                     {auth.user ? (
-                                        <Button asChild className="w-full">
-                                            <Link href="/freight">
-                                                {t(
-                                                    'landing.nav.browse_freight',
-                                                    'Browse Freight',
-                                                )}
-                                            </Link>
-                                        </Button>
+                                        <PublicAccountMenu
+                                            onNavigate={() =>
+                                                setMobileMenuOpen(false)
+                                            }
+                                            className="w-full justify-start"
+                                        />
                                     ) : (
                                         <>
                                             <Button

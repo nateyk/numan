@@ -21,6 +21,9 @@ function checklistUser(array $profileOverrides = []): User
 {
     $user = User::factory()->create();
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    // The checklist's original account steps include inviting a team member, so
+    // these cases model a shared workspace rather than an individual account.
+    $workspace->users()->attach(User::factory()->create()->id, ['role' => 'member']);
     $user->update(['current_workspace_id' => $workspace->id]);
 
     Profile::firstOrCreate(
@@ -139,7 +142,7 @@ it('keeps the account steps alongside the marketplace ones', function () {
 
 it('still counts the account steps toward progress', function () {
     $user = User::factory()->create(['bio' => 'I move things.', 'two_factor_confirmed_at' => now()]);
-    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    $workspace = app(WorkspaceService::class)->create($user, ['name' => 'Shared Workspace']);
     $user->update(['current_workspace_id' => $workspace->id]);
 
     Profile::firstOrCreate([
@@ -171,6 +174,7 @@ it('does not fall over for a user with no profile row', function () {
     // Every new account loads a dashboard before it has ever opened onboarding.
     $user = User::factory()->create();
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    $workspace->users()->attach(User::factory()->create()->id, ['role' => 'member']);
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $this->actingAs($user)

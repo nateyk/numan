@@ -6,13 +6,16 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
     SidebarRail,
     SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 import { useTranslations } from '@/hooks/use-translations';
 import { type NavItem, type SharedData } from '@/types';
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     BookOpen,
@@ -22,6 +25,7 @@ import {
     Search,
     Settings,
     ShieldAlert,
+    Truck,
     UserRound,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -30,13 +34,18 @@ const getMainNavItems = (
     t: (key: string, fallback: string) => string,
     isSuperadmin: boolean = false,
     interestsEnabled: boolean = false,
+    isIndividual: boolean = false,
 ): NavItem[] => {
     const items = [
-        {
-            title: t('navigation.dashboard', 'Dashboard'),
-            href: '/dashboard',
-            icon: LayoutGrid,
-        },
+        ...(isIndividual
+            ? []
+            : [
+                  {
+                      title: t('navigation.dashboard', 'Dashboard'),
+                      href: '/dashboard',
+                      icon: LayoutGrid,
+                  },
+              ]),
         {
             title: t('navigation.my_freight', 'My Freight'),
             href: '/my-freight',
@@ -46,6 +55,11 @@ const getMainNavItems = (
             title: t('navigation.discover_freight', 'Discover Freight'),
             href: '/freight',
             icon: Search,
+        },
+        {
+            title: t('navigation.transporters', 'Transporters'),
+            href: '/transporters',
+            icon: Truck,
         },
         {
             title: t('navigation.my_profile', 'My Profile'),
@@ -66,11 +80,18 @@ const getMainNavItems = (
             href: '/usage',
             icon: BarChart3,
         },
-        {
-            title: t('navigation.workspace_settings', 'Workspace Settings'),
-            href: '/workspaces/settings',
-            icon: Settings,
-        },
+        ...(isIndividual
+            ? []
+            : [
+                  {
+                      title: t(
+                          'navigation.workspace_settings',
+                          'Workspace Settings',
+                      ),
+                      href: '/workspaces/settings',
+                      icon: Settings,
+                  },
+              ]),
     ];
 
     if (isSuperadmin) {
@@ -95,15 +116,52 @@ const getFooterNavItems = (
     },
 ];
 
+/**
+ * The individual header: a brand mark instead of a workspace switcher.
+ *
+ * An individual still has a personal workspace underneath, but a switcher
+ * implying a list of teams would be a lie. The mark links to the public
+ * board, which is where an individual actually works.
+ */
+function IndividualBrand() {
+    return (
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton size="lg" asChild>
+                    <Link href="/freight">
+                        <span className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                            <Truck className="size-4" />
+                        </span>
+                        <span className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                            <span className="truncate font-semibold">
+                                Numan Freight
+                            </span>
+                            <span className="truncate text-xs text-muted-foreground">
+                                Individual account
+                            </span>
+                        </span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        </SidebarMenu>
+    );
+}
+
 export function AppSidebar() {
     const { t, i18n } = useTranslations();
-    const { auth, marketplace } = usePage<SharedData>().props;
+    const { auth, marketplace, is_individual } = usePage<SharedData>().props;
     const isSuperadmin = auth.user.is_superadmin === true;
     const interestsEnabled = marketplace?.interests_enabled ?? false;
 
     const mainNavItems = useMemo(
-        () => getMainNavItems(t, isSuperadmin, interestsEnabled),
-        [t, isSuperadmin, interestsEnabled],
+        () =>
+            getMainNavItems(
+                t,
+                isSuperadmin,
+                interestsEnabled,
+                is_individual,
+            ),
+        [t, isSuperadmin, interestsEnabled, is_individual],
     );
     const footerNavItems = useMemo(() => getFooterNavItems(t), [t]);
 
@@ -115,7 +173,7 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset" side={sidebarSide}>
             <SidebarHeader>
-                <WorkspaceSwitcher />
+                {is_individual ? <IndividualBrand /> : <WorkspaceSwitcher />}
             </SidebarHeader>
             <SidebarSeparator />
 

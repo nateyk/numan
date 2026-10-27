@@ -199,7 +199,10 @@ it('gives an ordinary user a zero badge without a query', function () {
     $admin = revenueAdmin();
     pendingManualRow('monthly', 449);
 
-    [$payer] = revenueUser();
+    [$payer, $workspace] = revenueUser();
+    // A one-person personal workspace is individual mode and its dashboard
+    // redirects; this case needs the dashboard's shared props.
+    $workspace->users()->attach(User::factory()->create()->id, ['role' => 'member']);
 
     $this->actingAs($payer)
         ->get(route('dashboard'))

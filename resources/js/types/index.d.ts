@@ -115,6 +115,7 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    is_individual: boolean;
     currentWorkspace: Workspace | null;
     workspaces: Workspace[];
     sidebarOpen: boolean;
@@ -170,6 +171,16 @@ export interface User {
     timezone?: string;
     date_format?: string;
     profile_completeness?: { score: number; missing: string[] };
+    /** Compact public identity; never carries contact fields. */
+    public_profile?: {
+        slug: string | null;
+        display_name: string | null;
+        account_type: string | null;
+        status: string | null;
+        verification_status: string;
+        posts_freight: boolean;
+        provides_transport: boolean;
+    } | null;
     [key: string]: unknown;
 }
 

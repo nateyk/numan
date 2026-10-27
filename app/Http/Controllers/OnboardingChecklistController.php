@@ -43,13 +43,15 @@ class OnboardingChecklistController extends Controller
                 'completed' => $user->two_factor_confirmed_at !== null,
                 'href' => '/settings/two-factor',
             ],
-            [
+            // A one-person workspace has nobody to invite. Asking them to grow
+            // a team is a step they can never complete, so it is not shown.
+            ...($user->isIndividual() ? [] : [[
                 'id' => 'invite_member',
                 'label' => 'Invite a team member',
                 'description' => 'Grow your workspace team',
                 'completed' => $workspace && $workspace->users()->count() > 1,
                 'href' => '/team',
-            ],
+            ]]),
             [
                 'id' => 'connect_billing',
                 'label' => 'Connect billing',

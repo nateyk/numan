@@ -189,6 +189,23 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Whether this account is a single person trading on their own.
+     *
+     * Individual mode keeps the workspace machinery underneath (every account
+     * owns a personal workspace) but hides the team-shaped parts of the
+     * interface, because a one-person workspace is not a team. A superadmin is
+     * never an individual: they manage other people's profiles rather than
+     * trade from their own.
+     */
+    public function isIndividual(): bool
+    {
+        return ! $this->is_superadmin
+            && $this->currentWorkspace
+            && $this->currentWorkspace->personal_workspace
+            && $this->currentWorkspace->users()->count() === 1;
+    }
+
+    /**
      * Switch the user's current workspace.
      */
     public function switchWorkspace(Workspace $workspace): bool

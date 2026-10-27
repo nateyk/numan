@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * Who may express interest, and what they are told when they may not.
  *
  * The bug this covers: expressing interest required transporter_profiles.status
- * === 'approved', and only AdminTransporterController can set that. So a new user
+ * === 'approved', and only the admin surface could set that. So a new user
  * registered, filled in a transporter profile, and was told it was "pending
  * approval" — and waited, because no queue existed to approve it. Expressing
  * interest is the single action the marketplace depends on, and it was behind a

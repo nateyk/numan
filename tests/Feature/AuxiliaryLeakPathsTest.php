@@ -135,6 +135,9 @@ function auditViewer(string $tag = 'viewer'): User
     ]);
 
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    // The dashboard is a workspace surface; keep this viewer out of individual
+    // mode so the shared props can be read from every route in the dataset.
+    $workspace->users()->attach(User::factory()->create()->id, ['role' => 'member']);
     $user->update(['current_workspace_id' => $workspace->id]);
 
     Profile::firstOrCreate(['user_id' => $user->id], [

@@ -111,9 +111,25 @@ class HandleInertiaRequests extends Middleware
                     'created_at' => $user->created_at,
                     'profile_completeness' => $user->profileCompletenessScore(),
                     'phone' => $user->profile?->phone,
+                    // The compact public identity the public chrome needs. It
+                    // deliberately carries no contact fields: those are released
+                    // only through the reveal ledger.
+                    'public_profile' => $user->profile ? [
+                        'slug' => $user->profile->slug,
+                        'display_name' => $user->profile->display_name,
+                        'account_type' => $user->profile->account_type,
+                        'status' => $user->profile->status,
+                        'verification_status' => $user->profile->verification_status,
+                        'posts_freight' => (bool) $user->profile->posts_freight,
+                        'provides_transport' => (bool) $user->profile->provides_transport,
+                    ] : null,
                 ] : null,
                 'is_impersonating' => $request->session()->has('impersonated_by'),
             ],
+            // A one-person personal workspace is an individual account. The
+            // chrome uses this to hide team-shaped navigation; the workspace
+            // itself still exists underneath.
+            'is_individual' => $user?->isIndividual() ?? false,
             'show_experience_survey' => $showExperienceSurvey,
             'locale' => $locale,
             'currentWorkspace' => $currentWorkspace ? [

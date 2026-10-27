@@ -215,6 +215,11 @@ Route::middleware(['auth', 'workspace'])->group(function () {
 Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip', 'workspace.suspended'])->group(function () {
     Route::get('dashboard', function () {
         $user = request()->user();
+
+        if ($user->isIndividual()) {
+            return redirect()->route('freight.discovery');
+        }
+
         $workspace = $user->currentWorkspace;
 
         return Inertia::render('dashboard', [

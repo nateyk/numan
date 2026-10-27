@@ -9,9 +9,10 @@ import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { useTranslations } from '@/hooks/use-translations';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
-import { type User } from '@/types';
-import { Link, router } from '@inertiajs/react';
+import { type SharedData, type User } from '@/types';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
+    Building2,
     CreditCard,
     LogOut,
     Settings,
@@ -27,6 +28,7 @@ interface UserMenuContentProps {
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { t } = useTranslations();
+    const { is_individual } = usePage<SharedData>().props;
 
     const handleLogout = () => {
         cleanup();
@@ -42,21 +44,23 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                <DropdownMenuItem asChild>
-                    <Link
-                        className="block w-full"
-                        href="/workspaces/settings"
-                        as="button"
-                        prefetch
-                        onClick={cleanup}
-                    >
-                        <Settings className="mr-2" />
-                        {t(
-                            'navigation.workspace_settings',
-                            'Workspace Settings',
-                        )}
-                    </Link>
-                </DropdownMenuItem>
+                {!is_individual && (
+                    <DropdownMenuItem asChild>
+                        <Link
+                            className="block w-full"
+                            href="/workspaces/settings"
+                            as="button"
+                            prefetch
+                            onClick={cleanup}
+                        >
+                            <Settings className="mr-2" />
+                            {t(
+                                'navigation.workspace_settings',
+                                'Workspace Settings',
+                            )}
+                        </Link>
+                    </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full"
@@ -81,18 +85,37 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         {t('navigation.profile_settings', 'Profile Settings')}
                     </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                    <Link
-                        className="block w-full"
-                        href="/team"
-                        as="button"
-                        prefetch
-                        onClick={cleanup}
-                    >
-                        <Users className="mr-2" />
-                        {t('navigation.team', 'Team')}
-                    </Link>
-                </DropdownMenuItem>
+                {is_individual && (
+                    <DropdownMenuItem asChild>
+                        <Link
+                            className="block w-full"
+                            href="/workspaces/create"
+                            as="button"
+                            prefetch
+                            onClick={cleanup}
+                        >
+                            <Building2 className="mr-2" />
+                            {t(
+                                'navigation.create_workspace',
+                                'Create a workspace',
+                            )}
+                        </Link>
+                    </DropdownMenuItem>
+                )}
+                {!is_individual && (
+                    <DropdownMenuItem asChild>
+                        <Link
+                            className="block w-full"
+                            href="/team"
+                            as="button"
+                            prefetch
+                            onClick={cleanup}
+                        >
+                            <Users className="mr-2" />
+                            {t('navigation.team', 'Team')}
+                        </Link>
+                    </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full"
