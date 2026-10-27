@@ -38,8 +38,6 @@ class ProfileFactory extends Factory
             'phone_visible' => true,
             'whatsapp_visible' => true,
             'email_visible' => true,
-            'onboarding_step' => 'completed',
-            'onboarding_completed_at' => now(),
         ];
     }
 
@@ -114,8 +112,6 @@ class ProfileFactory extends Factory
             'status' => null,
             'verification_status' => 'unverified',
             'completion_score' => 0,
-            'onboarding_step' => 'capabilities',
-            'onboarding_completed_at' => null,
         ]);
     }
 
@@ -125,8 +121,6 @@ class ProfileFactory extends Factory
             'posts_freight' => true,
             'provides_transport' => false,
             'status' => null,
-            'onboarding_step' => 'account_type',
-            'onboarding_completed_at' => null,
         ]);
     }
 
@@ -136,7 +130,6 @@ class ProfileFactory extends Factory
             'account_type' => 'business',
             'legal_name' => fake()->company().' PLC',
             'legal_form' => 'Private Limited Company (PLC)',
-            'onboarding_step' => 'details',
         ]);
     }
 
@@ -146,7 +139,6 @@ class ProfileFactory extends Factory
             'account_type' => 'personal',
             'legal_name' => null,
             'legal_form' => null,
-            'onboarding_step' => 'details',
         ]);
     }
 }

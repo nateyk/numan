@@ -362,8 +362,6 @@ it('returns the contact only once the pair is already in the ledger', function (
         'account_type' => 'business',
         'display_name' => $transporter->name,
         'phone' => '+251911000088',
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
     $workspace = Workspace::factory()->create(['owner_id' => $transporter->id]);
     $workspace->users()->attach($transporter->id, ['role' => 'owner']);

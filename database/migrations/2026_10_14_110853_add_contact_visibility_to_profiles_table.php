@@ -1,8 +1,7 @@
 <?php
 
-use App\Models\Profile;
-use App\Models\TransporterProfile;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -25,6 +24,10 @@ use Illuminate\Support\Facades\Schema;
  * backfill below then re-applies the opt-outs transporters had already made, so
  * somebody who deliberately hid their number does not have it re-published by a
  * schema change.
+ *
+ * Written with the query builder rather than models: the legacy tables are
+ * dropped later in the same release, and a historical migration must not depend
+ * on a class that no longer exists.
  */
 return new class extends Migration
 {
@@ -51,21 +54,18 @@ return new class extends Migration
             return;
         }
 
-        TransporterProfile::query()
+        DB::table('transporter_profiles')
             ->select(['id', 'user_id', 'phone_visible', 'whatsapp_visible', 'email_visible'])
-            ->chunkById(200, function ($transporterProfiles): void {
-                foreach ($transporterProfiles as $transporter) {
-                    $profile = Profile::where('user_id', $transporter->user_id)->first();
-
-                    if (! $profile) {
-                        continue;
-                    }
-
-                    $profile->forceFill([
-                        'phone_visible' => (bool) $transporter->phone_visible,
-                        'whatsapp_visible' => (bool) $transporter->whatsapp_visible,
-                        'email_visible' => (bool) $transporter->email_visible,
-                    ])->save();
+            ->orderBy('id')
+            ->chunkById(200, function ($transporters): void {
+                foreach ($transporters as $transporter) {
+                    DB::table('public_profiles')
+                        ->where('user_id', $transporter->user_id)
+                        ->update([
+                            'phone_visible' => (bool) $transporter->phone_visible,
+                            'whatsapp_visible' => (bool) $transporter->whatsapp_visible,
+                            'email_visible' => (bool) $transporter->email_visible,
+                        ]);
                 }
             });
     }

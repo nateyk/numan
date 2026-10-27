@@ -33,7 +33,6 @@ function revenueUser(): array
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
     $user->update(['current_workspace_id' => $workspace->id]);
     Profile::firstOrCreate(['user_id' => $user->id], [
-        'onboarding_step' => 'completed',
         'phone' => '+251911000111',
     ]);
 
@@ -52,7 +51,6 @@ function revenueAdmin(): User
     $admin->update(['current_workspace_id' => $workspace->id]);
 
     Profile::firstOrCreate(['user_id' => $admin->id], [
-        'onboarding_step' => 'completed',
         'phone' => '+251911000000',
     ]);
 

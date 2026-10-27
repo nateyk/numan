@@ -4,7 +4,6 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\FreightInterestStatusChanged;
@@ -24,8 +23,6 @@ function createConsignorForNotification(): User
         'user_id' => $user->id,
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $location->id,
     ]);
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
@@ -43,15 +40,12 @@ function createApprovedTransporterForNotification(): User
         'user_id' => $user->id,
         'posts_freight' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $location->id,
+        'status' => 'approved',
     ]);
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
     $workspace->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $workspace->id]);
-    TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
-    $user->setRelation('transporterProfile', $user->transporterProfile()->first());
 
     return $user->fresh();
 }

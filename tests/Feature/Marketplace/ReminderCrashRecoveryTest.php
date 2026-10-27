@@ -286,8 +286,6 @@ it('notifies every billing manager once each, not once per recipient per run', f
         'account_type' => 'business',
         'display_name' => $treasurer->name,
         'phone' => '+251900000000',
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
     $workspace->users()->attach($treasurer->id, [
         'role' => 'member',

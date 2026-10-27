@@ -23,8 +23,6 @@ function actingAsOnboardedUserWithCapability(string $capability): User
         'display_name' => 'Test User',
         'phone' => '+251900000000',
         'primary_location_id' => $location->id,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
@@ -65,8 +63,6 @@ it('rejects submit when incomplete', function () {
     Profile::factory()->create([
         'user_id' => $user->id,
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $location->id,
     ]);
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);

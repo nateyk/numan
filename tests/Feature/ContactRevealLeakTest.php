@@ -7,7 +7,6 @@ use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\MarketplaceConnection;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\FreightInterestSubmitted;
@@ -51,8 +50,6 @@ function leakConsignor(): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'display_name' => 'Leaky Consignor',
         'phone' => UNIQUE_PHONE_CONSIGNOR,
     ]);
@@ -74,8 +71,7 @@ function leakTransporter(): User
     $user->update(['current_workspace_id' => $workspace->id]);
     $user->refresh();
 
-    // Readiness reads the public profile now, so the base location has to live
-    // there as well as on the legacy carrier row.
+    // Readiness and contact resolution both read the consolidated profile.
     $base = Location::firstOrCreate(
         ['name' => 'Adama'],
         ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
@@ -85,18 +81,8 @@ function leakTransporter(): User
         'posts_freight' => false,
         'provides_transport' => true,
         'status' => 'approved',
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-        'display_name' => 'Leaky Transporter',
-        'phone' => UNIQUE_PHONE_TRANSPORTER,
-        'primary_location_id' => $base->id,
-    ]);
-
-    TransporterProfile::firstOrCreate(['user_id' => $user->id], [
-        'slug' => 'leaky-'.Str::lower(Str::random(8)),
         'display_name' => 'Leaky Transporter',
         'legal_name' => 'LEAKY LEGAL NAME',
-        'status' => 'approved',
         'phone' => UNIQUE_PHONE_TRANSPORTER,
         'primary_location_id' => $base->id,
         'email' => UNIQUE_EMAIL_TRANSPORTER,
@@ -582,8 +568,6 @@ it('a user without a phone on file cannot post freight', function () {
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'phone' => null,
     ]);
 

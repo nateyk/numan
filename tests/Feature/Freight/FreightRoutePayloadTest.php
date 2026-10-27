@@ -7,7 +7,6 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\TruckType;
 use App\Models\User;
 use App\Models\Workspace;
@@ -15,7 +14,6 @@ use App\Services\WorkspaceService;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
@@ -54,8 +52,6 @@ function routeConsignor(): array
         'account_type' => 'personal',
         'display_name' => 'Route Consignor',
         'phone' => '+251900000001',
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     return [$user->fresh(), $workspace];
@@ -92,7 +88,6 @@ function routeTransporter(): User
 {
     $user = User::factory()->create([
         'email_verified_at' => now(),
-        'onboarded_at' => now(),
     ]);
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
     $user->update(['current_workspace_id' => $workspace->id]);
@@ -100,18 +95,10 @@ function routeTransporter(): User
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-        'display_name' => 'Route Transporter',
-        'phone' => '+251900000002',
-    ]);
-
-    TransporterProfile::firstOrCreate(['user_id' => $user->id], [
-        'slug' => 'route-'.Str::lower(Str::random(8)),
-        'display_name' => 'Route Transporter',
-        'legal_name' => 'ROUTE TRANSPORT',
         'status' => 'approved',
+        'display_name' => 'Route Transporter',
         'phone' => '+251900000002',
+        'primary_location_id' => Location::factory()->create()->id,
     ]);
 
     return $user->fresh();

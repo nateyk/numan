@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\ManualPaymentReviewService;
-use App\Services\TransporterDocumentStorage;
+use App\Services\ProfileDocumentStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -118,7 +118,7 @@ class MarketplaceManualPaymentController extends Controller
 
         abort_if(blank($path), 404);
 
-        if (! Storage::disk(TransporterDocumentStorage::DISK)->exists($path)) {
+        if (! Storage::disk(ProfileDocumentStorage::DISK)->exists($path)) {
             return back()->withErrors(['proof' => 'File not found.']);
         }
 
@@ -127,7 +127,7 @@ class MarketplaceManualPaymentController extends Controller
         $isImage = str_starts_with((string) $mime, 'image/');
 
         $response = response()->file(
-            Storage::disk(TransporterDocumentStorage::DISK)->path($path),
+            Storage::disk(ProfileDocumentStorage::DISK)->path($path),
             [
                 // Inline for images so they render in the dialog; an attachment
                 // for anything else, so a PDF never navigates away from the

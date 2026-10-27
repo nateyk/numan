@@ -20,8 +20,6 @@ it('allows owner to view route step for active post (no 403)', function () {
     Profile::factory()->create([
         'user_id' => $user->id,
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $loc->id,
     ]);
 
@@ -41,8 +39,6 @@ it('prevents updating route for active post', function () {
     Profile::factory()->create([
         'user_id' => $user->id,
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $loc->id,
     ]);
     $loc2 = Location::factory()->create();

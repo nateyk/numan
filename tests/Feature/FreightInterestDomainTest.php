@@ -6,7 +6,6 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,17 +20,12 @@ function createTransporterUserForInterest(bool $approved = true): User
         'user_id' => $user->id,
         'posts_freight' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
+        'status' => $approved ? 'approved' : 'draft',
         'primary_location_id' => $location->id,
     ]);
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
     $workspace->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $workspace->id]);
-
-    if ($approved) {
-        TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
-    }
 
     return $user->fresh();
 }

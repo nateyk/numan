@@ -27,8 +27,6 @@ function disabledInterestsUser(): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'display_name' => 'Flag User',
         'phone' => '+251911000123',
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     return [$user->fresh(), $workspace];

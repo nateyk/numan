@@ -6,13 +6,13 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\TruckType;
 use App\Models\User;
 use App\Services\MarketplaceReadiness;
 use App\Services\ProfileConsolidation;
 use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The whole thing, end to end, as a person actually uses it.
@@ -33,19 +33,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 /**
- * Register and onboard exactly as the app does — no factory shortcuts past the
- * screens a person actually goes through.
+ * Register and start browsing exactly as the app does.
+ *
+ * There is no setup gate any more: registration creates the workspace, and the
+ * person can read the freight board before they have chosen a profile.
  *
  * @return array{0: User, 1: Workspace}
  */
 function registerThroughTheApp(array $attributes = []): array
 {
-    // Deliberately NOT onboarded. OnboardingController refuses every wizard
-    // action once onboarded_at is set, so pre-setting it means posting to
-    // /onboarding is silently a no-op and the journey never actually runs.
     $user = User::factory()->create(array_merge([
         'email_verified_at' => now(),
-        'onboarded_at' => null,
     ], $attributes));
 
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
@@ -55,19 +53,15 @@ function registerThroughTheApp(array $attributes = []): array
 }
 
 /**
- * All three wizard steps, in the order the app requires.
- *
- * The details step refuses to run until capabilities and account type are both
- * recorded, and each of those silently redirects to the dashboard when they are
- * not. Walking one step and skipping to the next produces a blank profile with no
- * error anywhere — which is exactly how a broken onboarding looks from outside.
+ * Save the consolidated public profile the way the page does.
  *
  * @param  array<string, mixed>  $details
  */
-function onboardThroughTheApp(User $user, array $details = []): void
+function saveProfileThroughTheApp(User $user, array $details = []): Profile
 {
     $details = array_merge([
         'display_name' => 'Adama Haulage',
+        'account_type' => 'business',
         'phone' => '+251911000001',
         'primary_location_id' => Location::factory()->create([
             'name' => 'Adama',
@@ -76,32 +70,16 @@ function onboardThroughTheApp(User $user, array $details = []): void
         ])->id,
         'legal_name' => 'Adama Haulage PLC',
         'legal_form' => LegalForm::PrivateLimitedCompany->value,
+        'posts_freight' => true,
+        'provides_transport' => false,
     ], $details);
 
-    $postsFreight = $details['posts_freight'] ?? true;
-    $providesTransport = $details['provides_transport'] ?? false;
-
     test()
-        ->actingAs($user)
-        ->post('/onboarding/capabilities', [
-            'posts_freight' => $postsFreight ? '1' : '0',
-            'provides_transport' => $providesTransport ? '1' : '0',
-        ])
-        ->assertRedirect();
+        ->actingAs($user->fresh())
+        ->patch('/public-profile', $details)
+        ->assertSessionHasNoErrors();
 
-    test()
-        ->actingAs($user)
-        ->post('/onboarding/account-type', [
-            'account_type' => 'business',
-            'legal_name' => $details['legal_name'],
-            'legal_form' => $details['legal_form'],
-        ])
-        ->assertRedirect();
-
-    test()
-        ->actingAs($user)
-        ->post('/onboarding/details', $details)
-        ->assertRedirect();
+    return $user->refresh()->profile()->firstOrFail();
 }
 
 /**
@@ -166,21 +144,17 @@ function publishALoadThroughTheWizard(User $consignor): FreightPost
 }
 
 /**
- * An onboarded consignor, for tests whose subject is the counterparty rather
- * than onboarding. An un-onboarded user is redirected out of the marketplace by
- * middleware before the assertion is ever reached.
+ * A profile-ready consignor, for tests whose subject is the counterparty.
  */
 function onboardedConsignor(): User
 {
-    [$user] = registerThroughTheApp(['onboarded_at' => now()]);
+    [$user] = registerThroughTheApp();
 
-    Profile::firstOrCreate(['user_id' => $user->id], [
+    saveProfileThroughTheApp($user, [
         'display_name' => 'Consignor Co',
         'phone' => '+251911000001',
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     return $user->refresh();
@@ -202,13 +176,10 @@ function someonePostedALoad(): FreightPost
 it('walks a consignor from registration to a published load', function () {
     [$consignor] = registerThroughTheApp();
 
-    // Onboarding. The capability is chosen first, then the details.
-    onboardThroughTheApp($consignor, [
+    $profile = saveProfileThroughTheApp($consignor, [
         'posts_freight' => true,
         'provides_transport' => false,
     ]);
-
-    $profile = $consignor->profile()->first();
 
     expect((bool) $profile->posts_freight)->toBeTrue()
         ->and((bool) $profile->provides_transport)->toBeFalse()
@@ -238,28 +209,17 @@ it('walks a consignor from registration to a published load', function () {
 it('walks a carrier from registration to expressing interest', function () {
     [$carrier] = registerThroughTheApp();
 
-    onboardThroughTheApp($carrier, [
+    $profile = saveProfileThroughTheApp($carrier, [
         'posts_freight' => false,
         'provides_transport' => true,
     ]);
 
-    // The carrier form. A real one fills this in.
-    $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
+    $this->actingAs($carrier)->put('/public-profile/transport', [
+        'truck_type_ids' => [TruckType::factory()->create()->id],
+    ])->assertSessionHasNoErrors();
 
-    $this->actingAs($carrier)->post('/my-transporter-profile', [
-        'display_name' => 'Adama Haulage',
-        'legal_name' => 'Adama Haulage PLC',
-        'phone' => '+251911000001',
-        'email' => 'carrier@example.test',
-        'primary_location_id' => $base->id,
-        'phone_visible' => '1',
-        'email_visible' => '1',
-    ]);
-
-    $transporter = $carrier->transporterProfile()->first();
-
-    expect($transporter)->not->toBeNull()
-        ->and($transporter->isComplete())->toBeTrue();
+    expect($profile->refresh()->provides_transport)->toBeTrue()
+        ->and($profile->refresh()->status)->toBe('pending');
 
     $readiness = app(MarketplaceReadiness::class)->for($carrier);
 
@@ -282,7 +242,7 @@ it('lets a consignor and a carrier exchange contact details', function () {
     // The reason any of this exists.
     [$consignor] = registerThroughTheApp();
 
-    onboardThroughTheApp($consignor, [
+    saveProfileThroughTheApp($consignor, [
         'posts_freight' => true,
         'provides_transport' => false,
     ]);
@@ -290,22 +250,16 @@ it('lets a consignor and a carrier exchange contact details', function () {
     $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
 
-    // A carrier onboarded the same way a person would be.
+    // A carrier saved the same way a person would be.
     [$carrier] = registerThroughTheApp();
 
-    onboardThroughTheApp($carrier, [
+    saveProfileThroughTheApp($carrier, [
         'posts_freight' => false,
         'provides_transport' => true,
         'display_name' => 'Awash Carriers',
         'phone' => '+251911000002',
         'legal_name' => 'Awash Carriers PLC',
-    ]);
-    $this->actingAs($carrier)->post('/my-transporter-profile', [
-        'display_name' => 'Awash Carriers',
-        'phone' => '+251911000002',
         'primary_location_id' => $base->id,
-        'phone_visible' => '1',
-        'email_visible' => '1',
     ]);
 
     $this->actingAs($carrier)
@@ -370,14 +324,19 @@ it('reveals a legacy carrier after the migration copies the carrier record onto 
     // All four carrier profiles on production were like this: display_name,
     // phone and legal_name existed on transporter_profiles and nowhere else.
     // Contact resolution reads the profile only, so the backfill has to move
-    // those details before the drop. This runs the backfill the migration runs.
+    // those details before the drop. This recreates the old schema, writes the
+    // row the way production held it, and runs the same backfill the migration
+    // runs.
+    $consolidation = app(ProfileConsolidation::class);
+    $consolidation->createLegacySchema();
+
     $carrier = User::factory()->create(['email_verified_at' => now()]);
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($carrier);
     $carrier->update(['current_workspace_id' => $workspace->id]);
 
     $base = Location::factory()->create(['name' => 'Adama']);
 
-    TransporterProfile::create([
+    DB::table('transporter_profiles')->insert([
         'user_id' => $carrier->id,
         'slug' => 'legacy-'.uniqid(),
         'display_name' => 'Elias Transport',
@@ -389,9 +348,11 @@ it('reveals a legacy carrier after the migration copies the carrier record onto 
         // this set to 1, and a test that omits it is asserting the opposite of
         // what production actually holds.
         'phone_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
-    app(ProfileConsolidation::class)->backfill();
+    $consolidation->backfill();
 
     $consignor = onboardedConsignor();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
@@ -414,21 +375,12 @@ it('lets a carrier who also posts freight do both', function () {
     // The either/or model could not express this person at all.
     [$user] = registerThroughTheApp();
 
-    onboardThroughTheApp($user, [
+    saveProfileThroughTheApp($user, [
         'posts_freight' => true,
         'provides_transport' => true,
     ]);
 
-    $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
     $post = someonePostedALoad();
-
-    $this->actingAs($user)->post('/my-transporter-profile', [
-        'display_name' => 'Adama Haulage',
-        'phone' => '+251911000001',
-        'email' => 'carrier@example.test',
-        'primary_location_id' => $base->id,
-        'phone_visible' => '1',
-    ]);
 
     $this->actingAs($user)
         ->post("/my-freight/{$post->ulid}/interests", ['message' => 'Available'])
@@ -443,26 +395,15 @@ it('changes its mind about what it does and gets on with it', function () {
     // Registers to post freight, later needs to carry. There was no way to say so.
     [$user] = registerThroughTheApp();
 
-    onboardThroughTheApp($user, [
+    saveProfileThroughTheApp($user, [
         'posts_freight' => true,
         'provides_transport' => false,
     ]);
 
-    $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
-        ->assertRedirect();
-
-    $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
-
-    $this->actingAs($user)->post('/my-transporter-profile', [
-        'display_name' => 'Adama Haulage',
-        'legal_name' => 'Adama Haulage PLC',
-        'phone' => '+251911000001',
-        'email' => 'carrier@example.test',
-        'primary_location_id' => $base->id,
-        'phone_visible' => '1',
-        'email_visible' => '1',
-    ])->assertSessionHasNoErrors();
+    saveProfileThroughTheApp($user, [
+        'posts_freight' => true,
+        'provides_transport' => true,
+    ]);
 
     $readiness = app(MarketplaceReadiness::class)->for($user);
 
@@ -474,7 +415,7 @@ it('shows a carrier the dashboard checklist naming what is blocking them', funct
     // The question the dashboard is supposed to answer, asked of a real user.
     [$user] = registerThroughTheApp();
 
-    onboardThroughTheApp($user, [
+    saveProfileThroughTheApp($user, [
         'posts_freight' => false,
         'provides_transport' => true,
     ]);
@@ -488,20 +429,23 @@ it('shows a carrier the dashboard checklist naming what is blocking them', funct
     $carrying = $steps->firstWhere('id', 'provides_transport_ready');
 
     expect($carrying)->not->toBeNull()
-        ->and($carrying['href'])->toBe('/settings/marketplace-details')
+        ->and($carrying['href'])->toBe('/public-profile')
         ->and($carrying['description'])->toContain('primary_location_id');
 });
 
 it('honours a carrier who hid their number before the profile existed', function () {
     // The refusal has to survive the migration that copies the carrier record
     // onto the profile, or the fix only covers users created after it.
+    $consolidation = app(ProfileConsolidation::class);
+    $consolidation->createLegacySchema();
+
     $carrier = User::factory()->create(['email_verified_at' => now()]);
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($carrier);
     $carrier->update(['current_workspace_id' => $workspace->id]);
 
     $base = Location::factory()->create(['name' => 'Adama']);
 
-    TransporterProfile::create([
+    DB::table('transporter_profiles')->insert([
         'user_id' => $carrier->id,
         'slug' => 'legacy-hidden-'.uniqid(),
         'display_name' => 'Elias Transport',
@@ -509,9 +453,11 @@ it('honours a carrier who hid their number before the profile existed', function
         'primary_location_id' => $base->id,
         'status' => 'approved',
         'phone_visible' => false,
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
-    app(ProfileConsolidation::class)->backfill();
+    $consolidation->backfill();
 
     $consignor = onboardedConsignor();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);

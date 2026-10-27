@@ -592,7 +592,13 @@ class ProfileConsolidation
         }
     }
 
-    private function createLegacySchema(): void
+    /**
+     * Recreate the legacy tables with the exact original schema.
+     *
+     * Public so the consolidation tests can exercise the backfill after the
+     * drop migration has removed the tables in every real environment.
+     */
+    public function createLegacySchema(): void
     {
         Schema::dropIfExists('transporter_profile_revisions');
         Schema::dropIfExists('transporter_profile_moderation');

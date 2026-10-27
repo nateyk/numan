@@ -4,7 +4,6 @@ use App\Enums\FreightPostStatus;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Services\MarketplaceListingVisibilityService;
 use App\Services\WorkspaceService;
@@ -33,8 +32,6 @@ function visibilityOwner(): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     return [$user, $workspace];
@@ -50,16 +47,9 @@ function approvedTransporter(): User
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
+        'status' => 'approved',
         'display_name' => 'T',
         'phone' => '+251900000000',
-    ]);
-
-    TransporterProfile::firstOrCreate(['user_id' => $user->id], [
-        'slug' => 'tp-'.Str::lower(Str::random(8)),
-        'display_name' => 'T',
-        'status' => 'approved',
     ]);
 
     return $user;

@@ -6,7 +6,6 @@ use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\MarketplaceConnection;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Services\PhoneNumberService;
 use App\Services\WorkspaceService;
@@ -37,8 +36,6 @@ function stepUserWithoutPhone(bool $providesTransport = false): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => ! $providesTransport,
         'provides_transport' => $providesTransport,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'display_name' => 'No Phone Yet',
         'phone' => null,
         // A carrier needs a base as well as identity. Leaving it out made the
@@ -105,52 +102,34 @@ it('refuses an invalid phone with a clear message and saves nothing', function (
     expect($user->profile()->first()->phone)->toBeNull();
 });
 
-it('requires onboarding to collect a phone and normalises it', function () {
-    $user = User::factory()->unonboarded()->create(['email_verified_at' => now()]);
+it('saves a phone through the public profile and normalises it', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
     app(WorkspaceService::class)->createPersonalWorkspace($user);
 
-    $this->actingAs($user)->post(route('onboarding.capabilities'), [
+    $this->actingAs($user)->patch('/public-profile', [
+        'display_name' => 'Onboarded Person',
+        'account_type' => 'personal',
+        'phone' => '0711234567',
         'posts_freight' => true,
         'provides_transport' => false,
     ])->assertRedirect();
-
-    $this->actingAs($user)->post(route('onboarding.account-type'), [
-        'account_type' => 'personal',
-    ])->assertRedirect();
-
-    $locationId = Location::factory()->create()->id;
-
-    $this->actingAs($user)->post(route('onboarding.details'), [
-        'display_name' => 'Onboarded Person',
-        'phone' => '0711234567',
-        'primary_location_id' => $locationId,
-    ])->assertRedirect(route('dashboard'));
 
     expect($user->profile()->first()->phone)->toBe('+251711234567');
 });
 
-it('onboarding rejects an invalid phone', function () {
-    $user = User::factory()->unonboarded()->create(['email_verified_at' => now()]);
+it('refuses an invalid phone on the public profile', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
     app(WorkspaceService::class)->createPersonalWorkspace($user);
 
-    $this->actingAs($user)->post(route('onboarding.capabilities'), [
+    $this->actingAs($user)->patch('/public-profile', [
+        'display_name' => 'Onboarded Person',
+        'account_type' => 'personal',
+        'phone' => '0211234567',
         'posts_freight' => true,
         'provides_transport' => false,
-    ])->assertRedirect();
-
-    $this->actingAs($user)->post(route('onboarding.account-type'), [
-        'account_type' => 'personal',
-    ])->assertRedirect();
-
-    $locationId = Location::factory()->create()->id;
-
-    $this->actingAs($user)->post(route('onboarding.details'), [
-        'display_name' => 'Onboarded Person',
-        'phone' => '0211234567',
-        'primary_location_id' => $locationId,
     ])->assertSessionHasErrors('phone');
 
-    expect($user->profile()->first()->phone)->toBeNull();
+    expect($user->profile()->first()?->phone)->toBeNull();
 });
 
 // ── inline step, not a hard block ─────────────────────────────────────────
@@ -187,25 +166,6 @@ it('shows the inline step instead of blocking an interest, and the interest then
     [$consignor, $workspace] = stepUserWithoutPhone();
     [$transporter] = stepUserWithoutPhone(true);
 
-    // The phone step runs ahead of the readiness gate, so this fixture keeps a
-    // complete carrier profile with no phone. The legacy carrier row is kept
-    // until the old surface is retired.
-    TransporterProfile::firstOrCreate(['user_id' => $transporter->id], [
-        'slug' => 'step-'.Str::lower(Str::random(8)),
-        'display_name' => 'Step Transporter',
-        'status' => 'approved',
-        // Expressing interest now needs a *complete* transporter profile, not an
-        // approved one. This fixture was approved with no phone and no base,
-        // which passed only because approval used to stand in for completeness.
-        'phone' => '+251933000001',
-        'primary_location_id' => Location::firstOrCreate(
-            ['name' => 'Adama'],
-            ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
-        )->id,
-        'phone_visible' => true,
-        'email_visible' => true,
-    ]);
-
     $post = FreightPost::create([
         'ulid' => (string) Str::ulid(),
         'user_id' => $consignor->id,
@@ -239,7 +199,6 @@ it('shows the inline step instead of blocking a reveal, and the reveal then work
     app(WorkspaceService::class)->createPersonalWorkspace($transporter);
     Profile::firstOrCreate(['user_id' => $transporter->id], [
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
         'display_name' => 'Revealed Transporter',
         'phone' => STEP_PHONE,
     ]);
@@ -316,11 +275,10 @@ it('the blocked reveal bounces back with the inline flag rather than a 403', fun
 /**
  * Build a counterparty with exactly the contact fields a test needs.
  */
-function stepCounterparty(array $profileAttrs = [], array $transporterAttrs = []): User
+function stepCounterparty(array $profileAttrs = []): User
 {
     $user = User::factory()->create([
         'email_verified_at' => now(),
-        'onboarded_at' => now(),
         'email' => 'counterparty-source@example.test',
     ]);
 
@@ -328,19 +286,11 @@ function stepCounterparty(array $profileAttrs = [], array $transporterAttrs = []
 
     Profile::firstOrCreate(['user_id' => $user->id], array_merge([
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
+        'status' => 'approved',
         'display_name' => 'Source Order Transporter',
+        'phone_visible' => true,
+        'email_visible' => true,
     ], $profileAttrs));
-
-    if ($transporterAttrs !== []) {
-        TransporterProfile::firstOrCreate(['user_id' => $user->id], array_merge([
-            'slug' => 'src-'.Str::lower(Str::random(8)),
-            'display_name' => 'Source Order Transporter',
-            'status' => 'approved',
-            'phone_visible' => true,
-            'email_visible' => true,
-        ], $transporterAttrs));
-    }
 
     return $user->fresh();
 }
@@ -383,10 +333,10 @@ it('reveal source 1: the profile phone wins over everything else', function () {
     [$consignor] = stepUserWithoutPhone();
     stepGiveViewerPhone($this, $consignor);
 
-    $transporter = stepCounterparty(
-        ['phone' => '+251911000001'],
-        ['phone' => '+251911111111', 'email' => 'tp@example.test'],
-    );
+    $transporter = stepCounterparty([
+        'phone' => '+251911000001',
+        'email' => 'tp@example.test',
+    ]);
 
     $interest = stepInterestBetween($consignor, $transporter, ['contact_phone' => '+251911222222']);
 
@@ -399,10 +349,7 @@ it('reveal source 2: the legacy interest phone is next, never the transporter co
     [$consignor] = stepUserWithoutPhone();
     stepGiveViewerPhone($this, $consignor);
 
-    $transporter = stepCounterparty(
-        ['phone' => null],
-        ['phone' => '+251911111111'],
-    );
+    $transporter = stepCounterparty(['phone' => null]);
 
     $interest = stepInterestBetween($consignor, $transporter, ['contact_phone' => '+251911222222']);
 
@@ -494,10 +441,7 @@ it('a transporter who turned phone visibility off does not fall through to anoth
     [$consignor] = stepUserWithoutPhone();
     stepGiveViewerPhone($this, $consignor);
 
-    $transporter = stepCounterparty(
-        ['phone' => null, 'phone_visible' => false],
-        ['phone' => '+251911111111'],
-    );
+    $transporter = stepCounterparty(['phone' => null, 'phone_visible' => false]);
 
     $interest = stepInterestBetween($consignor, $transporter, ['contact_phone' => '+251911222222']);
 
@@ -508,10 +452,7 @@ it('a connection reveal resolves the counterparty profile phone', function () {
     [$consignor, $workspace] = stepUserWithoutPhone();
     stepGiveViewerPhone($this, $consignor);
 
-    $transporter = stepCounterparty(
-        ['phone' => '+251911111111'],
-        ['phone' => '+251911111111'],
-    );
+    $transporter = stepCounterparty(['phone' => '+251911111111']);
 
     $post = FreightPost::create([
         'ulid' => (string) Str::ulid(),

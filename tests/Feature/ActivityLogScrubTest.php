@@ -1,13 +1,11 @@
 <?php
 
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Services\ActivityPropertyScrubber;
 use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * The audit trail must not retain contact data or credential material.
@@ -41,12 +39,11 @@ it('writes no phone, email or legal name when a profile is created', function ()
     expect($properties)->not->toContain($user->email);
 });
 
-it('writes no phone, whatsapp, email or legal name when a transporter profile changes', function () {
+it('writes no phone, whatsapp, email or legal name when a public profile changes', function () {
     $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
 
-    $transporter = TransporterProfile::create([
+    $profile = Profile::create([
         'user_id' => $user->id,
-        'slug' => 'scrub-'.Str::lower(Str::random(8)),
         'display_name' => 'Scrubbed Transporter',
         'legal_name' => 'SCRUBBED LEGAL',
         'status' => 'pending',
@@ -55,7 +52,7 @@ it('writes no phone, whatsapp, email or legal name when a transporter profile ch
         'email' => AUDIT_EMAIL_KEY,
     ]);
 
-    $transporter->update(['phone' => '+251966600009']);
+    $profile->update(['phone' => '+251966600009']);
 
     $properties = DB::table('activity_log')->pluck('properties')->implode(' ');
 
@@ -93,22 +90,21 @@ it('still records a non-sensitive change on a user', function () {
     expect($latest->properties)->toContain('am');
 });
 
-it('still records a visibility flag change on a transporter profile', function () {
+it('still records a visibility flag change on a public profile', function () {
     $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
 
-    $transporter = TransporterProfile::create([
+    $profile = Profile::create([
         'user_id' => $user->id,
-        'slug' => 'scrub-'.Str::lower(Str::random(8)),
         'display_name' => 'Flag Transporter',
         'status' => 'approved',
         'phone' => AUDIT_PHONE_KEY,
         'phone_visible' => true,
     ]);
 
-    $transporter->update(['phone_visible' => false]);
+    $profile->update(['phone_visible' => false]);
 
     $latest = DB::table('activity_log')
-        ->where('subject_type', 'like', '%TransporterProfile')
+        ->where('subject_type', Profile::class)
         ->orderByDesc('id')
         ->first();
 

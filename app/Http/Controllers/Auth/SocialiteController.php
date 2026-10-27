@@ -53,7 +53,7 @@ class SocialiteController extends Controller
 
             Auth::login($account->user);
 
-            return redirect()->intended(route('dashboard', absolute: false));
+            return redirect()->intended(route('freight.discovery', absolute: false));
         }
 
         // Check if a user with this email already exists
@@ -109,6 +109,6 @@ class SocialiteController extends Controller
 
         Auth::login($user);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route('freight.discovery', absolute: false));
     }
 }

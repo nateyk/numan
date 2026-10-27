@@ -1,278 +1,85 @@
 <?php
 
-use App\Models\Location;
-use App\Models\Profile;
 use App\Models\User;
-use App\Models\Workspace;
+use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
+/**
+ * The onboarding wizard is retired, not hidden.
+ *
+ * Signing in no longer puts a wizard between a person and the freight board.
+ * The old URL is a permanent redirect to the page that owns the same profile,
+ * and the profile itself is available to an unverified account because reading
+ * and saving your own identity card is not a marketplace transaction.
+ */
 uses(RefreshDatabase::class);
 
 it('redirects guests from onboarding to login', function (): void {
-    $this->get(route('onboarding.index'))->assertRedirect(route('login'));
+    $this->get('/onboarding')->assertRedirect(route('login'));
 });
 
-it('shows onboarding wizard for users without a public profile', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    Location::factory()->create(['name' => 'Addis Ababa', 'region_name' => 'Addis Ababa']);
-
-    $response = $this->actingAs($user)->get(route('onboarding.index'));
-
-    $response->assertSuccessful();
-    $response->assertInertia(fn ($page) => $page
-        ->component('onboarding/index')
-        ->has('profile')
-        ->has('currentStep')
-        ->has('locations')
-    );
-});
-
-it('is resumable — currentStep drives the wizard', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    $loc = Location::factory()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'provides_transport' => false,
-        'onboarding_step' => 'account_type',
-    ]);
-
-    $response = $this->actingAs($user)->get(route('onboarding.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('currentStep', 'account_type')
-        ->where('profile.posts_freight', true)
-    );
-});
-
-it('validates step 1 — at least one capability required', function (): void {
-    $user = User::factory()->unonboarded()->create();
-
-    $response = $this->actingAs($user)->post(route('onboarding.capabilities'), [
-        'posts_freight' => false,
-        'provides_transport' => false,
-    ]);
-
-    $response->assertSessionHasErrors(['posts_freight']);
-});
-
-it('completes step 1 and advances to account_type', function (): void {
-    $user = User::factory()->unonboarded()->create();
-
-    $response = $this->actingAs($user)->post(route('onboarding.capabilities'), [
-        'posts_freight' => true,
-        'provides_transport' => false,
-    ]);
-
-    $response->assertRedirect();
-    $response->assertSessionHasNoErrors();
-
-    expect($user->fresh()->profile->onboarding_step)->toBe('account_type')
-        ->and($user->fresh()->profile->posts_freight)->toBeTrue();
-});
-
-it('validates step 2 — account_type required and must be personal or business', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'onboarding_step' => 'account_type',
-    ]);
-
-    $this->actingAs($user)->post(route('onboarding.account-type'), [
-        'account_type' => 'invalid',
-    ])->assertSessionHasErrors(['account_type']);
-
-    $this->actingAs($user)->post(route('onboarding.account-type'), [
-        'account_type' => '',
-    ])->assertSessionHasErrors(['account_type']);
-});
-
-it('completes step 2 and advances to details', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'onboarding_step' => 'account_type',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('onboarding.account-type'), [
-        'account_type' => 'business',
-    ]);
-
-    $response->assertRedirect();
-    expect($user->fresh()->profile->account_type)->toBe('business')
-        ->and($user->fresh()->profile->onboarding_step)->toBe('details');
-});
-
-it('enforces step order — cannot skip capabilities before account_type', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    Profile::factory()->incomplete()->create(['user_id' => $user->id]);
-
-    $response = $this->actingAs($user)->post(route('onboarding.account-type'), [
-        'account_type' => 'personal',
-    ]);
-
-    $response->assertRedirect(route('onboarding.index'));
-});
-
-it('validates step 3 — display_name, phone, primary_location required', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    $loc = Location::factory()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'account_type' => 'personal',
-        'onboarding_step' => 'details',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('onboarding.details'), [
-        'display_name' => '',
-        'phone' => '',
-        'primary_location_id' => 999999,
-    ]);
-
-    $response->assertSessionHasErrors(['display_name', 'phone', 'primary_location_id']);
-});
-
-it('validates step 3 — business requires legal_name and legal_form', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    $loc = Location::factory()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'account_type' => 'business',
-        'onboarding_step' => 'details',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('onboarding.details'), [
-        'display_name' => 'Abebe',
-        'phone' => '+251 91 123 4567',
-        'primary_location_id' => $loc->id,
-        'legal_name' => '',
-        'legal_form' => '',
-    ]);
-
-    $response->assertSessionHasErrors(['legal_name', 'legal_form']);
-});
-
-it('requires legal_form_other when legal_form is Other', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    $loc = Location::factory()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'account_type' => 'business',
-        'onboarding_step' => 'details',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('onboarding.details'), [
-        'display_name' => 'Abebe',
-        'phone' => '+251 91 123 4567',
-        'primary_location_id' => $loc->id,
-        'legal_name' => 'My Biz',
-        'legal_form' => 'Other',
-        'legal_form_other' => '',
-    ]);
-
-    $response->assertSessionHasErrors(['legal_form_other']);
-});
-
-it('completes step 3 for personal — marks profile completed and redirects to dashboard', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    $loc = Location::factory()->create(['name' => 'Kombolcha', 'region_name' => 'Amhara']);
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'account_type' => 'personal',
-        'onboarding_step' => 'details',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('onboarding.details'), [
-        'display_name' => 'Abebe Kebede',
-        'phone' => '+251 91 123 4567',
-        'primary_location_id' => $loc->id,
-    ]);
-
-    $response->assertRedirect(route('dashboard'));
-    $profile = $user->fresh()->profile;
-    expect($profile->onboarding_step)->toBe('completed')
-        ->and($profile->onboarding_completed_at)->not->toBeNull()
-        ->and($profile->display_name)->toBe('Abebe Kebede');
-    expect($user->fresh()->onboarded_at)->not->toBeNull();
-});
-
-it('completes step 3 for business with Other legal form', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    $loc = Location::factory()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'posts_freight' => true,
-        'provides_transport' => true,
-        'account_type' => 'business',
-        'onboarding_step' => 'details',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('onboarding.details'), [
-        'display_name' => 'Abebe — ABC Transport',
-        'phone' => '+251 91 123 4567',
-        'primary_location_id' => $loc->id,
-        'legal_name' => 'ABC Transport PLC',
-        'legal_form' => 'Other',
-        'legal_form_other' => 'Custom Cooperative Union',
-    ]);
-
-    $response->assertRedirect(route('dashboard'));
-    expect($user->fresh()->profile->legal_form_other)->toBe('Custom Cooperative Union');
-});
-
-it('prevents revisiting the wizard once completed — redirects to the revisitable page', function (): void {
-    $user = User::factory()->create(); // onboarded via legacy flag
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-    ]);
-
-    // Kept out of the wizard entirely — every wizard action redirects to the
-    // dashboard still. The GET now lands on the page that owns capabilities,
-    // because sending an onboarded user to the dashboard left them with no way to
-    // change what they do here at all.
-    $this->actingAs($user)->get(route('onboarding.index'))
-        ->assertRedirect(route('settings.marketplace-details.edit'));
-
-    $this->actingAs($user)->post(route('onboarding.capabilities'), [
-        'posts_freight' => true,
-        'provides_transport' => false,
-    ])->assertRedirect(route('dashboard'));
-});
-
-it('middleware onboarded gates dashboard when profile incomplete', function (): void {
-    $user = User::factory()->unonboarded()->create();
-    Profile::factory()->incomplete()->create(['user_id' => $user->id]);
-
-    $response = $this->actingAs($user)->get('/dashboard');
-
-    $response->assertRedirect(route('onboarding.index'));
-});
-
-it('allows onboarded profile to access dashboard', function (): void {
+it('redirects a signed-in user from onboarding to the public profile page', function (): void {
     $user = User::factory()->create();
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-    ]);
-    // Ensure workspace exists for dashboard middleware (workspace check)
-    Workspace::factory()->create(['owner_id' => $user->id]);
-    $user->update(['current_workspace_id' => Workspace::where('owner_id', $user->id)->first()->id]);
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $this->actingAs($user)->get('/onboarding')->assertRedirect('/public-profile');
+});
 
-    // Should not redirect to onboarding (may still redirect due to other middleware but not onboarding)
-    expect($response->status())->not->toBe(302);
-    // If redirected, ensure not to onboarding
-    if ($response->isRedirect()) {
-        expect($response->headers->get('Location'))->not->toContain('onboarding');
-    }
+it('has removed every wizard step endpoint', function (string $path): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post($path)->assertNotFound();
+})->with([
+    '/onboarding/capabilities',
+    '/onboarding/account-type',
+    '/onboarding/details',
+    '/onboarding/track-step',
+]);
+
+it('sends a stale onboarding post to the public profile', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post('/onboarding')
+        ->assertRedirect('/public-profile');
+});
+
+it('lets an unverified user open and save their public profile', function (): void {
+    $user = User::factory()->create(['email_verified_at' => null]);
+    app(WorkspaceService::class)->createPersonalWorkspace($user);
+
+    $this->actingAs($user)->get('/public-profile')->assertOk();
+
+    $this->actingAs($user)->patch('/public-profile', [
+        'display_name' => 'Unverified Person',
+        'account_type' => 'personal',
+        'phone' => '+251911000001',
+        'posts_freight' => true,
+        'provides_transport' => false,
+    ])->assertRedirect();
+
+    expect($user->fresh()->profile->display_name)->toBe('Unverified Person');
+});
+
+it('creates the profile through the first-post setup dialog', function (): void {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    app(WorkspaceService::class)->createPersonalWorkspace($user);
+
+    $this->actingAs($user->fresh())->post('/public-profile/setup', [
+        'display_name' => 'Dialog Person',
+        'account_type' => 'personal',
+        'phone' => '0911223344',
+        'posts_freight' => '1',
+        'provides_transport' => '0',
+    ])->assertRedirect();
+
+    $profile = $user->fresh()->profile;
+
+    expect($profile)->not->toBeNull()
+        ->and($profile->display_name)->toBe('Dialog Person')
+        ->and($profile->phone)->toBe('+251911223344')
+        ->and((bool) $profile->posts_freight)->toBeTrue();
+});
+
+it('requires authentication for the public profile', function (): void {
+    $this->get('/public-profile')->assertRedirect(route('login'));
 });

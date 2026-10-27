@@ -55,8 +55,6 @@ class Profile extends Model
         'verification_requested_at',
         'verification_reviewed_at',
         'completion_score',
-        'onboarding_step',
-        'onboarding_completed_at',
     ];
 
     protected function casts(): array
@@ -70,7 +68,6 @@ class Profile extends Model
             'verification_requested_at' => 'datetime',
             'verification_reviewed_at' => 'datetime',
             'completion_score' => 'integer',
-            'onboarding_completed_at' => 'datetime',
         ];
     }
 
@@ -123,38 +120,6 @@ class Profile extends Model
     public function isPending(): bool
     {
         return $this->status === ProfileStatus::Pending->value;
-    }
-
-    public function isOnboarded(): bool
-    {
-        return $this->onboarding_step === 'completed' && $this->onboarding_completed_at !== null;
-    }
-
-    public function onboardingStep(): string
-    {
-        if ($this->isOnboarded()) {
-            return 'completed';
-        }
-
-        return $this->onboarding_step ?? 'capabilities';
-    }
-
-    /**
-     * @return 'capabilities'|'account_type'|'details'
-     */
-    public function currentStep(): string
-    {
-        $step = $this->onboardingStep();
-
-        if ($step === 'completed') {
-            return 'details';
-        }
-
-        if (! in_array($step, ['capabilities', 'account_type', 'details'], true)) {
-            return 'capabilities';
-        }
-
-        return $step;
     }
 
     public function hasCapabilities(): bool
@@ -228,8 +193,6 @@ class Profile extends Model
                 'phone_visible',
                 'whatsapp_visible',
                 'email_visible',
-                'onboarding_step',
-                'onboarding_completed_at',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()

@@ -226,38 +226,6 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Whether this user has finished onboarding.
-     *
-     * The `profile` relation is deliberately NOT trusted when it is already
-     * loaded. It used to be, and the cached answer is wrong in a way that never
-     * recovers: `profile` loads as null for every user who has never onboarded,
-     * nothing invalidates it when onboarding creates the row, and the guard hands
-     * the same User instance to every later check within the request. A user who
-     * completed onboarding moments earlier was therefore reported as not
-     * onboarded and told to complete onboarding again — with every database field
-     * saying they had.
-     *
-     * That was not only a test artefact. The application runs on Octane, where a
-     * model instance held anywhere that survives a request keeps its loaded
-     * relations. Caching a nullable relation and then acting on it is exactly the
-     * thing Octane turns into a production fault.
-     */
-    public function isProfileOnboarded(): bool
-    {
-        return (bool) $this->profile()->first()?->isOnboarded();
-    }
-
-    public function transporterProfile(): HasOne
-    {
-        return $this->hasOne(TransporterProfile::class);
-    }
-
-    public function hasTransporterProfile(): bool
-    {
-        return $this->relationLoaded('transporterProfile') ? $this->transporterProfile !== null : $this->transporterProfile()->exists();
-    }
-
-    /**
      * Has this user a phone number on file?
      *
      * Required before posting freight, expressing interest or revealing a
@@ -287,25 +255,6 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->forceFill([
             'onboarded_at' => now(),
         ])->save();
-    }
-
-    public function completeProfileOnboarding(): void
-    {
-        $profile = $this->profile()->first();
-
-        if (! $profile) {
-            $profile = $this->profile()->create([
-                'onboarding_step' => 'completed',
-                'onboarding_completed_at' => now(),
-            ]);
-        } else {
-            $profile->forceFill([
-                'onboarding_step' => 'completed',
-                'onboarding_completed_at' => now(),
-            ])->save();
-        }
-
-        $this->completeOnboarding();
     }
 
     /**

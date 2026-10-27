@@ -245,7 +245,7 @@ class ManualPaymentService
             // Either the NF code or the workspace slot. Tell the payer which in
             // terms they can act on, and clean up any file we already wrote.
             if ($proofPath !== null) {
-                Storage::disk(TransporterDocumentStorage::DISK)->delete($proofPath);
+                Storage::disk(ProfileDocumentStorage::DISK)->delete($proofPath);
             }
 
             $open = $this->openRequestFor($user);
@@ -276,7 +276,7 @@ class ManualPaymentService
             .now()->format('Y/m')
             .'/'.Str::uuid().'.'.$extension;
 
-        Storage::disk(TransporterDocumentStorage::DISK)->put($path, file_get_contents($file->getRealPath()));
+        Storage::disk(ProfileDocumentStorage::DISK)->put($path, file_get_contents($file->getRealPath()));
 
         return $path;
     }

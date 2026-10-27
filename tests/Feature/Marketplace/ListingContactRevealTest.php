@@ -5,14 +5,12 @@ use App\Models\ContactReveal;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ContactRevealService;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -40,8 +38,6 @@ function listingUser(bool $withPhone = true, array $profile = []): array
         'phone' => $withPhone
             ? '+2519'.str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT)
             : null,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ], $profile));
 
     return [$user->fresh(), $workspace];
@@ -52,20 +48,6 @@ function listingPost(User $owner, array $attributes = []): FreightPost
     return FreightPost::factory()->for($owner)->create(array_merge([
         'status' => FreightPostStatus::Active->value,
     ], $attributes));
-}
-
-function listingTransporter(User $owner, ?string $whatsapp = null): TransporterProfile
-{
-    return TransporterProfile::create([
-        'user_id' => $owner->id,
-        'slug' => 'listing-'.Str::lower(Str::random(10)),
-        'display_name' => 'Listing Transporter',
-        'status' => 'approved',
-        'whatsapp' => $whatsapp,
-        'phone_visible' => true,
-        'whatsapp_visible' => true,
-        'email_visible' => true,
-    ]);
 }
 
 it('does not reveal to a guest', function () {
@@ -185,11 +167,9 @@ it('only opens the gate for a post owned by the counterparty', function () {
         ->and($service->canReveal($thirdParty, $otherCounterparty, $post))->toBeFalse();
 });
 
-it('reads the whatsapp from the profile and never the transporter copy', function () {
+it('reads the whatsapp from the profile', function () {
     [$owner] = listingUser(true, ['whatsapp' => '+251 91 111 1111']);
     [$viewer] = listingUser();
-
-    listingTransporter($owner, '+251 92 222 2222');
 
     $post = listingPost($owner);
     $service = app(ContactRevealService::class);
@@ -199,8 +179,8 @@ it('reads the whatsapp from the profile and never the transporter copy', functio
 
     Profile::where('user_id', $owner->id)->update(['whatsapp' => null]);
 
-    // The legacy carrier row is no longer a source. A missing profile value is
-    // missing, not an invitation to publish a stale copy.
+    // A missing profile value is missing. There is no second record to fall
+    // back to now that the carrier copy is gone.
     expect($service->contactDetailsFor($viewer, $owner->fresh(), $post)['whatsapp'])
         ->toBeNull();
 });
@@ -211,8 +191,6 @@ it('honours a refused whatsapp on the profile', function () {
         'whatsapp_visible' => false,
     ]);
     [$viewer] = listingUser();
-
-    listingTransporter($owner, '+251 92 222 2222');
 
     $contact = app(ContactRevealService::class)
         ->contactDetailsFor($viewer, $owner, listingPost($owner));

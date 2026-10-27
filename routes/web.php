@@ -74,7 +74,6 @@ use App\Http\Controllers\Marketplace\ManualPaymentController;
 use App\Http\Controllers\MemberActivityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
-use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PhoneNumberController;
 use App\Http\Controllers\ProfileDocumentController;
 use App\Http\Controllers\ProfileSetupController;
@@ -213,7 +212,7 @@ Route::middleware(['auth', 'workspace'])->group(function () {
     Route::get('/public-profile/documents/{document}/download', [ProfileDocumentController::class, 'download'])->name('public-profile.documents.download');
 });
 
-Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', 'workspace.ip', 'workspace.suspended'])->group(function () {
+Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip', 'workspace.suspended'])->group(function () {
     Route::get('dashboard', function () {
         $user = request()->user();
         $workspace = $user->currentWorkspace;
@@ -439,12 +438,12 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
 });
 
 // 2FA Enforcement Wall (auth only, no require2fa to avoid infinite redirect)
-Route::middleware(['auth', 'verified', 'onboarded', 'workspace'])->group(function () {
+Route::middleware(['auth', 'verified', 'workspace'])->group(function () {
     Route::get('/workspace/2fa-required', [WorkspaceSecurityController::class, 'twoFactorRequired'])->name('workspace.two-factor-required');
 });
 
 // Workspace Suspension Wall
-Route::middleware(['auth', 'verified', 'onboarded', 'workspace'])->group(function () {
+Route::middleware(['auth', 'verified', 'workspace'])->group(function () {
     Route::get('/workspace/suspended', function (Request $request) {
         $workspace = $request->user()->currentWorkspace;
 
@@ -476,31 +475,26 @@ Route::post('/locations/resolve-osm', ResolveOsmLocationController::class)
 
 Route::middleware(['auth'])->group(function () {
 
-    // Onboarding Sequences (Exempt from onboarded check) — NumanFreight 3-step public profile
-    Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
+    // The three-step onboarding wizard is retired. Old bookmarks and emails
+    // land on the page that manages the same consolidated profile.
+    Route::redirect('/onboarding', '/public-profile');
+
     Route::post('/profile/phone', [PhoneNumberController::class, 'update'])->name('profile.phone.update');
-    Route::post('/onboarding/capabilities', [OnboardingController::class, 'storeCapabilities'])->name('onboarding.capabilities');
-    Route::post('/onboarding/account-type', [OnboardingController::class, 'storeAccountType'])->name('onboarding.account-type');
-    Route::post('/onboarding/details', [OnboardingController::class, 'storeDetails'])->name('onboarding.details');
-    Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
-    Route::post('/onboarding/track-step', [OnboardingController::class, 'trackStep'])->name('onboarding.track-step');
 
-    Route::middleware(['onboarded'])->group(function () {
-        Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
+    Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
 
-        // Help Center
-        Route::get('/help', function () {
-            return Inertia::render('help');
-        })->name('help.index');
+    // Help Center
+    Route::get('/help', function () {
+        return Inertia::render('help');
+    })->name('help.index');
 
-        // Notifications API
-        Route::prefix('api/notifications')->middleware('throttle:api')->name('notifications.')->group(function () {
-            Route::get('/', [NotificationController::class, 'index'])->name('index');
-            Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
-            Route::delete('/read', [NotificationController::class, 'clearRead'])->name('clear-read');
-            Route::patch('/{id}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
-            Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
-        });
+    // Notifications API
+    Route::prefix('api/notifications')->middleware('throttle:api')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/read', [NotificationController::class, 'clearRead'])->name('clear-read');
+        Route::patch('/{id}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
     });
 
     // Stop impersonating outside of superadmin middleware (since active user is standard user)

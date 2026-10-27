@@ -25,8 +25,6 @@ function interestsOwnerUser(): User
         'display_name' => 'Shipper Tester',
         'phone' => '+25191'.random_int(10000000, 99999999),
         'primary_location_id' => $location->id,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);

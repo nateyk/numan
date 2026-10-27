@@ -40,8 +40,6 @@ function cargoStepUser(): array
         'display_name' => 'Test User',
         'phone' => '+251900000000',
         'primary_location_id' => $location->id,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);

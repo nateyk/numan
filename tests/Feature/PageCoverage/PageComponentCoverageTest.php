@@ -23,7 +23,7 @@ function createOnboardedUserWithWorkspace(bool $suspended = false): User
     return $user;
 }
 
-it('renders onboarding wizard component for unonboarded users', function () {
+it('redirects the retired onboarding wizard to the public profile', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
         'email_verified_at' => now(),
@@ -31,8 +31,16 @@ it('renders onboarding wizard component for unonboarded users', function () {
 
     $this->actingAs($user)
         ->get('/onboarding')
+        ->assertRedirect('/public-profile');
+});
+
+it('renders the public profile management page', function () {
+    $user = createOnboardedUserWithWorkspace();
+
+    $this->actingAs($user)
+        ->get('/public-profile')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('onboarding/index'));
+        ->assertInertia(fn ($page) => $page->component('public-profile/index'));
 });
 
 it('renders settings pages with direct inertia components', function (string $uri, string $component) {

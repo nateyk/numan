@@ -4,9 +4,9 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\MarketplaceReadiness;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -29,11 +29,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 /**
- * A transporter with a profile at the given status.
+ * A transporter whose consolidated profile is at the given status.
  *
- * @param  array<string, mixed>  $transporterOverrides
+ * @param  array<string, mixed>  $profileOverrides
  */
-function transporterAt(string $status = 'pending', array $transporterOverrides = [], array $profileOverrides = []): array
+function transporterAt(string $status = 'pending', array $profileOverrides = []): User
 {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
@@ -51,25 +51,14 @@ function transporterAt(string $status = 'pending', array $transporterOverrides =
         'account_type' => 'business',
         'display_name' => 'Test Haulage',
         'phone' => '+251911000001',
+        'business_description' => 'General freight across Oromia',
         'primary_location_id' => $location->id,
         'posts_freight' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
+        'status' => $status,
     ], $profileOverrides));
 
-    $transporter = TransporterProfile::create(array_merge([
-        'user_id' => $user->id,
-        'slug' => 'test-haulage-'.uniqid(),
-        'display_name' => 'Test Haulage',
-        'legal_name' => 'Test Haulage PLC',
-        'phone' => '+251911000001',
-        'business_description' => 'General freight across Oromia',
-        'primary_location_id' => $location->id,
-        'status' => $status,
-    ], $transporterOverrides));
-
-    return [$user, $transporter];
+    return $user->fresh();
 }
 
 function activePost(): FreightPost
@@ -80,8 +69,6 @@ function activePost(): FreightPost
         'display_name' => 'Consignor',
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     return FreightPost::factory()->for($consignor)->create(['status' => 'active']);
@@ -92,7 +79,7 @@ function activePost(): FreightPost
 it('lets a pending transporter express interest', function () {
     // The whole point. Pending is the state every new transporter is in, and it
     // is the state nothing ever leaves.
-    [$user] = transporterAt('pending');
+    $user = transporterAt('pending');
     $post = activePost();
 
     $this->actingAs($user)
@@ -104,7 +91,7 @@ it('lets a pending transporter express interest', function () {
 
 it('lets an approved transporter express interest', function () {
     // Unchanged behaviour: approval never became a blocker.
-    [$user] = transporterAt('approved');
+    $user = transporterAt('approved');
     $post = activePost();
 
     $this->actingAs($user)
@@ -113,7 +100,7 @@ it('lets an approved transporter express interest', function () {
 });
 
 it('tells an incomplete transporter to complete the profile, not to create one', function () {
-    [$user] = transporterAt('pending', [], ['primary_location_id' => null]);
+    $user = transporterAt('pending', ['primary_location_id' => null]);
     $post = activePost();
 
     $response = $this->actingAs($user)
@@ -152,7 +139,7 @@ it('sends a user with no profile at all to the phone step first', function () {
 });
 
 it('never mentions approval when refusing an interest', function () {
-    [$user] = transporterAt('pending', [], ['phone' => null]);
+    $user = transporterAt('pending', ['phone' => null]);
     $post = activePost();
 
     $this->actingAs($user)
@@ -167,32 +154,36 @@ it('never mentions approval when refusing an interest', function () {
 
 // ── completeness is defined, not assumed ───────────────────────────────────
 
-it('reports a complete transporter profile as complete', function () {
-    [, $transporter] = transporterAt('pending');
+it('reports a complete transporter profile as ready', function () {
+    $user = transporterAt('pending');
 
-    expect($transporter->isComplete())->toBeTrue()
-        ->and($transporter->missingFields())->toBe([]);
+    $readiness = app(MarketplaceReadiness::class)->for($user);
+
+    expect($readiness['ready']['provides_transport'])->toBeTrue()
+        ->and($readiness['missing']['provides_transport'])->toBe([]);
 });
 
 it('reports an incomplete profile and says which fields', function () {
     // display_name is NOT NULL in the schema, so a blank string is the only way
-    // to leave it empty — which is exactly why the completeness check trims rather
+    // to leave it empty — which is exactly why the readiness check trims rather
     // than testing for null alone. Whitespace passes a null check and renders as
     // an empty line to whoever is reading the profile.
-    [, $transporter] = transporterAt('pending', [
+    $user = transporterAt('pending', [
         'display_name' => '   ',
         'phone' => '',
     ]);
 
-    expect($transporter->isComplete())->toBeFalse()
-        ->and($transporter->missingFields())->toContain('display_name', 'phone');
+    $readiness = app(MarketplaceReadiness::class)->for($user);
+
+    expect($readiness['ready']['provides_transport'])->toBeFalse()
+        ->and($readiness['missing']['provides_transport'])->toContain('display_name', 'phone');
 });
 
 // ── capabilities are independent ───────────────────────────────────────────
 
 it('lets someone who also posts freight express interest', function () {
     // The case the old model could not express: both capabilities at once.
-    [$user] = transporterAt('pending');
+    $user = transporterAt('pending');
     $user->profile->update(['posts_freight' => true]);
     $post = activePost();
 
@@ -202,7 +193,7 @@ it('lets someone who also posts freight express interest', function () {
 });
 
 it('still refuses someone who does not provide transport', function () {
-    [$user] = transporterAt('pending');
+    $user = transporterAt('pending');
     $user->profile->update(['provides_transport' => false]);
     $post = activePost();
 

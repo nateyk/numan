@@ -41,8 +41,6 @@ function ownerWithWorkspace(): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     return [$user, $workspace];

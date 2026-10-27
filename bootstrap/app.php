@@ -4,7 +4,6 @@ use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnforceWorkspaceIpAllowlist;
 use App\Http\Middleware\EnsurePasswordNotExpired;
 use App\Http\Middleware\EnsureSuperadmin;
-use App\Http\Middleware\EnsureUserIsOnboarded;
 use App\Http\Middleware\EnsureWorkspaceAccess;
 use App\Http\Middleware\EnsureWorkspaceAdmin;
 use App\Http\Middleware\EnsureWorkspaceNotSuspended;
@@ -71,7 +70,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'workspace.owner' => EnsureWorkspaceOwner::class,
             'workspace.admin' => EnsureWorkspaceAdmin::class,
             'workspace.suspended' => EnsureWorkspaceNotSuspended::class,
-            'onboarded' => EnsureUserIsOnboarded::class,
             'require2fa' => RequireTwoFactor::class,
             'api-key' => AuthenticateApiKey::class,
         ]);

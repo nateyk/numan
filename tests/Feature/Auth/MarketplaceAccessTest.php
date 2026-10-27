@@ -71,33 +71,28 @@ it('asks a new registration to verify their email before anything else', functio
 it('keeps an unverified registration out of every marketplace screen', function () {
     [$user] = registerViaTheForm();
 
-    // The marketplace actions, not the settings area. /settings/* is behind
-    // auth alone in this application, as it always has been, so the settings page
-    // being reachable is the existing convention rather than a new hole — and it
-    // can only write to the visitor's own record.
-    foreach (['/my-freight', '/my-transporter-profile'] as $path) {
+    // The marketplace actions, not the settings area or the profile editor.
+    // /settings/* and /public-profile are behind auth alone in this application:
+    // they can only write to the visitor's own record, so they are not a hole.
+    foreach (['/my-freight'] as $path) {
         $this->actingAs($user)
             ->get($path)
             ->assertRedirect(route('verification.notice'), $path.' should require a verified email');
     }
 });
 
-it('sends a verified but unonboarded user to onboarding', function () {
-    // Past verification, the next gate is onboarding. Every marketplace screen
-    // redirects there, because the dashboard is useless to somebody with no
-    // profile: they cannot post, cannot express interest and have nothing to see.
+it('lets a verified user with no profile browse and open their profile', function () {
+    // There is no forced setup step between signing in and reading the board.
     [$user] = registerViaTheForm();
     $user->forceFill(['email_verified_at' => now()])->save();
 
-    foreach (['/my-freight', '/my-transporter-profile'] as $path) {
-        $this->actingAs($user->refresh())
-            ->get($path)
-            ->assertRedirect(route('onboarding.index'), $path.' should redirect an unonboarded user');
-    }
+    $this->actingAs($user->refresh())->get('/freight')->assertOk();
+    $this->actingAs($user->refresh())->get('/public-profile')->assertOk();
+    $this->actingAs($user->refresh())->get('/my-freight')->assertOk();
 });
 
 it('refuses a guest every marketplace screen', function () {
-    foreach (['/my-freight', '/my-transporter-profile', '/settings/marketplace-details', '/onboarding-checklist'] as $path) {
+    foreach (['/my-freight', '/public-profile', '/onboarding-checklist'] as $path) {
         $this->get($path)->assertRedirect(route('login'), $path.' should not be public');
     }
 });
@@ -117,8 +112,6 @@ it('lets a verified, onboarded user through to the marketplace', function () {
         'phone' => '+251911000001',
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $this->actingAs($user->fresh())->get('/my-freight')->assertOk();
@@ -137,8 +130,6 @@ it('refuses to post freight for an unverified email', function () {
         'display_name' => 'Unverified',
         'phone' => '+251911000002',
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $this->actingAs($user->refresh())
@@ -155,8 +146,6 @@ it('lets a verified email post freight', function () {
         'display_name' => 'Verified',
         'phone' => '+251911000003',
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $this->actingAs($user->refresh())->post('/my-freight')->assertRedirect();
@@ -175,8 +164,6 @@ it('requires a phone number before a draft is created', function () {
         'display_name' => 'No Phone',
         'phone' => null,
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $this->actingAs($user->refresh())
@@ -222,8 +209,6 @@ it('does not let a signed-in user post as somebody else', function () {
         'display_name' => 'Mine',
         'phone' => '+251911000004',
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $this->actingAs($user->refresh())->post('/my-freight');
@@ -248,8 +233,6 @@ it('refuses to express interest on your own load', function () {
         'phone' => '+251911000005',
         'posts_freight' => true,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $post = FreightPost::factory()->for($user)->create(['status' => 'active']);
@@ -272,8 +255,6 @@ it('cannot reveal a contact without a conversation to reveal it in', function ()
     $profile = Profile::firstOrCreate(['user_id' => $stranger->id], [
         'display_name' => 'Stranger',
         'phone' => '+251911000006',
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     expect(app(ContactRevealService::class)

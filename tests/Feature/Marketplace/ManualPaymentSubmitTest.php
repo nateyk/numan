@@ -54,8 +54,6 @@ function submitUser(): array
 
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'display_name' => 'Payer',
         'phone' => '+251911000111',
     ]);
@@ -149,7 +147,6 @@ it('refuses a workspace member who cannot manage billing', function () {
     $workspace->users()->attach($member, ['role' => 'member']);
 
     Profile::firstOrCreate(['user_id' => $member->id], [
-        'onboarding_step' => 'completed',
         'phone' => '+251911000222',
     ]);
 
@@ -172,7 +169,7 @@ it('refuses the instructions page to a member who cannot manage billing', functi
 
     $member = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
     $workspace->users()->attach($member, ['role' => 'member']);
-    Profile::firstOrCreate(['user_id' => $member->id], ['onboarding_step' => 'completed']);
+    Profile::firstOrCreate(['user_id' => $member->id], []);
     $member->update(['current_workspace_id' => $workspace->id]);
 
     $this->actingAs($member->fresh())

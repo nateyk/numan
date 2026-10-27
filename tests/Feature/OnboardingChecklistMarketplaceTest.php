@@ -2,7 +2,6 @@
 
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,7 +63,7 @@ it('names the fields that are missing', function () {
         ->json('steps');
 
     expect($steps[0]['description'])->toContain('display_name', 'phone')
-        ->and($steps[0]['href'])->toBe('/settings/marketplace-details');
+        ->and($steps[0]['href'])->toBe('/public-profile');
 });
 
 it('lists a step per capability the user has chosen', function () {
@@ -113,13 +112,6 @@ it('keeps a capability that is chosen but blocked on its own extra fields', func
         'provides_transport' => true,
         'display_name' => 'Ready Identity',
         'phone' => '+251911000003',
-    ]);
-
-    TransporterProfile::create([
-        'user_id' => $user->id,
-        'display_name' => 'Ready Identity',
-        'phone' => '+251911000003',
-        'status' => 'pending',
     ]);
 
     $steps = collect($this->actingAs($user)->getJson('/onboarding-checklist')->json('steps'));
@@ -194,14 +186,6 @@ it('reports a complete carrier as needing nothing more', function () {
         'provides_transport' => true,
         'display_name' => 'Fully Ready',
         'phone' => '+251911000004',
-        'primary_location_id' => $base->id,
-    ]);
-
-    TransporterProfile::create([
-        'user_id' => $user->id,
-        'display_name' => 'Fully Ready',
-        'phone' => '+251911000004',
-        'status' => 'pending',
         'primary_location_id' => $base->id,
     ]);
 

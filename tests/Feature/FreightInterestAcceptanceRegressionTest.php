@@ -7,7 +7,6 @@ use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\MarketplaceConnection;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,8 +21,6 @@ function createAcceptUser(): User
         'user_id' => $user->id,
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $loc->id,
     ]);
     $ws = Workspace::factory()->create(['owner_id' => $user->id]);
@@ -41,15 +38,12 @@ function createTransporterForAccept(): User
         'user_id' => $user->id,
         'posts_freight' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $loc->id,
+        'status' => 'approved',
     ]);
     $ws = Workspace::factory()->create(['owner_id' => $user->id]);
     $ws->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $ws->id]);
-    TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
-    $user->setRelation('transporterProfile', $user->transporterProfile()->first());
 
     return $user->fresh();
 }

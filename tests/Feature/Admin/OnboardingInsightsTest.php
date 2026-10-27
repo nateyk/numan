@@ -90,7 +90,26 @@ it('shows drop-off data for incomplete steps', function () {
         );
 });
 
-it('tracks onboarding step via post endpoint', function () {
+it('keeps historical step logs queryable after the wizard is retired', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    OnboardingStepLog::create(['user_id' => $user->id, 'step' => 'workspace', 'action' => 'viewed']);
+
+    expect(OnboardingStepLog::count())->toBe(1);
+
+    $this->actingAs($this->admin)
+        ->get('/admin/onboarding-insights')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('funnel', function ($funnel): bool {
+                $workspace = collect($funnel)->firstWhere('step', 'workspace');
+
+                return $workspace !== null && $workspace['viewed'] === 1;
+            })
+        );
+});
+
+it('has removed the retired step tracking endpoint', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
 
     $this->actingAs($user)
@@ -98,44 +117,17 @@ it('tracks onboarding step via post endpoint', function () {
             'step' => 'workspace',
             'action' => 'viewed',
         ])
-        ->assertRedirect();
+        ->assertNotFound();
 
-    expect(OnboardingStepLog::count())->toBe(1);
-    expect(OnboardingStepLog::first())
-        ->user_id->toBe($user->id)
-        ->step->toBe('workspace')
-        ->action->toBe('viewed');
+    expect(OnboardingStepLog::count())->toBe(0);
 });
 
-it('does not duplicate step logs for same user-step-action', function () {
-    $user = User::factory()->create(['onboarded_at' => null]);
-
-    $this->actingAs($user)
-        ->post('/onboarding/track-step', ['step' => 'welcome', 'action' => 'viewed']);
-
-    $this->actingAs($user)
-        ->post('/onboarding/track-step', ['step' => 'welcome', 'action' => 'viewed']);
-
-    expect(OnboardingStepLog::count())->toBe(1);
-});
-
-it('validates step tracking input', function () {
-    $user = User::factory()->create(['onboarded_at' => null]);
-
-    $this->actingAs($user)
-        ->post('/onboarding/track-step', [
-            'step' => 'invalid_step',
-            'action' => 'viewed',
-        ])
-        ->assertSessionHasErrors('step');
-});
-
-it('logs welcome step when onboarding page is visited', function () {
+it('has removed the wizard page that wrote the welcome log', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
 
     $this->actingAs($user)
         ->get('/onboarding')
-        ->assertOk();
+        ->assertRedirect('/public-profile');
 
-    expect(OnboardingStepLog::where('step', 'capabilities')->where('action', 'viewed')->count())->toBe(1);
+    expect(OnboardingStepLog::where('step', 'capabilities')->count())->toBe(0);
 });

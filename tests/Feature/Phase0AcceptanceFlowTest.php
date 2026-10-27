@@ -6,7 +6,6 @@ use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\MarketplaceConnection;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,7 +28,6 @@ function seedAcceptanceFlow(): array
 {
     $consignor = User::factory()->create([
         'email_verified_at' => now(),
-        'onboarded_at' => now(),
     ]);
     $consignorWorkspace = app(WorkspaceService::class)->createPersonalWorkspace($consignor);
     $consignor->update(['current_workspace_id' => $consignorWorkspace->id]);
@@ -38,24 +36,19 @@ function seedAcceptanceFlow(): array
     Profile::firstOrCreate(['user_id' => $consignor->id], [
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'display_name' => 'Consignor Person',
         'phone' => '+251911000001',
     ]);
 
     $transporter = User::factory()->create([
         'email_verified_at' => now(),
-        'onboarded_at' => now(),
     ]);
     $transporterWorkspace = app(WorkspaceService::class)->createPersonalWorkspace($transporter);
     $transporter->update(['current_workspace_id' => $transporterWorkspace->id]);
     $transporter->refresh();
 
     // primary_location_id is part of what "complete" means now, and readiness
-    // reads it from the public profile rather than the carrier row. This fixture
-    // was approved but had no base on the profile, which passed only because
-    // approval used to stand in for completeness.
+    // reads it from the public profile rather than a carrier row.
     $base = Location::firstOrCreate(
         ['name' => 'Adama'],
         ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
@@ -64,17 +57,8 @@ function seedAcceptanceFlow(): array
     Profile::firstOrCreate(['user_id' => $transporter->id], [
         'posts_freight' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-        'display_name' => 'Transporter Person',
-        'phone' => '+251922000002',
-        'primary_location_id' => $base->id,
-    ]);
-
-    TransporterProfile::firstOrCreate(['user_id' => $transporter->id], [
-        'slug' => 'transporter-'.Str::lower(Str::random(8)),
-        'display_name' => 'Transporter Person',
         'status' => 'approved',
+        'display_name' => 'Transporter Person',
         'phone' => '+251922000002',
         'primary_location_id' => $base->id,
         'email' => 'transporter@example.com',

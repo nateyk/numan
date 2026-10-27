@@ -3,72 +3,34 @@
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
+use App\Services\WorkspaceService;
 
-it('violently redirects unonboarded users to the wizard', function () {
-    $user = User::factory()->unonboarded()->create();
+/**
+ * The workspace-onboarding wizard is gone; the account still gets a workspace.
+ *
+ * The wizard used to be the only thing that created a workspace and the only
+ * thing that set `onboarded_at`. Both now happen at registration, so there is
+ * nothing to gate behind a forced flow.
+ */
+it('does not gate the dashboard behind an onboarding flag', function () {
+    $user = User::factory()->unonboarded()->create(['email_verified_at' => now()]);
 
-    $response = $this->actingAs($user)->get('/dashboard');
-
-    $response->assertRedirect(route('onboarding.index'));
+    $this->actingAs($user)->get('/dashboard')->assertOk();
 });
 
-it('exempts the onboarding paths from the middleware loop', function () {
+it('redirects the retired onboarding URL to the public profile', function () {
     $user = User::factory()->unonboarded()->create();
 
-    $response = $this->actingAs($user)->get(route('onboarding.index'));
-
-    $response->assertSuccessful();
+    $this->actingAs($user)->get('/onboarding')->assertRedirect('/public-profile');
 });
 
-it('processes the wizard mutating the timestamp and spawning a workspace seamlessly', function () {
-    $user = User::factory()->unonboarded()->create();
+it('creates a personal workspace at registration', function () {
+    $user = User::factory()->create();
+    app(WorkspaceService::class)->createPersonalWorkspace($user);
 
-    $response = $this->actingAs($user)->post(route('onboarding.store'), [
-        'workspace_name' => 'Acme Corp Onboarding',
-    ]);
-
-    $response->assertRedirect(route('dashboard'));
-    $response->assertSessionHas('success');
-
-    $this->assertDatabaseHas('users', [
-        'id' => $user->id,
-    ]);
-
-    $user->refresh();
-    expect($user->onboarded_at)->not->toBeNull()
-        ->and($user->ownedWorkspaces()->count())->toBe(1)
-        ->and($user->current_workspace_id)->not->toBeNull();
-
-    $this->assertDatabaseHas('workspaces', [
-        'name' => 'Acme Corp Onboarding',
-        'owner_id' => $user->id,
-        'personal_workspace' => false,
-    ]);
-});
-
-it('redirects paid-intent onboarding users to billing plan selection', function () {
-    $user = User::factory()->unonboarded()->create();
-
-    $response = $this->actingAs($user)->post(route('onboarding.store'), [
-        'workspace_name' => 'Acme Paid Onboarding',
-        'onboarding_plan' => 'pro',
-        'onboarding_billing_period' => 'yearly',
-    ]);
-
-    $response->assertRedirect(route('billing.plans', [
-        'onboarding' => '1',
-        'recommended_plan' => 'pro',
-        'recommended_billing_period' => 'yearly',
-    ]));
-
-    $user->refresh();
-    expect($user->onboarded_at)->not->toBeNull();
-
-    $this->assertDatabaseHas('workspaces', [
-        'name' => 'Acme Paid Onboarding',
-        'owner_id' => $user->id,
-        'personal_workspace' => false,
-    ]);
+    expect($user->ownedWorkspaces()->count())->toBe(1)
+        ->and($user->current_workspace_id)->not->toBeNull()
+        ->and($user->fresh()->currentWorkspace->personal_workspace)->toBeTrue();
 });
 
 it('does not create an owned workspace when user joins via invitation', function () {
@@ -95,19 +57,8 @@ it('does not create an owned workspace when user joins via invitation', function
     expect($user->fresh()->ownedWorkspaces()->count())->toBe($ownedWorkspaceCount);
 });
 
-it('allows seamlessly onboarded users into the dashboard securely bypassing the wizard', function () {
-    $user = User::factory()->create(); // Automatically onboarded via factory defaults
-    // Simulate setting a fake current workspace since the factory might not spawn one natively
-    // Wait, testing Dashboard requires a currentWorkspace. Let's just hit a generic onboarded route like /settings/profile instead
+it('lets a user with an incomplete profile reach account settings', function () {
+    $user = User::factory()->unonboarded()->create(['email_verified_at' => now()]);
 
-    $response = $this->actingAs($user)->get('/settings/profile');
-
-    $response->assertSuccessful();
-
-    // Secondary check: ensure they can't access onboarding again. They are kept
-    // out of the wizard, but sent to the page that lets them change what they do
-    // here rather than to a dashboard where they cannot — the wizard's redirect
-    // used to be a dead end for exactly that decision.
-    $responseWizard = $this->actingAs($user)->get(route('onboarding.index'));
-    $responseWizard->assertRedirect(route('settings.marketplace-details.edit'));
+    $this->actingAs($user)->get('/settings/profile')->assertSuccessful();
 });

@@ -54,7 +54,7 @@ function something()
 }
 
 /**
- * Create an onboarded user with a personal workspace, ready for marketplace billing tests.
+ * Create a marketplace-ready user with a personal workspace.
  *
  * @return array{User, Workspace}
  */
@@ -62,7 +62,6 @@ function marketplaceTestUserWithWorkspace(): array
 {
     $user = User::factory()->create([
         'email_verified_at' => now(),
-        'onboarded_at' => now(),
     ]);
 
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
@@ -72,8 +71,8 @@ function marketplaceTestUserWithWorkspace(): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
+        'display_name' => $user->name,
+        'phone' => '+251 91 '.fake()->numerify('### ####'),
     ]);
 
     return [$user, $workspace];

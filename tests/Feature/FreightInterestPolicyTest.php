@@ -6,7 +6,6 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Policies\FreightInterestPolicy;
@@ -22,8 +21,6 @@ function makeConsignor(): User
         'user_id' => $user->id,
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $loc->id,
     ]);
     $ws = Workspace::factory()->create(['owner_id' => $user->id]);
@@ -41,16 +38,12 @@ function makeTransporter(bool $approved = true, bool $provides = true): User
         'user_id' => $user->id,
         'posts_freight' => false,
         'provides_transport' => $provides,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $loc->id,
+        'status' => $approved ? 'approved' : null,
     ]);
     $ws = Workspace::factory()->create(['owner_id' => $user->id]);
     $ws->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $ws->id]);
-    if ($approved) {
-        TransporterProfile::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
-    }
 
     return $user->fresh();
 }

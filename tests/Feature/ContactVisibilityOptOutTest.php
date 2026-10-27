@@ -4,11 +4,12 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
+use App\Services\ProfileConsolidation;
 use App\Services\WorkspaceService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -52,8 +53,6 @@ function refusingConsignor(): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
         'provides_transport' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'display_name' => 'Opt Out Consignor',
         'phone' => CONSIGNOR_PHONE,
     ]);
@@ -75,8 +74,6 @@ function revealingViewer(): User
         'display_name' => 'Viewer',
         'phone' => '+251966660009',
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
@@ -132,11 +129,9 @@ it('still releases a consignor phone by default', function () {
     expect($response->json('contact.phone'))->toBe(CONSIGNOR_PHONE);
 });
 
-it('honours a refusal recorded on the profile even when the transporter copy says visible', function () {
-    // The transporter column is a stale copy until it is dropped. The profile is
-    // the record every kind of user has and the one the resolver reads. A stale
-    // "yes" beside a profile "no" must not publish a number somebody asked to
-    // keep private.
+it('honours a refusal recorded on a carrier profile', function () {
+    // One record, one refusal. A carrier is not exempt from the preference a
+    // consignor can set.
     $viewer = revealingViewer();
 
     $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
@@ -147,18 +142,8 @@ it('honours a refusal recorded on the profile even when the transporter copy say
         'phone' => '+251977770005',
         'phone_visible' => false,
         'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-    ]);
-
-    TransporterProfile::create([
-        'user_id' => $counterparty->id,
-        'slug' => 'stale-refusal-'.uniqid(),
-        'display_name' => 'Stale Refusal',
-        'phone' => '+251977770005',
-        'primary_location_id' => $base->id,
         'status' => 'approved',
-        'phone_visible' => true,
+        'primary_location_id' => $base->id,
     ]);
 
     $interest = interestAgainst($viewer, $counterparty);
@@ -198,7 +183,12 @@ it('carries an existing transporter refusal onto the profile', function () {
 
     $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
 
-    TransporterProfile::create([
+    // The drop migration has already removed the legacy table in every real
+    // environment, so recreate its exact schema before writing the row the
+    // backfill was written for.
+    app(ProfileConsolidation::class)->createLegacySchema();
+
+    DB::table('transporter_profiles')->insert([
         'user_id' => $user->id,
         'slug' => 'already-hid-'.uniqid(),
         'display_name' => 'Already Hid',
@@ -208,6 +198,8 @@ it('carries an existing transporter refusal onto the profile', function () {
         'phone_visible' => false,
         'whatsapp_visible' => true,
         'email_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
     // Reproduce the shape the backfill was written for. RefreshDatabase has

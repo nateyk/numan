@@ -139,8 +139,6 @@ function auditViewer(string $tag = 'viewer'): User
 
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'display_name' => 'Audit Viewer',
         'phone' => '+251944400100',
     ]);

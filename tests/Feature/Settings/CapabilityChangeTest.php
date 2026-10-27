@@ -126,8 +126,7 @@ it('does not create a second profile when the capability is switched on', functi
         ]))
         ->assertRedirect();
 
-    expect(Profile::where('user_id', $user->id)->count())->toBe(1)
-        ->and($user->transporterProfile()->exists())->toBeFalse();
+    expect(Profile::where('user_id', $user->id)->count())->toBe(1);
 
     expect(app(MarketplaceReadiness::class)->for($user)['missing']['provides_transport'])
         ->toContain('primary_location_id');
@@ -232,10 +231,10 @@ it('keeps carrier data and approval when the capability is turned off and on', f
     expect($profile->refresh()->status)->toBe('approved');
 });
 
-it('does not disturb the onboarding wizard state', function () {
-    // The guard on OnboardingController exists so a finished wizard cannot be
-    // re-run. Writing capabilities must not reopen that door.
-    $user = onboardedUser(['posts_freight' => true, 'onboarding_step' => 'completed']);
+it('leaves the retired onboarding state alone', function () {
+    // The wizard columns are gone. Changing capabilities must not try to write
+    // them back or depend on them existing.
+    $user = onboardedUser(['posts_freight' => true]);
 
     $this->actingAs($user)
         ->patch('/public-profile', capabilityPayload($user, [
@@ -246,8 +245,8 @@ it('does not disturb the onboarding wizard state', function () {
 
     $profile = Profile::where('user_id', $user->id)->first();
 
-    expect($profile->onboarding_step)->toBe('completed')
-        ->and($profile->onboarding_completed_at)->not->toBeNull();
+    expect($profile)->not->toBeNull()
+        ->and($profile->provides_transport)->toBeTrue();
 });
 
 it('requires authentication', function () {
@@ -259,17 +258,17 @@ it('requires authentication', function () {
     ])->assertRedirect(route('login'));
 });
 
-// ── an onboarded user is sent somewhere they can actually act ──────────────
+// ── the wizard is retired ──────────────────────────────────────────────────
 
-it('sends an onboarded user away from the wizard to the revisitable page', function () {
+it('sends every user from onboarding to the public profile page', function () {
     $user = onboardedUser();
 
     $this->actingAs($user)
         ->get('/onboarding')
-        ->assertRedirect(route('settings.marketplace-details.edit'));
+        ->assertRedirect('/public-profile');
 });
 
-it('still shows the wizard to somebody who has not onboarded', function () {
+it('redirects a user who has not onboarded to the public profile page too', function () {
     $user = User::factory()->create();
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
     $user->forceFill([
@@ -279,7 +278,7 @@ it('still shows the wizard to somebody who has not onboarded', function () {
 
     $this->actingAs($user)
         ->get('/onboarding')
-        ->assertOk();
+        ->assertRedirect('/public-profile');
 });
 
 // ── one source of truth for readiness ──────────────────────────────────────

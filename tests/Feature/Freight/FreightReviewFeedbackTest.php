@@ -28,8 +28,6 @@ function reviewFeedbackUser(): User
         'display_name' => 'Review Tester',
         'phone' => '+251900000001',
         'primary_location_id' => $location->id,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);

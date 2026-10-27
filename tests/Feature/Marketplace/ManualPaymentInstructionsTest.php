@@ -29,7 +29,6 @@ function instructionsAdmin(): User
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($admin);
     $admin->update(['current_workspace_id' => $workspace->id]);
     Profile::firstOrCreate(['user_id' => $admin->id], [
-        'onboarding_step' => 'completed',
         'phone' => '+251911000000',
     ]);
 
@@ -44,7 +43,6 @@ function instructionsPayer(): User
     $user->update(['current_workspace_id' => $workspace->id]);
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
         'display_name' => 'Payer',
         'phone' => '+251911000111',
     ]);

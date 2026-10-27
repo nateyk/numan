@@ -18,8 +18,6 @@ function makeUser(): User
     Profile::factory()->create([
         'user_id' => $user->id,
         'posts_freight' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
         'primary_location_id' => $loc->id,
     ]);
     $ws = Workspace::factory()->create(['owner_id' => $user->id]);

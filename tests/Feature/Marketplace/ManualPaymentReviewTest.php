@@ -39,7 +39,6 @@ function reviewUsers(): array
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($payer);
     $payer->update(['current_workspace_id' => $workspace->id]);
     Profile::firstOrCreate(['user_id' => $payer->id], [
-        'onboarding_step' => 'completed',
         'phone' => '+251911000111',
     ]);
 

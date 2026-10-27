@@ -66,8 +66,6 @@ function billingMember(Workspace $workspace, string $role = 'admin', bool $canMa
         'account_type' => 'business',
         'display_name' => $user->name,
         'phone' => '+251900000000',
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
     ]);
 
     $workspace->users()->attach($user->id, [

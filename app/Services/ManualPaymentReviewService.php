@@ -25,7 +25,7 @@ class ManualPaymentReviewService
 {
     public function __construct(
         protected MarketplaceFulfillmentService $fulfill,
-        protected TransporterDocumentStorage $documents,
+        protected ProfileDocumentStorage $documents,
     ) {}
 
     /**
@@ -267,7 +267,7 @@ class ManualPaymentReviewService
             return;
         }
 
-        Storage::disk(TransporterDocumentStorage::DISK)->delete($transaction->manual_proof_path);
+        Storage::disk(ProfileDocumentStorage::DISK)->delete($transaction->manual_proof_path);
     }
 
     private function notifyPayerConfirmed(MarketplacePaymentTransaction $transaction): void

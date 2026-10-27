@@ -4,14 +4,12 @@ namespace Database\Seeders;
 
 use App\Enums\FreightInterestStatus;
 use App\Enums\FreightPostStatus;
-use App\Enums\TransporterStatus;
-use App\Enums\VerificationLevel;
 use App\Models\CargoType;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\FreightPostRoute;
 use App\Models\Location;
-use App\Models\TransporterProfile;
+use App\Models\Profile;
 use App\Models\TruckType;
 use App\Models\User;
 use App\Models\Workspace;
@@ -225,7 +223,6 @@ class DemoDataSeeder extends Seeder
                     'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
-                    'onboarded_at' => now(),
                 ]
             );
 
@@ -236,7 +233,6 @@ class DemoDataSeeder extends Seeder
                     'password' => DemoPassword::hashed(),
                     'email_verified_at' => now(),
                     'locale' => 'en',
-                    'onboarded_at' => now(),
                 ]
             );
 
@@ -248,7 +244,6 @@ class DemoDataSeeder extends Seeder
                     'email_verified_at' => now(),
                     'locale' => 'en',
                     'is_superadmin' => true,
-                    'onboarded_at' => now(),
                 ]
             );
 
@@ -469,36 +464,37 @@ class DemoDataSeeder extends Seeder
                 }
             }
 
-            // 7. Create demo transporter profiles
+            // 7. Give a handful of demo users a transport section on their
+            // consolidated profile. There is no separate carrier record.
             $transporterUsers = User::where('id', '!=', $demo->id)->take(5)->get();
 
             foreach ($transporterUsers as $index => $user) {
                 $statuses = [
-                    TransporterStatus::Approved->value,
-                    TransporterStatus::Pending->value,
+                    'approved',
+                    'pending',
                 ];
 
                 $verificationLevels = [
-                    VerificationLevel::Verified->value,
-                    VerificationLevel::Unverified->value,
+                    'verified',
+                    'unverified',
                 ];
 
                 $status = $statuses[$index % count($statuses)];
                 $verification = $verificationLevels[$index % count($verificationLevels)];
 
-                TransporterProfile::firstOrCreate(
+                $profile = Profile::updateOrCreate(
                     ['user_id' => $user->id],
                     [
-                        'slug' => Str::slug($user->name).'-'.Str::random(4),
+                        'provides_transport' => true,
                         'display_name' => $user->name.' Transport',
                         'legal_name' => $user->name.' Transport PLC',
                         'phone' => '+251 91 '.fake()->numerify('### ####'),
                         'whatsapp' => '+251 91 '.fake()->numerify('### ####'),
                         'email' => $user->email,
                         'business_description' => 'Reliable transport services across Ethiopia. Modern fleet with GPS tracking.',
-                        'is_company' => true,
+                        'account_type' => 'business',
                         'status' => $status,
-                        'verification_level' => $verification,
+                        'verification_status' => $verification,
                         'completion_score' => rand(70, 95),
                         'phone_visible' => true,
                         'whatsapp_visible' => true,
@@ -508,8 +504,7 @@ class DemoDataSeeder extends Seeder
                 );
 
                 // Attach truck types
-                $profile = TransporterProfile::where('user_id', $user->id)->first();
-                if ($profile && $truckTypes->isNotEmpty()) {
+                if ($truckTypes->isNotEmpty()) {
                     // syncWithoutDetaching, not attach. attach() has no guard
                     // against a pair that already exists, so running this seeder
                     // twice died on the unique key — and a seeder that cannot be

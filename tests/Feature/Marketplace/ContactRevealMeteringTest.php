@@ -9,7 +9,6 @@ use App\Models\MarketplaceConnection;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\BackfillContactRevealsService;
@@ -49,21 +48,10 @@ function meterUser(bool $transporter = false): array
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => ! $transporter,
         'provides_transport' => $transporter,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
+        'status' => $transporter ? 'approved' : null,
         'display_name' => 'Metered '.($transporter ? 'Transporter' : 'Consignor'),
         'phone' => '+2519555'.str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT),
     ]);
-
-    if ($transporter) {
-        TransporterProfile::firstOrCreate(['user_id' => $user->id], [
-            'slug' => 'meter-'.Str::lower(Str::random(8)),
-            'display_name' => 'Metered Transporter',
-            'status' => 'approved',
-            'phone_visible' => true,
-            'email_visible' => true,
-        ]);
-    }
 
     return [$user->fresh(), $workspace];
 }
