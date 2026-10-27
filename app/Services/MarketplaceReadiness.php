@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 
 /**
@@ -20,9 +19,13 @@ use App\Models\User;
  * here assumes the pair is exclusive.
  *
  * The requirements differ per capability and that difference is the point:
- * posting a load needs identity, offering to carry one also needs a base and a
- * vehicle. Collapsing them into one number is how somebody looks ready and is
- * then turned away.
+ * posting a load needs identity, offering to carry one also needs a base.
+ * Collapsing them into one number is how somebody looks ready and is then turned
+ * away.
+ *
+ * Every field here lives on the single public profile. There is no second
+ * carrier record to consult and no onboarding state to satisfy: a complete
+ * profile is what makes a capability usable.
  */
 class MarketplaceReadiness
 {
@@ -38,24 +41,35 @@ class MarketplaceReadiness
     public const IDENTITY_FIELDS = ['display_name', 'phone'];
 
     /**
+     * A carrier additionally needs somewhere to start from.
+     *
+     * @var list<string>
+     */
+    public const TRANSPORT_FIELDS = ['primary_location_id'];
+
+    /**
      * @return array{
+     *     profile_exists: bool,
      *     capabilities: array{posts_freight: bool, provides_transport: bool},
      *     acts_in_marketplace: bool,
      *     missing: array{posts_freight: list<string>, provides_transport: list<string>},
-     *     ready: array{posts_freight: bool, provides_transport: bool}
+     *     ready: array{posts_freight: bool, provides_transport: bool},
+     *     status: ?string,
+     *     verification_status: string
      * }
      */
     public function for(User $user): array
     {
-        $profile = $user->profile()->first() ?? new Profile(['user_id' => $user->id]);
+        $profile = $user->profile()->first();
+
+        $postsFreight = (bool) $profile?->posts_freight;
+        $providesTransport = (bool) $profile?->provides_transport;
 
         $identity = $this->missingIdentityFields($profile);
-        $transporter = $this->missingTransporterFields($user);
-
-        $postsFreight = (bool) $profile->posts_freight;
-        $providesTransport = (bool) $profile->provides_transport;
+        $base = $this->missingTransportFields($profile);
 
         return [
+            'profile_exists' => $profile !== null,
             'capabilities' => [
                 'posts_freight' => $postsFreight,
                 'provides_transport' => $providesTransport,
@@ -67,47 +81,44 @@ class MarketplaceReadiness
                 // location" in front of somebody who only ever posts freight.
                 'posts_freight' => $postsFreight ? $identity : [],
                 'provides_transport' => $providesTransport
-                    ? $this->dedupe([...$identity, ...$transporter])
+                    ? $this->dedupe([...$identity, ...$base])
                     : [],
             ],
             'ready' => [
                 'posts_freight' => $postsFreight && $identity === [],
                 'provides_transport' => $providesTransport
                     && $identity === []
-                    && $transporter === [],
+                    && $base === [],
             ],
+            'status' => $profile?->status,
+            'verification_status' => $profile?->verification_status ?: 'unverified',
         ];
     }
 
     /**
      * @return list<string>
      */
-    private function missingIdentityFields(Profile $profile): array
+    private function missingIdentityFields(?Profile $profile): array
     {
         return array_values(array_filter(
             self::IDENTITY_FIELDS,
-            fn (string $field): bool => trim((string) $profile->{$field}) === '',
+            fn (string $field): bool => trim((string) $profile?->{$field}) === '',
         ));
     }
 
     /**
      * @return list<string>
      */
-    private function missingTransporterFields(User $user): array
+    private function missingTransportFields(?Profile $profile): array
     {
-        $transporter = $user->transporterProfile()->first();
-
-        // No row at all is reported as itself rather than as three missing fields,
-        // because the action is different: create a profile, not fill in blanks.
-        if (! $transporter instanceof TransporterProfile) {
-            return ['transporter_profile'];
-        }
-
-        return $transporter->missingFields();
+        return array_values(array_filter(
+            self::TRANSPORT_FIELDS,
+            fn (string $field): bool => blank($profile?->{$field}),
+        ));
     }
 
     /**
-     * Identity and transporter requirements overlap, and a user missing both a
+     * Identity and transport requirements overlap, and a user missing both a
      * phone and a base should be told once.
      *
      * @param  list<string>  $fields

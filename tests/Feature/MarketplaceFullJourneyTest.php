@@ -10,6 +10,7 @@ use App\Models\TransporterProfile;
 use App\Models\TruckType;
 use App\Models\User;
 use App\Services\MarketplaceReadiness;
+use App\Services\ProfileConsolidation;
 use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -365,11 +366,11 @@ it('serves a user with no profile row rather than erroring', function () {
         ->and($response->json('contact.phone'))->toBeNull();
 });
 
-it('reveals a legacy carrier whose details live only on the carrier record', function () {
-    // All four carrier profiles on production are like this: display_name, phone
-    // and legal_name exist on transporter_profiles and nowhere else. Dropping
-    // those columns without copying them first would have deleted four real
-    // carriers' phone numbers, and reading only the profile would return nothing.
+it('reveals a legacy carrier after the migration copies the carrier record onto the profile', function () {
+    // All four carrier profiles on production were like this: display_name,
+    // phone and legal_name existed on transporter_profiles and nowhere else.
+    // Contact resolution reads the profile only, so the backfill has to move
+    // those details before the drop. This runs the backfill the migration runs.
     $carrier = User::factory()->create(['email_verified_at' => now()]);
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($carrier);
     $carrier->update(['current_workspace_id' => $workspace->id]);
@@ -389,6 +390,8 @@ it('reveals a legacy carrier whose details live only on the carrier record', fun
         // what production actually holds.
         'phone_visible' => true,
     ]);
+
+    app(ProfileConsolidation::class)->backfill();
 
     $consignor = onboardedConsignor();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);
@@ -476,20 +479,22 @@ it('shows a carrier the dashboard checklist naming what is blocking them', funct
         'provides_transport' => true,
     ]);
 
+    // Readiness is profile-only now, so remove the base from the profile rather
+    // than relying on a missing carrier row to stand in for it.
+    Profile::where('user_id', $user->id)->update(['primary_location_id' => null]);
+
     $steps = collect($this->actingAs($user)->getJson('/onboarding-checklist')->json('steps'));
 
     $carrying = $steps->firstWhere('id', 'provides_transport_ready');
 
-    // Onboarding records the person's base on the profile, which is not the
-    // carrier record. So the first thing missing is the record itself.
     expect($carrying)->not->toBeNull()
         ->and($carrying['href'])->toBe('/settings/marketplace-details')
-        ->and($carrying['description'])->toContain('transporter_profile');
+        ->and($carrying['description'])->toContain('primary_location_id');
 });
 
-it('honours a carrier who hides their number, without a profile row', function () {
-    // The refusal flag must work for the legacy records too, or the fix only
-    // covers users created after it.
+it('honours a carrier who hid their number before the profile existed', function () {
+    // The refusal has to survive the migration that copies the carrier record
+    // onto the profile, or the fix only covers users created after it.
     $carrier = User::factory()->create(['email_verified_at' => now()]);
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($carrier);
     $carrier->update(['current_workspace_id' => $workspace->id]);
@@ -505,6 +510,8 @@ it('honours a carrier who hides their number, without a profile row', function (
         'status' => 'approved',
         'phone_visible' => false,
     ]);
+
+    app(ProfileConsolidation::class)->backfill();
 
     $consignor = onboardedConsignor();
     $post = FreightPost::factory()->for($consignor)->create(['status' => 'active']);

@@ -99,9 +99,8 @@ it('does not create a carrier profile when the capability is switched on', funct
     // carrier capability made the very next action — filling in the carrier form
     // — fail with a message written for a developer.
     //
-    // Readiness reporting `transporter_profile` as the gap is accurate and
-    // actionable on its own: it says create a carrier profile, and creating one
-    // works.
+    // Readiness names the base location as the gap, which is actionable on its
+    // own: it is a field on the profile the user already has.
     $user = onboardedUser(['posts_freight' => true]);
 
     $this->actingAs($user)
@@ -111,19 +110,23 @@ it('does not create a carrier profile when the capability is switched on', funct
     expect($user->transporterProfile()->exists())->toBeFalse();
 
     expect(app(MarketplaceReadiness::class)->for($user)['missing']['provides_transport'])
-        ->toContain('transporter_profile');
+        ->toContain('primary_location_id');
 });
 
 it('lets a carrier form be submitted after switching the capability on', function () {
     // The end-to-end consequence of the one above: the form the user is told to
     // fill in must actually accept them.
-    $user = onboardedUser(['posts_freight' => true, 'provides_transport' => false]);
+    $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
+
+    $user = onboardedUser([
+        'posts_freight' => true,
+        'provides_transport' => false,
+        'primary_location_id' => $base->id,
+    ]);
 
     $this->actingAs($user)
         ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
         ->assertRedirect();
-
-    $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
 
     $this->actingAs($user)
         ->post('/my-transporter-profile', [
@@ -272,12 +275,12 @@ it('reports nothing missing for a capability the user does not hold', function (
         ->and($state['missing']['posts_freight'])->toContain('phone');
 });
 
-it('says transporter_profile when a carrier has no profile at all', function () {
+it('names the base location when a carrier has not set one', function () {
     $readiness = app(MarketplaceReadiness::class);
     $user = onboardedUser(['provides_transport' => true]);
 
     expect($readiness->for($user)['missing']['provides_transport'])
-        ->toContain('transporter_profile');
+        ->toContain('primary_location_id');
 });
 
 it('reports a carrier with no profile at all as not ready', function () {
@@ -346,5 +349,5 @@ it('serves the same verdicts to the page as the service computes', function () {
         ->and($props['ready']['provides_transport'])->toBeFalse()
         ->and($props['missingFields']['posts_freight'])->toContain('display_name', 'phone')
         ->and($props['missingFields']['provides_transport'])
-        ->toContain('transporter_profile');
+        ->toContain('primary_location_id');
 });

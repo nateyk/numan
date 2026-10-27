@@ -6,6 +6,7 @@ use App\Enums\FreightPostStatus;
 use App\Models\FreightPost;
 use App\Models\User;
 use App\Services\MarketplaceEntitlementService;
+use App\Services\MarketplaceReadiness;
 
 class FreightPostPolicy
 {
@@ -33,17 +34,7 @@ class FreightPostPolicy
             return true;
         }
 
-        if (! $user->isProfileOnboarded()) {
-            return false;
-        }
-
-        $profile = $user->profile()->first();
-
-        if (! $profile) {
-            return false;
-        }
-
-        if (! (bool) $profile->posts_freight) {
+        if (! app(MarketplaceReadiness::class)->for($user)['ready']['posts_freight']) {
             return false;
         }
 

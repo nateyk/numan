@@ -74,6 +74,13 @@ function leakTransporter(): User
     $user->update(['current_workspace_id' => $workspace->id]);
     $user->refresh();
 
+    // Readiness reads the public profile now, so the base location has to live
+    // there as well as on the legacy carrier row.
+    $base = Location::firstOrCreate(
+        ['name' => 'Adama'],
+        ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
+    );
+
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => false,
         'provides_transport' => true,
@@ -81,6 +88,7 @@ function leakTransporter(): User
         'onboarding_completed_at' => now(),
         'display_name' => 'Leaky Transporter',
         'phone' => UNIQUE_PHONE_TRANSPORTER,
+        'primary_location_id' => $base->id,
     ]);
 
     TransporterProfile::firstOrCreate(['user_id' => $user->id], [
@@ -89,14 +97,7 @@ function leakTransporter(): User
         'legal_name' => 'LEAKY LEGAL NAME',
         'status' => 'approved',
         'phone' => UNIQUE_PHONE_TRANSPORTER,
-        // Completes the profile. Expressing interest now requires a complete
-        // transporter profile rather than an approved one, and this fixture had a
-        // phone but no base — approved while unfinished, which used to pass only
-        // because approval stood in for completeness.
-        'primary_location_id' => Location::firstOrCreate(
-            ['name' => 'Adama'],
-            ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
-        )->id,
+        'primary_location_id' => $base->id,
         'email' => UNIQUE_EMAIL_TRANSPORTER,
         'whatsapp' => UNIQUE_WHATSAPP,
         'phone_visible' => true,
@@ -490,12 +491,12 @@ it('a withdrawn interest cannot be revealed', function () {
         ->assertForbidden();
 });
 
-it('transporter visibility flags are respected on reveal', function () {
+it('profile visibility flags are respected on reveal', function () {
     [$consignor, $workspace] = leakConsignor();
     $transporter = leakTransporter();
     $post = leakActivePost($consignor, $workspace);
 
-    TransporterProfile::where('user_id', $transporter->id)->update([
+    Profile::where('user_id', $transporter->id)->update([
         'phone_visible' => false,
         'email_visible' => false,
         'whatsapp_visible' => false,

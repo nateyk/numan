@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ContactDetailsResolver;
 use Database\Factories\MarketplaceConnectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -68,59 +69,31 @@ class MarketplaceConnection extends Model
     }
 
     /**
+     * The counterparty's contact details, for a participant in the connection.
+     *
+     * Resolution is delegated to ContactDetailsResolver, which reads the single
+     * public profile and honours its visibility flags. This method used to have
+     * its own transporter branch and a fallback that ignored those flags, so a
+     * number could be released on the connection page that the reveal endpoint
+     * would withhold.
+     *
      * @return array<string, string>|null
      */
     public function contactDetailsFor(User $user): ?array
     {
-        if ($user->id === $this->transporter_user_id) {
-            $consignor = $this->consignor()->first();
-            $profile = $consignor?->profile()->first();
-            if (! $consignor || ! $profile) {
-                return null;
-            }
+        $counterparty = match (true) {
+            $user->id === $this->transporter_user_id => $this->consignor()->first(),
+            $user->id === $this->consignor_user_id => $this->transporter()->first(),
+            default => null,
+        };
 
-            return [
-                'name' => $profile->display_name ?? $consignor->name,
-                'phone' => $profile->phone ?? '',
-                'email' => $consignor->email,
-            ];
+        if ($counterparty === null) {
+            return null;
         }
 
-        if ($user->id === $this->consignor_user_id) {
-            $transporter = $this->transporter()->first();
-            $tProfile = $transporter?->transporterProfile()->first();
-            $profile = $transporter?->profile()->first();
-            if (! $transporter) {
-                return null;
-            }
-
-            // Respect transporter privacy flags if exists
-            $phone = null;
-            $email = null;
-            $whatsapp = null;
-            if ($tProfile) {
-                if ($tProfile->phone_visible) {
-                    $phone = $tProfile->phone;
-                }
-                if ($tProfile->email_visible) {
-                    $email = $tProfile->email;
-                }
-                if ($tProfile->whatsapp_visible) {
-                    $whatsapp = $tProfile->whatsapp;
-                }
-            } else {
-                $phone = $profile?->phone;
-                $email = $transporter->email;
-            }
-
-            return array_filter([
-                'name' => $tProfile?->display_name ?? $profile?->display_name ?? $transporter->name,
-                'phone' => $phone,
-                'email' => $email,
-                'whatsapp' => $whatsapp,
-            ]);
-        }
-
-        return null;
+        return array_filter(
+            app(ContactDetailsResolver::class)->resolve($counterparty),
+            fn (?string $value): bool => filled($value),
+        );
     }
 }

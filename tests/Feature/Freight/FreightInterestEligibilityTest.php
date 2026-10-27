@@ -33,7 +33,7 @@ uses(RefreshDatabase::class);
  *
  * @param  array<string, mixed>  $transporterOverrides
  */
-function transporterAt(string $status = 'pending', array $transporterOverrides = []): array
+function transporterAt(string $status = 'pending', array $transporterOverrides = [], array $profileOverrides = []): array
 {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
@@ -46,16 +46,17 @@ function transporterAt(string $status = 'pending', array $transporterOverrides =
         'longitude' => 39.27,
     ]);
 
-    Profile::factory()->create([
+    Profile::factory()->create(array_merge([
         'user_id' => $user->id,
         'account_type' => 'business',
         'display_name' => 'Test Haulage',
         'phone' => '+251911000001',
+        'primary_location_id' => $location->id,
         'posts_freight' => false,
         'provides_transport' => true,
         'onboarding_step' => 'completed',
         'onboarding_completed_at' => now(),
-    ]);
+    ], $profileOverrides));
 
     $transporter = TransporterProfile::create(array_merge([
         'user_id' => $user->id,
@@ -112,7 +113,7 @@ it('lets an approved transporter express interest', function () {
 });
 
 it('tells an incomplete transporter to complete the profile, not to create one', function () {
-    [$user] = transporterAt('pending', ['primary_location_id' => null]);
+    [$user] = transporterAt('pending', [], ['primary_location_id' => null]);
     $post = activePost();
 
     $response = $this->actingAs($user)
@@ -125,38 +126,33 @@ it('tells an incomplete transporter to complete the profile, not to create one',
     // "Please create a transporter profile first" is wrong once the profile
     // exists — it sends somebody to a page they have already filled in. The
     // message has to name what is actually missing instead.
-    expect($message)->toContain('transporter profile')
+    expect($message)->toContain('public profile')
         ->and($message)->toContain('primary_location_id')
         ->and(strtolower($message))->toContain('complete')
         ->not->toContain('create');
 });
 
-it('refuses a transporter with no profile at all and says to create one', function () {
-    // Distinct from the above, and the only place "create" is the right word.
+it('sends a user with no profile at all to the phone step first', function () {
+    // There is no separate carrier record to create any more. A user with no
+    // profile is missing identity, and the inline phone step is the first thing
+    // they can act on.
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
     $workspace->users()->attach($user->id, ['role' => 'owner']);
     $user->update(['current_workspace_id' => $workspace->id]);
-
-    Profile::factory()->create([
-        'user_id' => $user->id,
-        'provides_transport' => true,
-        'posts_freight' => false,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-    ]);
 
     $post = activePost();
 
     $response = $this->actingAs($user)
         ->post("/my-freight/{$post->ulid}/interests", ['message' => 'Available']);
 
-    $response->assertSessionHasErrors('interest');
-    expect(session('errors')->first('interest'))->toContain('transporter profile');
+    $response->assertSessionHasErrors('interest')
+        ->assertSessionHas('requires_phone', true);
+    expect(session('errors')->first('interest'))->toContain('phone number');
 });
 
 it('never mentions approval when refusing an interest', function () {
-    [$user] = transporterAt('pending', ['phone' => null]);
+    [$user] = transporterAt('pending', [], ['phone' => null]);
     $post = activePost();
 
     $this->actingAs($user)

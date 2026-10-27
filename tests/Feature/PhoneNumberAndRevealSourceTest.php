@@ -41,6 +41,9 @@ function stepUserWithoutPhone(bool $providesTransport = false): array
         'onboarding_completed_at' => now(),
         'display_name' => 'No Phone Yet',
         'phone' => null,
+        // A carrier needs a base as well as identity. Leaving it out made the
+        // "save the phone and retry" test fail readiness after the phone step.
+        'primary_location_id' => $providesTransport ? Location::factory()->create()->id : null,
     ]);
 
     return [$user->fresh(), $workspace];
@@ -184,8 +187,9 @@ it('shows the inline step instead of blocking an interest, and the interest then
     [$consignor, $workspace] = stepUserWithoutPhone();
     [$transporter] = stepUserWithoutPhone(true);
 
-    // Expressing interest needs a transporter profile; that check runs first,
-    // so give them one. The phone is deliberately still absent.
+    // The phone step runs ahead of the readiness gate, so this fixture keeps a
+    // complete carrier profile with no phone. The legacy carrier row is kept
+    // until the old surface is retired.
     TransporterProfile::firstOrCreate(['user_id' => $transporter->id], [
         'slug' => 'step-'.Str::lower(Str::random(8)),
         'display_name' => 'Step Transporter',
@@ -391,7 +395,7 @@ it('reveal source 1: the profile phone wins over everything else', function () {
         ->assertJsonPath('contact.phone', '+251911000001');
 });
 
-it('reveal source 2: the transporter profile phone is next', function () {
+it('reveal source 2: the legacy interest phone is next, never the transporter copy', function () {
     [$consignor] = stepUserWithoutPhone();
     stepGiveViewerPhone($this, $consignor);
 
@@ -402,9 +406,12 @@ it('reveal source 2: the transporter profile phone is next', function () {
 
     $interest = stepInterestBetween($consignor, $transporter, ['contact_phone' => '+251911222222']);
 
+    // The carrier record is no longer a contact source. After the profile the
+    // only remaining phone is the legacy interest column, which belongs to the
+    // counterparty who submitted the interest.
     stepReveal($this, $consignor, $interest)
         ->assertOk()
-        ->assertJsonPath('contact.phone', '+251911111111');
+        ->assertJsonPath('contact.phone', '+251911222222');
 });
 
 it('reveal source 3: the legacy interest phone is the last phone fallback', function () {
@@ -488,8 +495,8 @@ it('a transporter who turned phone visibility off does not fall through to anoth
     stepGiveViewerPhone($this, $consignor);
 
     $transporter = stepCounterparty(
-        ['phone' => null],
-        ['phone' => '+251911111111', 'phone_visible' => false],
+        ['phone' => null, 'phone_visible' => false],
+        ['phone' => '+251911111111'],
     );
 
     $interest = stepInterestBetween($consignor, $transporter, ['contact_phone' => '+251911222222']);
@@ -497,12 +504,12 @@ it('a transporter who turned phone visibility off does not fall through to anoth
     stepReveal($this, $consignor, $interest)->assertOk()->assertJsonPath('contact.phone', null);
 });
 
-it('a connection reveal passes the connection as context, not the interest', function () {
+it('a connection reveal resolves the counterparty profile phone', function () {
     [$consignor, $workspace] = stepUserWithoutPhone();
     stepGiveViewerPhone($this, $consignor);
 
     $transporter = stepCounterparty(
-        ['phone' => null],
+        ['phone' => '+251911111111'],
         ['phone' => '+251911111111'],
     );
 

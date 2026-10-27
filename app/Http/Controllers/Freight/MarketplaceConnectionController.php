@@ -73,7 +73,7 @@ class MarketplaceConnectionController extends Controller
             'counterparty' => $counterparty ? [
                 'id' => (int) $counterparty->id,
                 'display_name' => $counterparty->profile?->display_name ?? $counterparty->name,
-                'is_verified' => (bool) $counterparty->profile?->verification_level,
+                'is_verified' => $counterparty->profile?->verification_status === 'verified',
             ] : null,
         ]);
     }

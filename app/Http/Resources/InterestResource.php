@@ -32,8 +32,8 @@ class InterestResource extends JsonResource
             'transporter' => $this->whenLoaded('user', fn () => [
                 'id' => (int) $this->user->id,
                 'display_name' => $this->user->profile?->display_name ?? $this->user->name,
-                'is_verified' => (bool) $this->user->profile?->verification_level,
-                'routes' => $this->user->transporterProfile?->routes->map(fn ($route) => [
+                'is_verified' => $this->user->profile?->verification_status === 'verified',
+                'routes' => $this->user->profile?->routes->map(fn ($route) => [
                     'id' => (int) $route->id,
                     'origin' => $route->originLocation?->name,
                     'destination' => $route->destinationLocation?->name,

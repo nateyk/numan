@@ -197,10 +197,10 @@ it('reports posting as blocked by the identity fields only', function () {
         ->toContain('display_name', 'phone');
 });
 
-it('reports carrying as needing the transporter fields too', function () {
-    // A base location and a display name on the profile are not enough to carry
-    // freight — TransporterProfile has its own requirements, and conflating the
-    // two is how a carrier ends up looking ready while being refused at the gate.
+it('reports carrying as needing the base location too', function () {
+    // A base location is part of what carrying needs and posting does not. The
+    // legacy carrier row is no longer consulted, so leaving it unset changes
+    // nothing.
     $user = detailsUser([
         'posts_freight' => true,
         'provides_transport' => true,
@@ -228,11 +228,14 @@ it('reports carrying as needing the transporter fields too', function () {
 });
 
 it('reports both capabilities as ready once everything is filled in', function () {
+    $base = Location::factory()->create();
+
     $user = detailsUser([
         'posts_freight' => true,
         'provides_transport' => true,
         'display_name' => 'Fully Ready',
         'phone' => '+251911000005',
+        'primary_location_id' => $base->id,
     ]);
 
     TransporterProfile::create([
@@ -241,7 +244,7 @@ it('reports both capabilities as ready once everything is filled in', function (
         'display_name' => 'Fully Ready',
         'phone' => '+251911000005',
         'status' => 'pending',
-        'primary_location_id' => Location::factory()->create()->id,
+        'primary_location_id' => $base->id,
     ]);
 
     $response = $this->actingAs($user)->get('/settings/marketplace-details');

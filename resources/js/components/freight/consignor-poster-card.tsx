@@ -16,7 +16,7 @@ import { AlertCircle, Eye, Lock, LogIn, ShieldCheck, User } from 'lucide-react';
 import { useState } from 'react';
 
 /**
- * Exactly what PostOwnerSummary sends: a display name and a verification level.
+ * Exactly what PostOwnerSummary sends: a display name and a verified flag.
  *
  * Not a User model. There is no email and no phone here, and there must not be —
  * the point of the resource is that contact data cannot reach the page until it has
@@ -25,7 +25,6 @@ import { useState } from 'react';
 export type PostOwner = {
     id: number;
     display_name: string | null;
-    verification_level: string | null;
     is_verified: boolean;
 } | null;
 
@@ -88,14 +87,9 @@ function VerificationBadge({ owner }: { owner: NonNullable<PostOwner> }) {
         return null;
     }
 
-    const level = owner.verification_level
-        ? ` · ${owner.verification_level}`
-        : '';
-
     return (
         <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             <ShieldCheck className="size-3 text-green-600" /> Verified consignor
-            {level}
         </p>
     );
 }

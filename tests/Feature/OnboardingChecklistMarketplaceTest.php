@@ -188,10 +188,13 @@ it('does not fall over for a user with no profile row', function () {
 });
 
 it('reports a complete carrier as needing nothing more', function () {
+    $base = Location::factory()->create();
+
     $user = checklistUser([
         'provides_transport' => true,
         'display_name' => 'Fully Ready',
         'phone' => '+251911000004',
+        'primary_location_id' => $base->id,
     ]);
 
     TransporterProfile::create([
@@ -199,7 +202,7 @@ it('reports a complete carrier as needing nothing more', function () {
         'display_name' => 'Fully Ready',
         'phone' => '+251911000004',
         'status' => 'pending',
-        'primary_location_id' => Location::factory()->create()->id,
+        'primary_location_id' => $base->id,
     ]);
 
     $steps = collect($this->actingAs($user)->getJson('/onboarding-checklist')->json('steps'));

@@ -14,6 +14,7 @@ use App\Notifications\FreightInterestSubmitted;
 use App\Policies\FreightInterestPolicy;
 use App\Services\ContactRevealService;
 use App\Services\MarketplaceEntitlementService;
+use App\Services\MarketplaceReadiness;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
@@ -36,9 +37,8 @@ class FreightInterestController extends Controller
         // fields that must never reach the consignor's browser.
         $interests = FreightInterest::where('freight_post_id', $post->id)
             ->with([
-                'user.profile',
-                'user.transporterProfile.routes.originLocation',
-                'user.transporterProfile.routes.destinationLocation',
+                'user.profile.routes.originLocation',
+                'user.profile.routes.destinationLocation',
             ])
             ->latest()
             ->paginate(12);
@@ -96,32 +96,27 @@ class FreightInterestController extends Controller
             return back()->withErrors(['interest' => 'You cannot express interest on your own freight.']);
         }
 
-        if (! $user->isProfileOnboarded()) {
-            return back()->withErrors(['interest' => 'Please complete your profile onboarding before expressing interest.']);
+        // The phone step runs before the readiness gate. A user missing only a
+        // phone should get the inline field and retry, not a generic list of
+        // missing profile fields that does not say how to fix any of them.
+        if (! $user->hasPhoneNumber()) {
+            return back()
+                ->with('requires_phone', true)
+                ->with('requires_phone_reason', 'expressing interest')
+                ->withErrors(['interest' => 'Add your phone number to continue. Carriers need a way to reach you.'])
+                ->withInput();
         }
 
-        $profile = $user->profile()->first();
-        if (! $profile || ! $profile->provides_transport) {
-            return back()->withErrors(['interest' => 'Your profile must be set to provide transport. Update your account type in settings.']);
+        $readiness = app(MarketplaceReadiness::class)->for($user);
+
+        if (! $readiness['capabilities']['provides_transport']) {
+            return back()->withErrors(['interest' => 'Your public profile must be set to provide transport before expressing interest.']);
         }
 
-        $transporter = $user->transporterProfile()->first();
-
-        if (! $transporter) {
-            return back()->withErrors(['interest' => 'Please create a transporter profile first.']);
-        }
-
-        // Completeness, not approval.
-        //
-        // This used to require status === 'approved', which only
-        // AdminTransporterController can set. So a new user filled in the form
-        // and was told to wait for approval of a queue that did not exist, and
-        // expressing interest — the one action the whole marketplace depends on —
-        // was unreachable for anyone who was not already trusted.
-        if (! $transporter->isComplete()) {
+        if (! $readiness['ready']['provides_transport']) {
             return back()->withErrors([
-                'interest' => 'Complete your transporter profile to express interest. Missing: '
-                    .implode(', ', $transporter->missingFields()).'.',
+                'interest' => 'Complete your public profile to express interest. Missing: '
+                    .implode(', ', $readiness['missing']['provides_transport']).'.',
             ]);
         }
 
@@ -155,20 +150,6 @@ class FreightInterestController extends Controller
         $policy = new FreightInterestPolicy;
         if (! $policy->create($user, $post)) {
             return back()->withErrors(['interest' => 'You are not authorized to express interest on this freight.']);
-        }
-
-        // A phone number on the profile is required. Contact details are
-        // released from the profile through the reveal action, so an interest
-        // cannot be expressed by someone we could never contact.
-        //
-        // Not a hard block: the layout renders one inline field and the user
-        // retries. No interest row is created until they confirm.
-        if (! $user->hasPhoneNumber()) {
-            return back()
-                ->with('requires_phone', true)
-                ->with('requires_phone_reason', 'expressing interest')
-                ->withErrors(['interest' => 'Add your phone number to continue. Carriers need a way to reach you.'])
-                ->withInput();
         }
 
         $interest = FreightInterest::create([

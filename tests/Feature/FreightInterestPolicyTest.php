@@ -62,7 +62,7 @@ it('prevents consignor from creating interest on own post', function () {
     expect($policy->create($consignor, $post))->toBeFalse();
 });
 
-it('requires approved transporter and active post for create', function () {
+it('requires a complete transporter profile and active post for create', function () {
     $consignor = makeConsignor();
     $transporter = makeTransporter(approved: true);
     $unapproved = makeTransporter(approved: false);
@@ -71,9 +71,15 @@ it('requires approved transporter and active post for create', function () {
     $postDraft = FreightPost::factory()->for($consignor)->create(['status' => FreightPostStatus::Draft->value]);
     $policy = new FreightInterestPolicy;
     expect($policy->create($transporter, $postActive))->toBeTrue()
-        ->and($policy->create($unapproved, $postActive))->toBeFalse()
+        // Approval is a badge, not a wall. A complete public profile can express
+        // interest whether or not an admin has reviewed it.
+        ->and($policy->create($unapproved, $postActive))->toBeTrue()
         ->and($policy->create($noTransport, $postActive))->toBeFalse()
         ->and($policy->create($transporter, $postDraft))->toBeFalse();
+
+    Profile::where('user_id', $unapproved->id)->update(['primary_location_id' => null]);
+
+    expect($policy->create($unapproved, $postActive))->toBeFalse();
 });
 
 it('prevents duplicate active interest', function () {

@@ -76,6 +76,25 @@ class FreightPostController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // A phone number on the profile is required to post. Carriers need a
+        // way to reach a consignor, and contact details are only ever released
+        // from the profile through the reveal action.
+        //
+        // Checked before the policy because readiness treats a missing phone as
+        // not-ready. The user should get the inline field that fixes it rather
+        // than a bare 403 from the gate.
+        //
+        // The user is not blocked: they are sent back with requires_phone set,
+        // the layout shows one inline field, and saving it lets them retry. No
+        // draft is created until they confirm.
+        if (! $request->user()->hasPhoneNumber()) {
+            return back()
+                ->with('requires_phone', true)
+                ->with('requires_phone_reason', 'posting freight')
+                ->withErrors(['freight' => 'Add your phone number to continue. Carriers need a way to reach you.'])
+                ->withInput();
+        }
+
         try {
             Gate::authorize('create', FreightPost::class);
         } catch (AuthorizationException) {
@@ -96,21 +115,6 @@ class FreightPostController extends Controller
             }
 
             throw new AuthorizationException('You are not allowed to post freight.');
-        }
-
-        // A phone number on the profile is required to post. Carriers need a
-        // way to reach a consignor, and contact details are only ever released
-        // from the profile through the reveal action.
-        //
-        // The user is not blocked: they are sent back with requires_phone set,
-        // the layout shows one inline field, and saving it lets them retry. No
-        // draft is created until they confirm.
-        if (! $request->user()->hasPhoneNumber()) {
-            return back()
-                ->with('requires_phone', true)
-                ->with('requires_phone_reason', 'posting freight')
-                ->withErrors(['freight' => 'Add your phone number to continue. Carriers need a way to reach you.'])
-                ->withInput();
         }
 
         $workspace = $request->user()->currentWorkspace;

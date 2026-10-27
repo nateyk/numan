@@ -36,6 +36,7 @@ function carrierUser(array $profileOverrides = []): User
         array_merge([
             'display_name' => 'Adama Haulage',
             'phone' => '+251911000001',
+            'primary_location_id' => Location::factory()->create()->id,
             'posts_freight' => false,
             'provides_transport' => true,
             'onboarding_step' => 'completed',

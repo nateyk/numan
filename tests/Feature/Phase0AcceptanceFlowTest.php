@@ -52,6 +52,15 @@ function seedAcceptanceFlow(): array
     $transporter->update(['current_workspace_id' => $transporterWorkspace->id]);
     $transporter->refresh();
 
+    // primary_location_id is part of what "complete" means now, and readiness
+    // reads it from the public profile rather than the carrier row. This fixture
+    // was approved but had no base on the profile, which passed only because
+    // approval used to stand in for completeness.
+    $base = Location::firstOrCreate(
+        ['name' => 'Adama'],
+        ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
+    );
+
     Profile::firstOrCreate(['user_id' => $transporter->id], [
         'posts_freight' => false,
         'provides_transport' => true,
@@ -59,16 +68,8 @@ function seedAcceptanceFlow(): array
         'onboarding_completed_at' => now(),
         'display_name' => 'Transporter Person',
         'phone' => '+251922000002',
+        'primary_location_id' => $base->id,
     ]);
-
-    // primary_location_id is now part of what "complete" means. This fixture was
-    // approved but had no base, which passed only because approval used to stand
-    // in for completeness — a transporter with no location is an unfinished
-    // profile, and the test was asserting the finished case.
-    $base = Location::firstOrCreate(
-        ['name' => 'Adama'],
-        ['type' => 'city', 'region_name' => 'Oromia', 'latitude' => 8.54, 'longitude' => 39.27]
-    );
 
     TransporterProfile::firstOrCreate(['user_id' => $transporter->id], [
         'slug' => 'transporter-'.Str::lower(Str::random(8)),

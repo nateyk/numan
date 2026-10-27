@@ -132,11 +132,11 @@ it('still releases a consignor phone by default', function () {
     expect($response->json('contact.phone'))->toBe(CONSIGNOR_PHONE);
 });
 
-it('honours a refusal recorded on the transporter row alone', function () {
-    // The transporter column is stale until it is dropped. Honouring a stale "no"
-    // costs a releasable number; honouring a stale "yes" would publish one
-    // somebody asked to keep private. So a refusal from the old column must still
-    // stand on its own, with the profile saying nothing either way.
+it('honours a refusal recorded on the profile even when the transporter copy says visible', function () {
+    // The transporter column is a stale copy until it is dropped. The profile is
+    // the record every kind of user has and the one the resolver reads. A stale
+    // "yes" beside a profile "no" must not publish a number somebody asked to
+    // keep private.
     $viewer = revealingViewer();
 
     $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
@@ -145,6 +145,7 @@ it('honours a refusal recorded on the transporter row alone', function () {
     Profile::firstOrCreate(['user_id' => $counterparty->id], [
         'display_name' => 'Stale Refusal',
         'phone' => '+251977770005',
+        'phone_visible' => false,
         'provides_transport' => true,
         'onboarding_step' => 'completed',
         'onboarding_completed_at' => now(),
@@ -157,8 +158,7 @@ it('honours a refusal recorded on the transporter row alone', function () {
         'phone' => '+251977770005',
         'primary_location_id' => $base->id,
         'status' => 'approved',
-        // The profile says visible. Only the old column says not. Refusal wins.
-        'phone_visible' => false,
+        'phone_visible' => true,
     ]);
 
     $interest = interestAgainst($viewer, $counterparty);

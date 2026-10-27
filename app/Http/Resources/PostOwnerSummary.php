@@ -37,8 +37,7 @@ class PostOwnerSummary extends JsonResource
         return [
             'id' => (int) $this->id,
             'display_name' => $this->profile?->display_name ?? $this->name,
-            'verification_level' => $this->profile?->verification_level,
-            'is_verified' => (bool) $this->profile?->verification_level,
+            'is_verified' => $this->profile?->verification_status === 'verified',
         ];
     }
 }

@@ -185,7 +185,7 @@ it('only opens the gate for a post owned by the counterparty', function () {
         ->and($service->canReveal($thirdParty, $otherCounterparty, $post))->toBeFalse();
 });
 
-it('prefers the profile whatsapp and falls back to the transporter one', function () {
+it('reads the whatsapp from the profile and never the transporter copy', function () {
     [$owner] = listingUser(true, ['whatsapp' => '+251 91 111 1111']);
     [$viewer] = listingUser();
 
@@ -199,8 +199,10 @@ it('prefers the profile whatsapp and falls back to the transporter one', functio
 
     Profile::where('user_id', $owner->id)->update(['whatsapp' => null]);
 
+    // The legacy carrier row is no longer a source. A missing profile value is
+    // missing, not an invitation to publish a stale copy.
     expect($service->contactDetailsFor($viewer, $owner->fresh(), $post)['whatsapp'])
-        ->toBe('+251 92 222 2222');
+        ->toBeNull();
 });
 
 it('honours a refused whatsapp on the profile', function () {

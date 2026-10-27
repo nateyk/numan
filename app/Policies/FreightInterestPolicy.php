@@ -8,6 +8,7 @@ use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\User;
 use App\Services\MarketplaceEntitlementService;
+use App\Services\MarketplaceReadiness;
 
 class FreightInterestPolicy
 {
@@ -17,22 +18,10 @@ class FreightInterestPolicy
             return false;
         }
 
-        if (! $user->isProfileOnboarded()) {
-            return false;
-        }
-
-        $profile = $user->profile()->first();
-        if (! $profile || ! $profile->provides_transport) {
-            return false;
-        }
-
-        $transporter = $user->transporterProfile()->first();
-
-        // Completeness, not approval — see FreightInterestController::store().
-        // Requiring status === 'approved' here as well meant the policy and the
-        // controller had to be changed together, and anyone reading only the
-        // policy would still conclude a new transporter can never start.
-        if (! $transporter || ! $transporter->isComplete()) {
+        // Readiness, not approval and not a second carrier record. A complete
+        // public profile is enough to express interest; the metered reveal
+        // ledger is what protects contact details.
+        if (! app(MarketplaceReadiness::class)->for($user)['ready']['provides_transport']) {
             return false;
         }
 

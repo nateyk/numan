@@ -21,13 +21,14 @@ use Illuminate\Support\Facades\Schema;
  * changing the gate. The listing branch is context-scoped, so it cannot widen
  * the interest or connection endpoints.
  *
- * Contact details come from the person's profile and transporter profile, with
- * the legacy per-interest phone as a last resort. Bank columns are never read.
+ * Contact details come from the person's single public profile, with the legacy
+ * per-interest phone as a last resort. Bank columns are never read.
  */
 class ContactRevealService
 {
     public function __construct(
         protected MarketplaceEntitlementService $entitlements,
+        protected ContactDetailsResolver $contacts,
     ) {}
 
     /**
@@ -292,24 +293,13 @@ class ContactRevealService
     }
 
     /**
-     * The counterparty's contact details.
+     * The counterparty's contact details, once the relationship gate is open.
      *
-     * Resolution order, exactly:
-     *   1. the counterparty's profile phone
-     *   2. their transporter profile phone
-     *   3. the legacy FreightInterest.contact_phone — transporter side only,
-     *      because that column was only ever filled in by the transporter
-     *      submitting an interest
-     *   4. their email address
+     * The gate is checked here because this is the method every caller uses.
+     * Resolution itself lives in ContactDetailsResolver so the connection pages
+     * and the reveal endpoint cannot drift apart again.
      *
-     * Bank columns are never read. NumanFreight handles no payments, so
-     * freight_interests.bank_* has no consumer at all and must not become one.
-     *
-     * $context is the listing, interest or connection the reveal came from. It
-     * decides whether a listing opens the gate, and supplies the legacy step-3
-     * fallback. Without it the fallback is skipped.
-     *
-     * @return array<string, string|null>|null
+     * @return array{name: string, phone: ?string, email: ?string, whatsapp: ?string}|null
      */
     public function contactDetailsFor(User $viewer, User $counterparty, ?Model $context = null): ?array
     {
@@ -317,139 +307,6 @@ class ContactRevealService
             return null;
         }
 
-        // A missing profile row is not a reason to withhold contact details.
-        //
-        // This used to read `if (! $profile) { return null; }`, which returned
-        // nothing for every user registered before public_profiles existed. On
-        // production that is 18 of 21 accounts — and all 11 live freight
-        // interests involve one. The marketplace's core mechanic had therefore
-        // never once succeeded on real data: a consignor and a carrier could
-        // express interest to each other and then neither could see the other's
-        // number, with no error to say why.
-        //
-        // It hid cleanly because every other test built its profiles by hand.
-        // The identity falls back to the user record and, for a carrier, to the
-        // carrier record — which is where all four production carriers keep
-        // their names and numbers, since none of them has a profile row.
-        $profile = $counterparty->profile()->first();
-
-        $transporter = $counterparty->transporterProfile()->first();
-
-        // Refusal is read from the profile, which every kind of user has.
-        //
-        // This used to be `$transporter !== null && ! $transporter->phone_visible`,
-        // which meant a consignor — no transporter row — could never refuse, and
-        // the reveal ledger logged the release of their number as though it had
-        // been agreed. Silently publishing somebody who has no way to decline is
-        // worse than not publishing.
-        //
-        // Both sources are honoured and a refusal from either wins. The profile is
-        // where the choice is made now; the transporter column still carries it
-        // until it is dropped, and honouring a stale "no" is free while honouring a
-        // stale "yes" would publish a number somebody asked to keep private.
-        $phoneRefused = $this->refusesContact(
-            $profile?->phone_visible,
-            $transporter?->phone_visible,
-        );
-
-        // Falls through profile, then carrier, then the user record. All three
-        // hold real numbers for real people; none of them is reliably present.
-        $phone = $phoneRefused
-            ? null
-            : (filled($profile?->phone)
-                ? $profile->phone
-                : (filled($transporter?->phone)
-                    ? $transporter->phone
-                    : $counterparty->phone));
-
-        // Only fall back when the number was merely absent, never when it was
-        // explicitly refused.
-        if (blank($phone) && ! $phoneRefused) {
-            $phone = $this->legacyInterestPhone($counterparty, $context);
-        }
-
-        $emailRefused = $this->refusesContact(
-            $profile?->email_visible,
-            $transporter?->email_visible,
-        );
-        $whatsappRefused = $this->refusesContact(
-            $profile?->whatsapp_visible,
-            $transporter?->whatsapp_visible,
-        );
-
-        $email = $emailRefused ? null : ($transporter?->email ?: $counterparty->email);
-        $whatsapp = $whatsappRefused
-            ? null
-            : (filled($profile?->whatsapp) ? $profile->whatsapp : $transporter?->whatsapp);
-
-        return [
-            // The carrier record is the only name all four production carriers
-            // have, so it is consulted before falling back to the account name.
-            'name' => filled($profile?->display_name)
-                ? $profile->display_name
-                : (filled($transporter?->display_name)
-                    ? $transporter->display_name
-                    : $counterparty->name),
-            'phone' => $phone ?: null,
-            'email' => $email ?: null,
-            'whatsapp' => $whatsapp ?: null,
-        ];
-    }
-
-    /**
-     * The legacy per-interest phone, for the transporter side only.
-     *
-     * freight_interests.contact_phone used to be filled in by whoever submitted
-     * the interest, so it only ever holds a transporter's number. It is a
-     * last-resort fallback for legacy rows where the profile was never filled
-     * in, and is not consulted for a consignor.
-     */
-    /**
-     * Whether either record says "do not publish this".
-     *
-     * The profile is the current home of the choice; the transporter column is a
-     * copy kept in step until it is dropped. Both are consulted and a refusal from
-     * either one stands.
-     *
-     * Asymmetric on purpose. A stale "no" costs a transporter one phone number
-     * being releasable through the legacy fallback, which they can change in a
-     * form. A stale "yes" — which is what honouring a stale refusal incorrectly in
-     * the other direction would produce — publishes a number somebody asked to
-     * keep private, and there is no way for them to learn that happened.
-     *
-     * A null from either side means the column is absent rather than set, which is
-     * not a refusal.
-     *
-     * Compared as truthiness rather than `=== false` because the value comes back
-     * from the database driver as an int 0 or the strings '0' and 'false'. Only
-     * 'false' is a false positive — those three all mean "no".
-     */
-    private function refusesContact(mixed $profileFlag, mixed $transporterFlag): bool
-    {
-        foreach ([$profileFlag, $transporterFlag] as $flag) {
-            if ($flag === null) {
-                continue;
-            }
-
-            if (! $flag) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function legacyInterestPhone(User $counterparty, ?Model $context): ?string
-    {
-        if (! $context instanceof FreightInterest || ! Schema::hasColumn('freight_interests', 'contact_phone')) {
-            return null;
-        }
-
-        // Only the interest's own submitter has a legacy phone.
-        if ($context->user_id !== $counterparty->id) {
-            return null;
-        }
-
-        return filled($context->contact_phone) ? $context->contact_phone : null;
+        return $this->contacts->resolve($counterparty, $context);
     }
 }
