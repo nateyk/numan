@@ -422,23 +422,24 @@ it('a normal user cannot reach the admin transporter pages', function () {
         ->assertForbidden();
 });
 
-it('the public transporter page never offers a document file url', function () {
+it('the public profile page never offers a document file url', function () {
     $viewer = auditViewer();
     $stranger = auditStranger();
 
-    $transporter = TransporterProfile::where('user_id', $stranger->id)->first();
+    $profile = $stranger->profile()->firstOrFail();
+    $profile->update(['status' => 'approved']);
 
-    $document = $transporter->documents()->create([
+    $document = $profile->documents()->create([
         'type' => 'license',
         'original_name' => 'secret-licence.pdf',
-        'stored_path' => 'transporter-documents/audit-test/secret.pdf',
+        'stored_path' => 'profile-documents/audit-test/secret.pdf',
         'mime' => 'application/pdf',
         'size' => 1024,
         'status' => 'pending',
     ]);
 
     $response = $this->actingAs($viewer)
-        ->get(route('transporters.show', ['slug' => $transporter->slug]));
+        ->get(route('profiles.show', ['profile' => $profile]));
 
     $response->assertOk();
 

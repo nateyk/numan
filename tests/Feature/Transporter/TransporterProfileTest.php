@@ -267,22 +267,26 @@ it('does not list a carrier whose profile is still pending', function () {
     // Deliberate, and worth pinning. Every new carrier is pending until an admin
     // approves, so a directory that showed pending carriers would put unvetted
     // businesses in front of counterparties the moment they filled in a form.
+    //
+    // The public directory reads the consolidated profile now. The legacy
+    // carrier form still exists until the old surfaces are retired, so this
+    // test keeps exercising it while asserting the new public surface.
     $user = carrierUser();
     $this->actingAs($user)->post('/my-transporter-profile', carrierForm());
 
-    expect($user->transporterProfile()->first()->status)->toBe('pending');
+    $user->profile()->update(['status' => 'pending']);
 
     $this->actingAs(carrierUser())->get('/transporters')->assertOk()->assertDontSee('Adama Haulage');
 
     $this->actingAs(carrierUser())
-        ->get('/transporters/'.$user->transporterProfile()->first()->slug)
+        ->get('/p/'.$user->profile()->firstOrFail()->slug)
         ->assertNotFound();
 });
 
 it('lists a carrier once approved', function () {
     $user = carrierUser();
     $this->actingAs($user)->post('/my-transporter-profile', carrierForm());
-    $user->transporterProfile()->first()->update(['status' => 'approved']);
+    $user->profile()->update(['status' => 'approved']);
 
     $this->actingAs(carrierUser())->get('/transporters')->assertOk()->assertSee('Adama Haulage');
 });
@@ -290,11 +294,10 @@ it('lists a carrier once approved', function () {
 it('shows a carrier public page by slug once approved', function () {
     $user = carrierUser();
     $this->actingAs($user)->post('/my-transporter-profile', carrierForm());
-    $user->transporterProfile()->first()->update(['status' => 'approved']);
+    $profile = $user->profile()->firstOrFail();
+    $profile->update(['status' => 'approved']);
 
-    $slug = $user->transporterProfile()->firstOrFail()->slug;
-
-    $this->actingAs(carrierUser())->get("/transporters/{$slug}")->assertOk()->assertSee('Adama Haulage');
+    $this->actingAs(carrierUser())->get("/p/{$profile->slug}")->assertOk()->assertSee('Adama Haulage');
 });
 
 it('withholds a hidden phone number from the public directory', function () {
@@ -306,7 +309,11 @@ it('withholds a hidden phone number from the public directory', function () {
         'phone_visible' => '0',
         'email_visible' => '0',
     ]));
-    $user->transporterProfile()->first()->update(['status' => 'approved']);
+    $user->profile()->update([
+        'status' => 'approved',
+        'phone_visible' => false,
+        'email_visible' => false,
+    ]);
 
     // Browsed by somebody else, with a different number of their own. A user's
     // own phone is in the shared props of every page they load, and this helper
@@ -322,16 +329,18 @@ it('withholds a hidden phone number from the public directory', function () {
         ->and($response->getContent())->not->toContain('carrier@example.test');
 });
 
-it('shows the phone number on the public page when the carrier agreed', function () {
+it('never shows the phone number on the public page, even when the carrier agreed', function () {
     $user = carrierUser();
     $this->actingAs($user)->post('/my-transporter-profile', carrierForm());
-    $user->transporterProfile()->first()->update(['status' => 'approved']);
+    $profile = $user->profile()->firstOrFail();
+    $profile->update(['status' => 'approved', 'phone_visible' => true]);
 
-    $slug = $user->transporterProfile()->firstOrFail()->slug;
-
-    $this->actingAs(carrierUser())->get("/transporters/{$slug}")
+    // The viewer needs a different number of their own: shared props carry it,
+    // and the target number would otherwise match the viewer's data.
+    $this->actingAs(carrierUser(['phone' => '+251999999999']))
+        ->get("/p/{$profile->slug}")
         ->assertOk()
-        ->assertSee('+251911000001');
+        ->assertDontSee('+251911000001');
 });
 
 it('still shows the name when the number is hidden', function () {
@@ -341,7 +350,7 @@ it('still shows the name when the number is hidden', function () {
     $this->actingAs($user)->post('/my-transporter-profile', carrierForm([
         'phone_visible' => '0',
     ]));
-    $user->transporterProfile()->first()->update(['status' => 'approved']);
+    $user->profile()->update(['status' => 'approved', 'phone_visible' => false]);
 
     $this->actingAs(carrierUser())->get('/transporters')->assertOk()->assertSee('Adama Haulage');
 });

@@ -7,6 +7,7 @@ use App\Enums\LegalForm;
 use App\Enums\ProfileStatus;
 use App\Http\Requests\UpdatePublicProfileRequest;
 use App\Http\Requests\UpdateTransportProfileRequest;
+use App\Http\Resources\PublicProfileResource;
 use App\Models\Location;
 use App\Models\Profile;
 use App\Models\TruckType;
@@ -69,6 +70,88 @@ class PublicProfileController extends Controller
             'legalForms' => LegalForm::cases(),
             'completionScore' => $this->completion->calculate($profile),
             'listing_rejection_reason' => $listingRejectionReason,
+        ]);
+    }
+
+    /**
+     * The public carrier directory.
+     *
+     * Only approved transport profiles, and only fields the public resource
+     * allows. The query uses withCount/withExists so a card can say whether
+     * documents exist and were reviewed without loading a single document row.
+     */
+    public function directory(Request $request): Response
+    {
+        $query = Profile::query()
+            ->where('provides_transport', true)
+            ->where('status', ProfileStatus::Approved->value)
+            ->with([
+                'user',
+                'primaryLocation',
+                'truckTypes',
+                'routes.originLocation',
+                'routes.destinationLocation',
+            ])
+            ->withCount('documents')
+            ->withExists([
+                'documents as has_approved_documents' => fn ($documents) => $documents->where('status', 'approved'),
+            ])
+            ->orderByDesc('updated_at');
+
+        if ($request->filled('truck_type')) {
+            $truckType = (string) $request->input('truck_type');
+
+            $query->whereHas('truckTypes', fn ($types) => $types->where('truck_types.slug', $truckType));
+        }
+
+        if ($request->filled('location')) {
+            $location = trim((string) $request->input('location'));
+
+            $query->where(function ($profiles) use ($location): void {
+                if (ctype_digit($location)) {
+                    $id = (int) $location;
+
+                    $profiles->where('primary_location_id', $id)
+                        ->orWhereHas('routes', fn ($routes) => $routes
+                            ->where('origin_location_id', $id)
+                            ->orWhere('destination_location_id', $id));
+
+                    return;
+                }
+
+                $like = "%{$location}%";
+
+                $profiles
+                    ->whereHas('primaryLocation', fn ($primary) => $primary->where('name', 'like', $like))
+                    ->orWhereHas('routes.originLocation', fn ($origin) => $origin->where('name', 'like', $like))
+                    ->orWhereHas('routes.destinationLocation', fn ($destination) => $destination->where('name', 'like', $like));
+            });
+        }
+
+        if ($request->filled('q')) {
+            $search = (string) $request->input('q');
+
+            $query->where(function ($profiles) use ($search): void {
+                $profiles->where('display_name', 'like', "%{$search}%")
+                    ->orWhere('legal_name', 'like', "%{$search}%");
+            });
+        }
+
+        $profiles = $query->paginate(12)->withQueryString();
+
+        return Inertia::render('transporters/index', [
+            'profiles' => PublicProfileResource::collection($profiles),
+            'total' => $profiles->total(),
+            'links' => $profiles->linkCollection()->toArray(),
+            'truckTypes' => TruckType::query()
+                ->active()
+                ->ordered()
+                ->get(['id', 'name', 'slug']),
+            'filters' => [
+                'q' => $request->query('q'),
+                'truck_type' => $request->query('truck_type'),
+                'location' => $request->query('location'),
+            ],
         ]);
     }
 

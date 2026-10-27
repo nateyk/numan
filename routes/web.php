@@ -81,6 +81,7 @@ use App\Http\Controllers\ProfileDocumentController;
 use App\Http\Controllers\ProfileSetupController;
 use App\Http\Controllers\ProfileVerificationController;
 use App\Http\Controllers\PublicProfileController;
+use App\Http\Controllers\PublicProfileShowController;
 use App\Http\Controllers\ResolveOsmLocationController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Settings\WorkspaceLogoController;
@@ -108,6 +109,7 @@ use App\Http\Controllers\WorkspaceTrashController;
 use App\Http\Middleware\EnsureInterestsEnabled;
 use App\Http\Middleware\RequireAdminTwoFactor;
 use App\Models\MarketplacePlan;
+use App\Models\Profile;
 use App\Services\MarketplaceSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -158,6 +160,19 @@ Route::get('/', function () {
 Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name('freight.discovery');
 Route::get('/freight/{ulid}', [PublicFreightDiscoveryController::class, 'show'])->name('freight.public.show');
 Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
+
+// The carrier directory and a public profile. Both are part of browsing, so
+// they carry no auth or onboarding middleware.
+Route::get('/transporters', [PublicProfileController::class, 'directory'])->name('transporters.index');
+Route::get('/p/{profile}', [PublicProfileShowController::class, 'show'])->name('profiles.show');
+
+// The old directory URL is linked from mail and search results. Redirect it
+// permanently rather than deleting it, and 404 for a slug that never existed.
+Route::get('/transporters/{slug}', function (string $slug) {
+    $profile = Profile::query()->where('slug', $slug)->firstOrFail();
+
+    return redirect(route('profiles.show', $profile), 301);
+})->name('transporters.show');
 
 // Magic Link Auth Routes
 Route::middleware('guest')->group(function () {
@@ -379,8 +394,6 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     // route to a document sat behind the superadmin middleware, so the
     // owner branch inside it was unreachable.
     Route::get('/my-transporter-profile/documents/{document}/download', [MyTransporterDocumentController::class, 'download'])->name('transporter.documents.download');
-    Route::get('/transporters', [TransporterProfileController::class, 'directory'])->name('transporters.index');
-    Route::get('/transporters/{slug}', [TransporterProfileController::class, 'show'])->name('transporters.show');
 
     // Freight posting — draft-first wizard
     Route::get('/my-freight', [FreightPostController::class, 'index'])->name('freight.index');

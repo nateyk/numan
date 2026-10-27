@@ -84,6 +84,7 @@ function leakTransporter(): User
     Profile::firstOrCreate(['user_id' => $user->id], [
         'posts_freight' => false,
         'provides_transport' => true,
+        'status' => 'approved',
         'onboarding_step' => 'completed',
         'onboarding_completed_at' => now(),
         'display_name' => 'Leaky Transporter',
@@ -251,11 +252,11 @@ it('leak 3: the transporter directory exposes no phone, whatsapp or email', func
     assertPayloadOmits($response, transporterStrings());
 });
 
-it('leak 3b: the public transporter profile exposes no phone, whatsapp or legal name', function () {
+it('leak 3b: the public profile page exposes no phone, whatsapp or legal name', function () {
     $transporter = leakTransporter();
-    $slug = TransporterProfile::where('user_id', $transporter->id)->first()->slug;
+    $profile = $transporter->profile()->firstOrFail();
 
-    $response = $this->actingAs(leakBystander())->get(route('transporters.show', ['slug' => $slug]));
+    $response = $this->actingAs(leakBystander())->get(route('profiles.show', ['profile' => $profile]));
 
     $response->assertOk();
     assertPayloadOmits($response, transporterStrings());
