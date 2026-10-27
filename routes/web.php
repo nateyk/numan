@@ -5,8 +5,8 @@ use App\Http\Controllers\Admin\AdminCargoTypeController;
 use App\Http\Controllers\Admin\AdminFreightController;
 use App\Http\Controllers\Admin\AdminLocationController;
 use App\Http\Controllers\Admin\AdminNotificationController;
+use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminSearchController;
-use App\Http\Controllers\Admin\AdminTransporterController;
 use App\Http\Controllers\Admin\AdminTruckTypeController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
@@ -721,16 +721,24 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
             Route::patch('/reference-data/truck-types/{truckType}/toggle', 'toggle')->name('toggle');
         });
 
-        // Transporter Management (admin)
+        // Public Profiles (admin)
         //
-        // Named 'transporters.' not 'admin.transporters.': the enclosing group is
-        // already named 'admin.', which produced admin.admin.transporters.*.
-        Route::controller(AdminTransporterController::class)->name('transporters.')->group(function () {
-            Route::get('/transporters', 'index')->name('index');
-            Route::get('/transporters/{transporterProfile}', 'show')->name('show');
-            Route::patch('/transporters/{transporterProfile}/moderate', 'moderate')->name('moderate');
-            Route::patch('/transporters/documents/{document}/review', 'reviewDocument')->name('documents.review');
-            Route::get('/transporters/documents/{document}/download', 'downloadDocument')->name('documents.download');
+        // One list covers consignors, carriers, and people who do both. The old
+        // transporter URLs forward here so bookmarks keep working.
+        //
+        // The document redirects come first: `/profiles/documents/...` and
+        // `/profiles/{profile}` would otherwise both match "documents".
+        Route::get('/transporters/documents/{document}/download', fn (string $document) => redirect("/admin/profiles/documents/{$document}/download"));
+        Route::get('/transporters/{profile}', fn (string $profile) => redirect("/admin/profiles/{$profile}"));
+        Route::redirect('/transporters', '/admin/profiles?type=transporter');
+
+        Route::controller(AdminProfileController::class)->name('profiles.')->group(function () {
+            Route::get('/profiles', 'index')->name('index');
+            Route::patch('/profiles/documents/{document}/review', 'reviewDocument')->name('documents.review');
+            Route::get('/profiles/documents/{document}/download', 'downloadDocument')->name('documents.download');
+            Route::get('/profiles/{profile}', 'show')->name('show');
+            Route::patch('/profiles/{profile}/listing', 'updateListing')->name('listing');
+            Route::patch('/profiles/{profile}/verification', 'updateVerification')->name('verification');
         });
 
         // Freight Moderation (admin)

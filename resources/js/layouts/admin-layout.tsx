@@ -288,9 +288,9 @@ const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => 
                  feature: 'admin.translations',
              },
              {
-                 title: 'Transporters',
-                 href: '/admin/transporters',
-                 icon: Truck,
+                 title: 'Profiles',
+                 href: '/admin/profiles',
+                 icon: Users,
                  feature: 'admin.transporters',
              },
              {

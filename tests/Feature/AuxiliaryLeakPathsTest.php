@@ -6,9 +6,9 @@ use App\Models\FreightPost;
 use App\Models\Location;
 use App\Models\MarketplaceConnection;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
 use App\Models\User;
 use App\Notifications\FreightInterestSubmitted;
+use App\Services\ProfileDocumentStorage;
 use App\Services\WorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  *
  * Contact data must not survive anywhere else either: the audit trail, the
  * shared Inertia props, notification bodies, mail bodies, and the file storage
- * behind transporter documents.
+ * behind profile documents.
  */
 uses(RefreshDatabase::class);
 
@@ -54,15 +54,10 @@ it('the activity log never stores a profile phone or legal name', function () {
     expect($properties)->not->toContain(AUDIT_LEGAL);
 });
 
-it('the activity log never stores a transporter phone, whatsapp, email or legal name', function () {
-    $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
-
-    $transporter = TransporterProfile::create([
-        'user_id' => $user->id,
-        'slug' => 'audited-'.Str::lower(Str::random(8)),
+it('the activity log never stores transport contact details', function () {
+    $profile = Profile::factory()->transporter()->create([
         'display_name' => 'Audited Transporter',
         'legal_name' => AUDIT_LEGAL,
-        'status' => 'pending',
         'phone' => AUDIT_PHONE,
         'whatsapp' => AUDIT_WHATSAPP,
         'email' => AUDIT_EMAIL,
@@ -70,14 +65,15 @@ it('the activity log never stores a transporter phone, whatsapp, email or legal 
         'email_visible' => true,
     ]);
 
-    $transporter->update(['status' => 'approved']);
+    $profile->update(['status' => 'approved']);
 
     $properties = DB::table('activity_log')
-        ->where('subject_type', 'like', '%TransporterProfile')
+        ->where('subject_type', 'like', '%Profile')
         ->pluck('properties')
         ->implode(' ');
 
     expect($properties)->not->toBeEmpty();
+
     foreach ([AUDIT_PHONE, AUDIT_WHATSAPP, AUDIT_EMAIL, AUDIT_LEGAL] as $needle) {
         expect($properties)->not->toContain($needle);
     }
@@ -105,21 +101,17 @@ it('the activity log still records the non-sensitive change', function () {
 });
 
 it('a visibility flag change is still audited', function () {
-    $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
-
-    $transporter = TransporterProfile::create([
-        'user_id' => $user->id,
-        'slug' => 'audited-'.Str::lower(Str::random(8)),
+    $profile = Profile::factory()->transporter()->create([
         'display_name' => 'Audited Transporter',
         'status' => 'approved',
         'phone' => AUDIT_PHONE,
         'phone_visible' => true,
     ]);
 
-    $transporter->update(['phone_visible' => false]);
+    $profile->update(['phone_visible' => false]);
 
     $properties = DB::table('activity_log')
-        ->where('subject_type', 'like', '%TransporterProfile')
+        ->where('subject_type', 'like', '%Profile')
         ->orderByDesc('id')
         ->value('properties');
 
@@ -167,16 +159,7 @@ function auditStranger(): User
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    Profile::firstOrCreate(['user_id' => $user->id], [
-        'provides_transport' => true,
-        'onboarding_step' => 'completed',
-        'onboarding_completed_at' => now(),
-        'display_name' => 'Audit Stranger',
-        'phone' => AUDIT_PHONE,
-    ]);
-
-    TransporterProfile::firstOrCreate(['user_id' => $user->id], [
-        'slug' => 'audit-stranger-'.Str::lower(Str::random(8)),
+    Profile::factory()->for($user)->transporter()->create([
         'display_name' => 'Audit Stranger',
         'legal_name' => AUDIT_LEGAL,
         'status' => 'approved',
@@ -268,53 +251,45 @@ it('the interest-submitted notification carries no contact or bank data', functi
 
 // ── documents are private ─────────────────────────────────────────────────
 
-it('transporter documents are stored off the public disk', function () {
-    $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
-
-    $transporter = TransporterProfile::create([
-        'user_id' => $user->id,
-        'slug' => 'docs-'.Str::lower(Str::random(8)),
+it('profile documents are stored off the public disk', function () {
+    $profile = Profile::factory()->transporter()->create([
         'display_name' => 'Docs Transporter',
         'status' => 'approved',
     ]);
 
-    $document = $transporter->documents()->create([
+    $document = $profile->documents()->create([
         'type' => 'license',
         'original_name' => 'licence.pdf',
-        'stored_path' => 'transporter-documents/audit-test/licence.pdf',
+        'stored_path' => ProfileDocumentStorage::DIRECTORY.'/audit-test/licence.pdf',
         'mime' => 'application/pdf',
         'size' => 1024,
         'status' => 'pending',
     ]);
 
-    Storage::disk('local')->put($document->stored_path, 'secret document bytes');
+    Storage::disk(ProfileDocumentStorage::DISK)->put($document->stored_path, 'secret document bytes');
 
     // Not reachable through the public disk, which is what public/storage
     // symlinks to.
     expect(Storage::disk('public')->exists($document->stored_path))->toBeFalse();
-    expect(Storage::disk('local')->exists($document->stored_path))->toBeTrue();
+    expect(Storage::disk(ProfileDocumentStorage::DISK)->exists($document->stored_path))->toBeTrue();
 });
 
 it('an unauthenticated request for a document download never serves the file', function () {
-    $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
-
-    $transporter = TransporterProfile::create([
-        'user_id' => $user->id,
-        'slug' => 'docs-'.Str::lower(Str::random(8)),
+    $profile = Profile::factory()->transporter()->create([
         'display_name' => 'Docs Transporter',
         'status' => 'approved',
     ]);
 
-    $document = $transporter->documents()->create([
+    $document = $profile->documents()->create([
         'type' => 'license',
         'original_name' => 'licence.pdf',
-        'stored_path' => 'transporter-documents/audit-test/licence.pdf',
+        'stored_path' => ProfileDocumentStorage::DIRECTORY.'/audit-test/licence.pdf',
         'mime' => 'application/pdf',
         'size' => 1024,
         'status' => 'pending',
     ]);
 
-    $response = $this->get(route('admin.transporters.documents.download', ['document' => $document->id]));
+    $response = $this->get(route('admin.profiles.documents.download', ['document' => $document->id]));
 
     // Redirected to login. Never the file itself.
     $response->assertRedirect(route('login'));
@@ -322,19 +297,15 @@ it('an unauthenticated request for a document download never serves the file', f
 });
 
 it('a signed-in non-owner cannot download a document', function () {
-    $owner = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
-
-    $transporter = TransporterProfile::create([
-        'user_id' => $owner->id,
-        'slug' => 'docs-'.Str::lower(Str::random(8)),
+    $profile = Profile::factory()->transporter()->create([
         'display_name' => 'Docs Transporter',
         'status' => 'approved',
     ]);
 
-    $document = $transporter->documents()->create([
+    $document = $profile->documents()->create([
         'type' => 'license',
         'original_name' => 'licence.pdf',
-        'stored_path' => 'transporter-documents/audit-test/licence.pdf',
+        'stored_path' => ProfileDocumentStorage::DIRECTORY.'/audit-test/licence.pdf',
         'mime' => 'application/pdf',
         'size' => 1024,
         'status' => 'pending',
@@ -344,80 +315,78 @@ it('a signed-in non-owner cannot download a document', function () {
     $other = auditViewer();
 
     $this->actingAs($other)
-        ->get(route('admin.transporters.documents.download', ['document' => $document->id]))
+        ->get(route('admin.profiles.documents.download', ['document' => $document->id]))
         ->assertForbidden();
 });
 
 it('a superadmin can download a document', function () {
-    $owner = User::factory()->create([
-        'email_verified_at' => now(),
-        'onboarded_at' => now(),
-        'is_superadmin' => true,
-    ]);
+    $owner = User::factory()->superadmin()->create();
 
-    $transporter = TransporterProfile::create([
-        'user_id' => $owner->id,
-        'slug' => 'docs-'.Str::lower(Str::random(8)),
+    $profile = Profile::factory()->for($owner)->transporter()->create([
         'display_name' => 'Docs Transporter',
         'status' => 'approved',
     ]);
 
-    $document = $transporter->documents()->create([
+    $document = $profile->documents()->create([
         'type' => 'license',
         'original_name' => 'licence.pdf',
-        'stored_path' => 'transporter-documents/audit-test/licence.pdf',
+        'stored_path' => ProfileDocumentStorage::DIRECTORY.'/audit-test/licence.pdf',
         'mime' => 'application/pdf',
         'size' => strlen('secret document bytes'),
         'status' => 'pending',
     ]);
 
-    Storage::disk('local')->put($document->stored_path, 'secret document bytes');
+    Storage::disk(ProfileDocumentStorage::DISK)->put($document->stored_path, 'secret document bytes');
 
     $this->actingAs($owner)
-        ->get(route('admin.transporters.documents.download', ['document' => $document->id]))
+        ->get(route('admin.profiles.documents.download', ['document' => $document->id]))
         ->assertOk();
 });
 
-it('a non-superadmin owner cannot download their own document', function () {
-    // Documents today sit behind the superadmin middleware, so the
-    // owner-or-superadmin branch inside the controller is unreachable for an
-    // owner. Recorded so the gap is visible rather than silent.
-    $owner = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
+it('a non-superadmin owner reaches their document through self-service only', function () {
+    // The admin group is superadmin-only. The owner branch in the controller
+    // used to be unreachable for an ordinary owner; the self-service route is
+    // what makes their own document downloadable now.
+    $owner = User::factory()->create();
 
-    $transporter = TransporterProfile::create([
-        'user_id' => $owner->id,
-        'slug' => 'docs-'.Str::lower(Str::random(8)),
+    $profile = Profile::factory()->for($owner)->transporter()->create([
         'display_name' => 'Docs Transporter',
         'status' => 'approved',
     ]);
 
-    $document = $transporter->documents()->create([
+    $document = $profile->documents()->create([
         'type' => 'license',
         'original_name' => 'licence.pdf',
-        'stored_path' => 'transporter-documents/audit-test/licence.pdf',
+        'stored_path' => ProfileDocumentStorage::DIRECTORY.'/audit-test/licence.pdf',
         'mime' => 'application/pdf',
         'size' => 1024,
         'status' => 'pending',
     ]);
 
+    Storage::disk(ProfileDocumentStorage::DISK)->put($document->stored_path, 'secret document bytes');
+
     $this->actingAs($owner)
-        ->get(route('admin.transporters.documents.download', ['document' => $document->id]))
+        ->get(route('public-profile.documents.download', ['document' => $document->id]))
+        ->assertOk();
+
+    $this->actingAs($owner)
+        ->get(route('admin.profiles.documents.download', ['document' => $document->id]))
         ->assertForbidden();
 });
 
 // ── admin surface stays admin-only ────────────────────────────────────────
 
-it('a normal user cannot reach the admin transporter pages', function () {
+it('a normal user cannot reach the admin profile pages', function () {
     $user = auditViewer();
-    auditStranger();
+    $stranger = auditStranger();
 
     $this->actingAs($user)
-        ->get(route('admin.transporters.index'))
+        ->get(route('admin.profiles.index'))
         ->assertForbidden();
 
     $this->actingAs($user)
-        ->get(route('admin.transporters.show', [
-            'transporterProfile' => TransporterProfile::where('display_name', 'Audit Stranger')->first()->id,
+        ->get(route('admin.profiles.show', [
+            'profile' => $stranger->profile()->firstOrFail(),
         ]))
         ->assertForbidden();
 });
@@ -427,12 +396,11 @@ it('the public profile page never offers a document file url', function () {
     $stranger = auditStranger();
 
     $profile = $stranger->profile()->firstOrFail();
-    $profile->update(['status' => 'approved']);
 
     $document = $profile->documents()->create([
         'type' => 'license',
         'original_name' => 'secret-licence.pdf',
-        'stored_path' => 'profile-documents/audit-test/secret.pdf',
+        'stored_path' => ProfileDocumentStorage::DIRECTORY.'/audit-test/secret.pdf',
         'mime' => 'application/pdf',
         'size' => 1024,
         'status' => 'pending',

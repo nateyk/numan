@@ -158,9 +158,6 @@ class PublicProfileController extends Controller
     public function update(UpdatePublicProfileRequest $request, PhoneNumberService $phones): RedirectResponse
     {
         $user = $request->user();
-        $profile = $this->profiles->save($user, []);
-        Gate::authorize('update', $profile);
-
         $data = $request->validated();
 
         if (array_key_exists('phone', $data)) {
@@ -179,7 +176,12 @@ class PublicProfileController extends Controller
             }
         }
 
+        // One save with the submitted identity, so a profile created by this
+        // request takes its slug from the display name the person chose rather
+        // than from their account name.
         $profile = $this->profiles->save($user, $data);
+        Gate::authorize('update', $profile);
+
         $this->completion->update($profile);
 
         return back()->with('success', 'Profile saved.');
