@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
  *
  * Search returns OSM results with an "osm_" prefixed id because they have no
  * database id yet. Anything that stores a location_id -- the freight route step,
- * the transporter profile -- needs a real row, so the pick is posted here and
+ * the public profile -- needs a real row, so the pick is posted here and
  * resolved. Nominatim returns the same feature for the same query forever, so the
  * resolver's osm_id key is what stops each search inserting another copy.
  */

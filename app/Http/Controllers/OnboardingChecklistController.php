@@ -101,7 +101,7 @@ class OnboardingChecklistController extends Controller
                 // profile" sent people to a page with no phone number on it.
                 'description' => 'Still needed: '.implode(', ', $state['missing'][$capability]),
                 'completed' => false,
-                'href' => '/settings/marketplace-details',
+                'href' => '/public-profile',
             ];
         }
 

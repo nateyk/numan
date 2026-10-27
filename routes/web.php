@@ -72,7 +72,6 @@ use App\Http\Controllers\Marketplace\ChapaWebhookController;
 use App\Http\Controllers\Marketplace\CheckoutController;
 use App\Http\Controllers\Marketplace\ManualPaymentController;
 use App\Http\Controllers\MemberActivityController;
-use App\Http\Controllers\MyTransporterDocumentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
 use App\Http\Controllers\OnboardingController;
@@ -91,7 +90,6 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamImportController;
 use App\Http\Controllers\TourController;
-use App\Http\Controllers\TransporterProfileController;
 use App\Http\Controllers\UsageController;
 use App\Http\Controllers\WebhookEndpointController;
 use App\Http\Controllers\WebhookLogController;
@@ -110,6 +108,7 @@ use App\Http\Middleware\EnsureInterestsEnabled;
 use App\Http\Middleware\RequireAdminTwoFactor;
 use App\Models\MarketplacePlan;
 use App\Models\Profile;
+use App\Models\ProfileDocument;
 use App\Services\MarketplaceSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -382,18 +381,21 @@ Route::middleware(['auth', 'verified', 'onboarded', 'workspace', 'require2fa', '
     // Usage Dashboard
     Route::get('/usage', [UsageController::class, 'index'])->name('usage.index');
 
-    // Transporter Profile (supply foundation)
-    Route::get('/my-transporter-profile', [TransporterProfileController::class, 'index'])->name('transporter.profile.index');
-    Route::post('/my-transporter-profile', [TransporterProfileController::class, 'store'])->name('transporter.profile.store');
-    Route::put('/my-transporter-profile', [TransporterProfileController::class, 'update'])->name('transporter.profile.update');
+    // The old transporter profile is now a section of the single public
+    // profile. The URL still works for bookmarks, but it only forwards.
+    Route::match(['get', 'post', 'put', 'patch'], '/my-transporter-profile', fn () => redirect('/public-profile'))
+        ->name('transporter.profile.index');
 
-    // A transporter downloading a document they uploaded themselves.
-    //
-    // Outside the admin group on purpose: this is self-service, and it
-    // authorises on ownership rather than on privilege. Without it the only
-    // route to a document sat behind the superadmin middleware, so the
-    // owner branch inside it was unreachable.
-    Route::get('/my-transporter-profile/documents/{document}/download', [MyTransporterDocumentController::class, 'download'])->name('transporter.documents.download');
+    // A legacy document link belongs to a ProfileDocument now. Forward it to
+    // the consolidated download route when the document exists; otherwise send
+    // the owner back to the page that can show them what is missing.
+    Route::get('/my-transporter-profile/documents/{document}/download', function (string $document) {
+        $profileDocument = ProfileDocument::query()->find($document);
+
+        return $profileDocument === null
+            ? redirect('/public-profile')
+            : redirect("/public-profile/documents/{$profileDocument->id}/download");
+    })->name('transporter.documents.download');
 
     // Freight posting — draft-first wizard
     Route::get('/my-freight', [FreightPostController::class, 'index'])->name('freight.index');

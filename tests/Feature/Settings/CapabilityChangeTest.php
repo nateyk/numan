@@ -2,7 +2,7 @@
 
 use App\Models\Location;
 use App\Models\Profile;
-use App\Models\TransporterProfile;
+use App\Models\TruckType;
 use App\Models\User;
 use App\Services\MarketplaceReadiness;
 use App\Services\WorkspaceService;
@@ -11,32 +11,46 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 /**
  * Changing what you do in the marketplace, after the fact.
  *
- * OnboardingController refuses every action once a user is onboarded — correct
- * for a wizard, wrong for the capability decision. It left the choice permanent,
- * so somebody who registered to post a load and later needed to carry one had no
- * way to say so. That is what these pin.
+ * The capability decision used to be permanent: the wizard refused every action
+ * once a user was onboarded, so somebody who registered to post a load and later
+ * needed to carry one had no way to say so. It is now a field on the single
+ * public profile, editable at any time.
  */
 uses(RefreshDatabase::class);
 
 function onboardedUser(array $profileOverrides = []): User
 {
-    $user = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
+    $user = User::factory()->create();
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    Profile::firstOrCreate(
-        ['user_id' => $user->id],
-        array_merge([
-            'display_name' => 'Someone',
-            'phone' => '+251911000001',
-            'posts_freight' => false,
-            'provides_transport' => false,
-            'onboarding_step' => 'completed',
-            'onboarding_completed_at' => now(),
-        ], $profileOverrides),
-    );
+    Profile::factory()->for($user)->create(array_merge([
+        'account_type' => 'personal',
+        'display_name' => 'Someone',
+        'phone' => '+251911000001',
+        'posts_freight' => true,
+        'provides_transport' => false,
+        'primary_location_id' => null,
+    ], $profileOverrides));
 
     return $user->refresh();
+}
+
+/**
+ * The minimum a full profile save must carry.
+ *
+ * @return array<string, mixed>
+ */
+function capabilityPayload(User $user, array $overrides = []): array
+{
+    $profile = $user->profile()->firstOrFail();
+
+    return array_merge([
+        'display_name' => $profile->display_name,
+        'account_type' => $profile->account_type ?? 'personal',
+        'posts_freight' => (bool) $profile->posts_freight,
+        'provides_transport' => (bool) $profile->provides_transport,
+    ], $overrides);
 }
 
 // ── the decision is revisitable ─────────────────────────────────────────────
@@ -45,7 +59,10 @@ it('lets an onboarded consignor start carrying freight', function () {
     $user = onboardedUser(['posts_freight' => true]);
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
         ->assertRedirect();
 
     $profile = Profile::where('user_id', $user->id)->first();
@@ -55,12 +72,13 @@ it('lets an onboarded consignor start carrying freight', function () {
 });
 
 it('lets an onboarded user hold both capabilities at once', function () {
-    // The either/or model could not express this, which is what the original
-    // "either/or" account_type column encoded.
     $user = onboardedUser(['posts_freight' => true]);
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
         ->assertRedirect();
 
     expect((bool) Profile::where('user_id', $user->id)->value('provides_transport'))->toBeTrue();
@@ -70,7 +88,10 @@ it('lets a user turn one capability off without losing the other', function () {
     $user = onboardedUser(['posts_freight' => true, 'provides_transport' => true]);
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '0', 'provides_transport' => '1'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => false,
+            'provides_transport' => true,
+        ]))
         ->assertRedirect();
 
     $profile = Profile::where('user_id', $user->id)->first();
@@ -80,42 +101,52 @@ it('lets a user turn one capability off without losing the other', function () {
 });
 
 it('refuses to leave a user with neither capability', function () {
-    // Both booleans are submitted so one can be turned off while the other stays
-    // on. Neither is a meaningful state: a user with no capability cannot act,
-    // and a profile that reads as ready while being inert is worse than one that
-    // admits it.
     $user = onboardedUser(['posts_freight' => true]);
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '0', 'provides_transport' => '0'])
-        ->assertSessionHasErrors('posts_freight');
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => false,
+            'provides_transport' => false,
+        ]))
+        ->assertSessionHasErrors('capabilities');
 
     expect((bool) Profile::where('user_id', $user->id)->value('posts_freight'))->toBeTrue();
 });
 
-it('does not create a carrier profile when the capability is switched on', function () {
-    // It did, once. TransporterProfileController::store refuses with "Profile
-    // already exists. Use update." when a row is already there, so picking up the
-    // carrier capability made the very next action — filling in the carrier form
-    // — fail with a message written for a developer.
-    //
-    // Readiness names the base location as the gap, which is actionable on its
-    // own: it is a field on the profile the user already has.
+it('does not create a second profile when the capability is switched on', function () {
+    // There used to be a transporter record created behind the capability. That
+    // is gone: the same profile grows a carrier half, and readiness names the
+    // base location as the next thing to fill in.
     $user = onboardedUser(['posts_freight' => true]);
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
         ->assertRedirect();
 
-    expect($user->transporterProfile()->exists())->toBeFalse();
+    expect(Profile::where('user_id', $user->id)->count())->toBe(1)
+        ->and($user->transporterProfile()->exists())->toBeFalse();
 
     expect(app(MarketplaceReadiness::class)->for($user)['missing']['provides_transport'])
         ->toContain('primary_location_id');
 });
 
-it('lets a carrier form be submitted after switching the capability on', function () {
-    // The end-to-end consequence of the one above: the form the user is told to
-    // fill in must actually accept them.
+it('starts the carrier listing in draft when transport is switched on', function () {
+    $user = onboardedUser(['posts_freight' => true, 'status' => null]);
+
+    $this->actingAs($user)
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
+        ->assertRedirect();
+
+    expect(Profile::where('user_id', $user->id)->value('status'))->toBe('draft');
+});
+
+it('accepts carrier details once transport is switched on', function () {
     $base = Location::factory()->create(['name' => 'Adama', 'latitude' => 8.54, 'longitude' => 39.27]);
 
     $user = onboardedUser([
@@ -125,67 +156,80 @@ it('lets a carrier form be submitted after switching the capability on', functio
     ]);
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
         ->assertRedirect();
 
     $this->actingAs($user)
-        ->post('/my-transporter-profile', [
-            'display_name' => 'Existing Carrier',
-            'phone' => '+251911000009',
-            'email' => 'carrier@example.test',
-            'primary_location_id' => $base->id,
-            'phone_visible' => '1',
+        ->put('/public-profile/transport', [
+            'truck_type_ids' => [],
+            'routes' => [],
         ])
         ->assertSessionHasNoErrors();
-
-    $this->assertDatabaseHas('transporter_profiles', ['user_id' => $user->id]);
 
     expect(app(MarketplaceReadiness::class)->for($user)['ready']['provides_transport'])
         ->toBeTrue();
 });
 
-it('does not overwrite an existing carrier profile', function () {
+it('does not overwrite existing carrier details', function () {
     $user = onboardedUser(['posts_freight' => true]);
 
-    $existing = TransporterProfile::create([
-        'user_id' => $user->id,
-        'slug' => 'existing-'.uniqid(),
-        'display_name' => 'Existing Carrier',
-        'phone' => '+251911000009',
+    $profile = $user->profile()->firstOrFail();
+    $profile->forceFill([
         'business_description' => 'Ten years on the Addis–Adama run',
-        'primary_location_id' => Location::factory()->create()->id,
         'status' => 'pending',
-    ]);
+    ])->save();
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
         ->assertRedirect();
 
-    $after = $user->transporterProfile()->first();
+    $after = $user->profile()->first();
 
-    expect($after->id)->toBe($existing->id)
+    expect($after->id)->toBe($profile->id)
         ->and($after->business_description)->toBe('Ten years on the Addis–Adama run');
 });
 
-it('keeps the carrier profile when the capability is turned off', function () {
-    // Turning off a checkbox must not destroy trucks, routes and uploaded
-    // documents. The user may switch back tomorrow.
-    $user = onboardedUser(['posts_freight' => true, 'provides_transport' => true]);
-
-    $existing = TransporterProfile::create([
-        'user_id' => $user->id,
-        'slug' => 'keep-me-'.uniqid(),
-        'display_name' => 'Existing Carrier',
-        'phone' => '+251911000010',
-        'primary_location_id' => Location::factory()->create()->id,
-        'status' => 'pending',
+it('keeps carrier data and approval when the capability is turned off and on', function () {
+    // Turning off a checkbox must not destroy trucks, routes, uploaded
+    // documents, or an approval. The user may switch back tomorrow.
+    $user = onboardedUser([
+        'posts_freight' => true,
+        'provides_transport' => true,
+        'status' => 'approved',
+        'verification_status' => 'verified',
     ]);
 
+    $profile = $user->profile()->firstOrFail();
+    $truckType = TruckType::factory()->create();
+    $profile->truckTypes()->attach($truckType->id);
+
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '0'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => false,
+        ]))
         ->assertRedirect();
 
-    $this->assertDatabaseHas('transporter_profiles', ['id' => $existing->id]);
+    $profile->refresh();
+
+    expect($profile->status)->toBe('approved')
+        ->and($profile->verification_status)->toBe('verified')
+        ->and($profile->truckTypes()->count())->toBe(1);
+
+    $this->actingAs($user)
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
+        ->assertRedirect();
+
+    expect($profile->refresh()->status)->toBe('approved');
 });
 
 it('does not disturb the onboarding wizard state', function () {
@@ -194,7 +238,10 @@ it('does not disturb the onboarding wizard state', function () {
     $user = onboardedUser(['posts_freight' => true, 'onboarding_step' => 'completed']);
 
     $this->actingAs($user)
-        ->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '1'])
+        ->patch('/public-profile', capabilityPayload($user, [
+            'posts_freight' => true,
+            'provides_transport' => true,
+        ]))
         ->assertRedirect();
 
     $profile = Profile::where('user_id', $user->id)->first();
@@ -204,15 +251,17 @@ it('does not disturb the onboarding wizard state', function () {
 });
 
 it('requires authentication', function () {
-    $this->patch('/settings/capabilities', ['posts_freight' => '1', 'provides_transport' => '0'])
-        ->assertRedirect(route('login'));
+    $this->patch('/public-profile', [
+        'display_name' => 'Someone',
+        'account_type' => 'personal',
+        'posts_freight' => true,
+        'provides_transport' => false,
+    ])->assertRedirect(route('login'));
 });
 
 // ── an onboarded user is sent somewhere they can actually act ──────────────
 
 it('sends an onboarded user away from the wizard to the revisitable page', function () {
-    // Every action on the wizard refuses once onboarded, so landing them there
-    // gave them a page with no controls on it.
     $user = onboardedUser();
 
     $this->actingAs($user)
@@ -223,7 +272,6 @@ it('sends an onboarded user away from the wizard to the revisitable page', funct
 it('still shows the wizard to somebody who has not onboarded', function () {
     $user = User::factory()->create();
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
-    // Creating a workspace sets this, and OnboardingController checks it first.
     $user->forceFill([
         'current_workspace_id' => $workspace->id,
         'onboarded_at' => null,
@@ -245,19 +293,11 @@ it('reports readiness for each capability independently', function () {
         'phone' => '+251911000011',
     ]);
 
-    TransporterProfile::create([
-        'user_id' => $user->id,
-        'slug' => 'partial-'.uniqid(),
-        'display_name' => 'Ready Identity',
-        'phone' => '+251911000011',
-        'status' => 'pending',
-    ]);
-
     $state = $readiness->for($user);
 
     // Identity is complete, so posting is unblocked. Carrying additionally needs
-    // the transporter fields, and reporting one figure for both is how somebody
-    // is shown as ready and then refused at the gate.
+    // a base, and reporting one figure for both is how somebody is shown as ready
+    // and then refused at the gate.
     expect($state['ready']['posts_freight'])->toBeTrue()
         ->and($state['ready']['provides_transport'])->toBeFalse()
         ->and($state['missing']['provides_transport'])->toContain('primary_location_id');
@@ -285,7 +325,7 @@ it('names the base location when a carrier has not set one', function () {
 
 it('reports a carrier with no profile at all as not ready', function () {
     $readiness = app(MarketplaceReadiness::class);
-    $user = onboardedUser(['provides_transport' => true]);
+    $user = User::factory()->create();
 
     expect($readiness->for($user)['ready']['provides_transport'])->toBeFalse();
 });
@@ -304,9 +344,8 @@ it('handles a user with no profile row without throwing', function () {
 
 it('treats a whitespace phone as missing', function () {
     $readiness = app(MarketplaceReadiness::class);
-    // display_name and phone are NOT NULL, so a profile can only be incomplete by
-    // being blank — and a field holding spaces passes a null check while showing
-    // an empty line to whoever is reading it.
+    // A field holding spaces passes a null check while showing an empty line to
+    // whoever is reading it.
     $user = onboardedUser(['posts_freight' => true, 'display_name' => '   ', 'phone' => '  ']);
 
     expect($readiness->for($user)['missing']['posts_freight'])
@@ -324,16 +363,15 @@ it('lists a shared field once when both capabilities need it', function () {
 
     $missing = $readiness->for($user)['missing']['provides_transport'];
 
-    // "display_name, display_name, transporter_profile" reads like a bug report.
+    // "display_name, display_name" reads like a bug report.
     expect(array_count_values($missing)['display_name'])->toBe(1)
         ->and(array_count_values($missing)['phone'])->toBe(1);
 });
 
-it('serves the same verdicts to the page as the service computes', function () {
-    // The page used to recompute readiness from missingFields, which is how a
-    // screen and a gate end up disagreeing. Identity is blank so posting is
-    // blocked on identity alone, while carrying is additionally blocked on the
-    // carrier profile that does not exist.
+it('serves the page the same profile the service reads', function () {
+    // The page used to recompute readiness from its own copy of the fields, which
+    // is how a screen and a gate end up disagreeing. It now renders the saved
+    // profile, and the service judges that same record.
     $user = onboardedUser([
         'posts_freight' => true,
         'provides_transport' => true,
@@ -342,12 +380,10 @@ it('serves the same verdicts to the page as the service computes', function () {
     ]);
 
     $props = $this->actingAs($user)
-        ->get('/settings/marketplace-details')
+        ->get('/public-profile')
         ->viewData('page')['props'];
 
-    expect($props['ready']['posts_freight'])->toBeFalse()
-        ->and($props['ready']['provides_transport'])->toBeFalse()
-        ->and($props['missingFields']['posts_freight'])->toContain('display_name', 'phone')
-        ->and($props['missingFields']['provides_transport'])
-        ->toContain('primary_location_id');
+    expect($props['profile']['display_name'])->toBe('')
+        ->and(app(MarketplaceReadiness::class)->for($user)['missing']['posts_freight'])
+        ->toContain('display_name', 'phone');
 });
