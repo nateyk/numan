@@ -141,3 +141,12 @@ it('lists only approved carriers and redirects the old profile URL', function ()
         ->assertStatus(301)
         ->assertRedirect("/p/{$approved->slug}");
 });
+
+it('does not confirm a hidden consignor through the old profile URL', function () {
+    // The old controller only served approved carriers. Redirecting any known
+    // slug would let a stranger use the 301 as an existence check for a
+    // consignor whose /p page is deliberately a 404.
+    $consignor = Profile::factory()->consignor()->create();
+
+    $this->get("/transporters/{$consignor->slug}")->assertNotFound();
+});

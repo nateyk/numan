@@ -110,6 +110,7 @@ use App\Models\Profile;
 use App\Models\ProfileDocument;
 use App\Services\MarketplaceSettingsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
@@ -165,9 +166,14 @@ Route::get('/transporters', [PublicProfileController::class, 'directory'])->name
 Route::get('/p/{profile}', [PublicProfileShowController::class, 'show'])->name('profiles.show');
 
 // The old directory URL is linked from mail and search results. Redirect it
-// permanently rather than deleting it, and 404 for a slug that never existed.
+// permanently rather than deleting it, but only for a profile the viewer may
+// actually see. A hidden consignor must 404 here exactly as it does on /p.
 Route::get('/transporters/{slug}', function (string $slug) {
     $profile = Profile::query()->where('slug', $slug)->firstOrFail();
+
+    if (! Gate::allows('view', $profile)) {
+        abort(404);
+    }
 
     return redirect(route('profiles.show', $profile), 301);
 })->name('transporters.show');
