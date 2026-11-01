@@ -245,27 +245,26 @@ it('needs a base location to be ready to carry', function () {
         ->toContain('primary_location_id');
 });
 
-// ── the public directory ───────────────────────────────────────────────────
+// ── retired directory and public profile ──────────────────────────────────
 
-it('does not list a carrier whose profile is still pending', function () {
-    // Deliberate, and worth pinning. Every new carrier is pending until an admin
-    // approves, so a directory that showed pending carriers would put unvetted
-    // businesses in front of counterparties the moment they filled in a form.
+it('redirects the old directory while keeping pending profiles private', function () {
     $user = carrierUser(['status' => 'pending', 'display_name' => 'Pending Haulage']);
     $viewer = carrierUser(['display_name' => 'Viewer Haulage', 'phone' => '+251999999999']);
 
-    $this->actingAs($viewer)->get('/transporters')->assertOk()->assertDontSee('Pending Haulage');
+    $this->actingAs($viewer)->get('/transporters')->assertRedirect('/freight');
 
     $this->actingAs($viewer)
         ->get('/p/'.$user->profile()->firstOrFail()->slug)
         ->assertNotFound();
 });
 
-it('lists a carrier once approved', function () {
-    carrierUser(['status' => 'approved']);
+it('keeps approved carriers available through their public profile URLs', function () {
+    $profile = carrierUser(['status' => 'approved'])->profile()->firstOrFail();
     $viewer = carrierUser(['display_name' => 'Viewer Haulage', 'phone' => '+251999999999']);
 
-    $this->actingAs($viewer)->get('/transporters')->assertOk()->assertSee('Adama Haulage');
+    $this->actingAs($viewer)
+        ->get("/transporters/{$profile->slug}")
+        ->assertRedirect("/p/{$profile->slug}");
 });
 
 it('shows a carrier public page by slug once approved', function () {
@@ -273,28 +272,6 @@ it('shows a carrier public page by slug once approved', function () {
     $viewer = carrierUser(['display_name' => 'Viewer Haulage', 'phone' => '+251999999999']);
 
     $this->actingAs($viewer)->get("/p/{$profile->slug}")->assertOk()->assertSee('Adama Haulage');
-});
-
-it('withholds contact details from the public directory', function () {
-    // The number is not merely absent from the payload — the value must not
-    // appear anywhere in the serialised page, because it could equally have been
-    // carried under a different key. The viewer has a different number of their
-    // own, so a match cannot come from the viewer's shared props.
-    carrierUser([
-        'status' => 'approved',
-        'phone' => '+251911000001',
-        'email' => 'carrier@example.test',
-        'phone_visible' => false,
-        'email_visible' => false,
-    ]);
-    $viewer = carrierUser(['display_name' => 'Viewer Haulage', 'phone' => '+251999999999']);
-
-    $response = $this->actingAs($viewer)->get('/transporters');
-
-    $response->assertOk()->assertSee('Adama Haulage');
-
-    expect($response->getContent())->not->toContain('+251911000001')
-        ->and($response->getContent())->not->toContain('carrier@example.test');
 });
 
 it('never shows the phone number on the public page, even when the carrier agreed', function () {
@@ -313,13 +290,28 @@ it('never shows the phone number on the public page, even when the carrier agree
         ->assertDontSee('+251911000001');
 });
 
-it('still shows the name when the number is hidden', function () {
-    // A carrier who declines publication has still chosen to trade. Hiding the
-    // number is not withdrawing from the directory.
-    carrierUser(['status' => 'approved', 'phone_visible' => false]);
+it('withholds hidden phone and email from an approved public profile', function () {
+    $profile = carrierUser([
+        'status' => 'approved',
+        'phone' => '+251911000001',
+        'email' => 'carrier@example.test',
+        'phone_visible' => false,
+        'email_visible' => false,
+    ])->profile()->firstOrFail();
     $viewer = carrierUser(['display_name' => 'Viewer Haulage', 'phone' => '+251999999999']);
 
-    $this->actingAs($viewer)->get('/transporters')->assertOk()->assertSee('Adama Haulage');
+    $response = $this->actingAs($viewer)->get("/p/{$profile->slug}");
+
+    $response->assertOk();
+    expect($response->getContent())->not->toContain('+251911000001')
+        ->and($response->getContent())->not->toContain('carrier@example.test');
+});
+
+it('keeps the carrier name public when contact details are hidden', function () {
+    $profile = carrierUser(['status' => 'approved', 'phone_visible' => false])->profile()->firstOrFail();
+    $viewer = carrierUser(['display_name' => 'Viewer Haulage', 'phone' => '+251999999999']);
+
+    $this->actingAs($viewer)->get("/p/{$profile->slug}")->assertOk()->assertSee('Adama Haulage');
 });
 
 // ── the record carries its history ─────────────────────────────────────────

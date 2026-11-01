@@ -229,13 +229,12 @@ it('leak 2b: the public discovery listing exposes no owner email or phone', func
 
 // ── 3. transporter directory and profile ─────────────────────────────────
 
-it('leak 3: the transporter directory exposes no phone, whatsapp or email', function () {
+it('leak 3: the retired transporter directory redirects to freight discovery', function () {
     leakTransporter();
 
     $response = $this->actingAs(leakBystander())->get(route('transporters.index'));
 
-    $response->assertOk();
-    assertPayloadOmits($response, transporterStrings());
+    $response->assertRedirect('/freight');
 });
 
 it('leak 3b: the public profile page exposes no phone, whatsapp or legal name', function () {

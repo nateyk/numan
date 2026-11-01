@@ -160,9 +160,9 @@ Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name
 Route::get('/freight/{ulid}', [PublicFreightDiscoveryController::class, 'show'])->name('freight.public.show');
 Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
 
-// The carrier directory and a public profile. Both are part of browsing, so
-// they carry no auth or onboarding middleware.
-Route::get('/transporters', [PublicProfileController::class, 'directory'])->name('transporters.index');
+// The old directory URL now leads to freight discovery; public profile pages
+// remain available through their own URLs.
+Route::redirect('/transporters', '/freight')->name('transporters.index');
 Route::get('/p/{profile}', [PublicProfileShowController::class, 'show'])->name('profiles.show');
 
 // The old directory URL is linked from mail and search results. Redirect it

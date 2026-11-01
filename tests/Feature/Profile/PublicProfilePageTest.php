@@ -127,15 +127,11 @@ it('never exposes document names or contact fields on the public page', function
             ->where('profile.documents_reviewed', true));
 });
 
-it('lists only approved carriers and redirects the old profile URL', function () {
+it('redirects the retired carrier directory and legacy profile URLs', function () {
     $approved = Profile::factory()->approved()->create(['provides_transport' => true]);
     Profile::factory()->pending()->create(['provides_transport' => true]);
 
-    $this->get('/transporters')
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('transporters/index')
-            ->has('profiles.data', 1));
+    $this->get('/transporters')->assertRedirect('/freight');
 
     $this->get("/transporters/{$approved->slug}")
         ->assertStatus(301)

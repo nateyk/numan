@@ -102,9 +102,12 @@ export function LandingHero() {
                             asChild
                             className="h-11 px-7 text-sm"
                         >
-                            <Link href="/transporters">
+                            <Link href="/freight">
                                 <Truck className="mr-2 h-4 w-4" />
-                                {t('landing.hero.cta.github', 'Find Trucks')}
+                                {t(
+                                    'landing.hero.cta.browse_freight',
+                                    'Browse Freight',
+                                )}
                             </Link>
                         </Button>
                     </div>

@@ -17,11 +17,27 @@ export default function CompletionScore({
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (Math.min(score, 100) / 100) * circumference;
 
-    const color = score >= 80 ? 'text-emerald-500' : score >= 50 ? 'text-amber-500' : 'text-red-500';
+    const color =
+        score >= 80
+            ? 'text-emerald-500'
+            : score >= 40
+              ? 'text-amber-500'
+              : 'text-primary';
 
     return (
-        <div className={cn('relative inline-flex items-center justify-center', className)} style={{ width: size, height: size }}>
-            <svg width={size} height={size} className="-rotate-90">
+        <div
+            className={cn(
+                'relative inline-flex items-center justify-center',
+                className,
+            )}
+            style={{ width: size, height: size }}
+        >
+            <svg
+                width={size}
+                height={size}
+                className="absolute inset-0 -rotate-90"
+                aria-hidden="true"
+            >
                 <circle
                     cx={size / 2}
                     cy={size / 2}

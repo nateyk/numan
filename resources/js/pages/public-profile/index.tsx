@@ -2,9 +2,10 @@ import CapabilityFields from '@/components/profile/capability-fields';
 import IdentityFields, {
     type IdentityValues,
 } from '@/components/profile/identity-fields';
-import TransportFields, {
-    LISTING_STATUS,
-} from '@/components/profile/transport-fields';
+import ProfileStrength, {
+    type ProfileStrengthItem,
+} from '@/components/profile/profile-strength';
+import TransportFields from '@/components/profile/transport-fields';
 import VerificationCard, {
     VERIFICATION_STATUS,
 } from '@/components/profile/verification-card';
@@ -17,6 +18,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
@@ -24,9 +26,11 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import {
     BadgeCheck,
     Building2,
+    CheckCircle2,
     Eye,
     Info,
     Package,
+    Save,
     ShieldQuestion,
     Truck,
     UserRound,
@@ -130,9 +134,6 @@ export default function PublicProfileIndex({
         form.patch('/public-profile', { preserveScroll: true });
     };
 
-    const listing =
-        LISTING_STATUS[profile.status ?? 'draft'] ?? LISTING_STATUS.draft;
-
     const verification =
         VERIFICATION_STATUS[profile.verification_status ?? 'unverified'] ??
         VERIFICATION_STATUS.unverified;
@@ -156,159 +157,283 @@ export default function PublicProfileIndex({
             ((profile.legal_name ?? '').trim() !== '' &&
                 (profile.legal_form ?? '') !== ''));
 
+    const listingIsPublic =
+        profile.provides_transport && profile.status === 'approved';
+
+    const carrierStrengthItems: ProfileStrengthItem[] =
+        profile.provides_transport
+            ? [
+                  {
+                      label: 'Truck types and routes',
+                      state:
+                          profile.truck_type_ids.length > 0 &&
+                          profile.routes.length > 0
+                              ? 'done'
+                              : 'todo',
+                      href: '#carrier',
+                  },
+                  {
+                      label: 'Documents',
+                      state: profile.documents.length > 0 ? 'done' : 'todo',
+                      href: '#documents',
+                  },
+              ]
+            : [];
+
+    const verificationStrength: ProfileStrengthItem = {
+        label:
+            profile.verification_status === 'pending'
+                ? 'Verification in review'
+                : profile.verification_status === 'verified'
+                  ? 'Identity verified'
+                  : 'Identity verification',
+        state:
+            profile.verification_status === 'verified'
+                ? 'done'
+                : profile.verification_status === 'pending'
+                  ? 'pending'
+                  : 'todo',
+        href: '#verification',
+    };
+
+    const strengthItems: ProfileStrengthItem[] = [
+        {
+            label: savedIsBusiness
+                ? 'Name, phone, and legal details'
+                : 'Name and phone',
+            state: identityReady ? 'done' : 'todo',
+            href: '#identity',
+        },
+        {
+            label: 'Base location',
+            state: profile.primary_location_id ? 'done' : 'todo',
+            href: '#identity',
+        },
+        {
+            label: 'About you',
+            state: profile.business_description?.trim() ? 'done' : 'todo',
+            href: '#identity',
+        },
+        {
+            label: 'Marketplace role',
+            state:
+                profile.posts_freight || profile.provides_transport
+                    ? 'done'
+                    : 'todo',
+            href: '#role',
+        },
+        ...carrierStrengthItems,
+        verificationStrength,
+    ];
+
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'My Profile', href: '/public-profile' },
     ];
 
-    const listingIsPublic =
-        profile.provides_transport && profile.status === 'approved';
-
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="My profile" />
+        <AppLayout breadcrumbs={breadcrumbs} contentClassName="overflow-x-clip">
+            <Head title="Public profile" />
 
-            <div className="flex flex-col gap-6">
-                <Card>
-                    <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                                {form.data.account_type === 'business' ? (
-                                    <Building2 className="size-5 text-muted-foreground" />
-                                ) : (
-                                    <UserRound className="size-5 text-muted-foreground" />
-                                )}
-                                <h1 className="truncate text-2xl font-bold tracking-tight">
-                                    {profile.display_name ||
-                                        'Your public profile'}
-                                </h1>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <Badge variant="outline">
-                                    {ACCOUNT_TYPE_LABELS[
-                                        form.data.account_type
-                                    ] ?? form.data.account_type}
-                                </Badge>
-
-                                {form.data.posts_freight && (
-                                    <Badge variant="secondary">
-                                        <Package className="mr-1 size-3.5" />
-                                        Posts freight
-                                    </Badge>
-                                )}
-
-                                {form.data.provides_transport && (
-                                    <Badge variant="secondary">
-                                        <Truck className="mr-1 size-3.5" />
-                                        Provides transport
-                                    </Badge>
-                                )}
-
-                                <Badge className={listing.className}>
-                                    {listing.label}
-                                </Badge>
-
-                                <Badge className={verification.className}>
-                                    {profile.verification_status ===
-                                    'verified' ? (
-                                        <BadgeCheck className="mr-1 size-3.5" />
-                                    ) : (
-                                        <ShieldQuestion className="mr-1 size-3.5" />
-                                    )}
-                                    {verification.label}
-                                </Badge>
-                            </div>
-
-                            <p className="mt-3 flex items-start gap-1.5 text-sm text-muted-foreground">
-                                <Info className="mt-0.5 size-4 shrink-0" />
-                                <span>
-                                    {listingIsPublic
-                                        ? `Your carrier listing is public at /p/${profile.slug}. Phone, WhatsApp, and email are still released only through a reveal.`
-                                        : `Only you can open this page until a carrier listing is approved. Your contact details are never printed on /p/${profile.slug}.`}
-                                </span>
+            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+                <header className="flex flex-col gap-5 border-b pb-6 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 space-y-3">
+                        <div className="space-y-1.5">
+                            <p className="text-sm font-medium text-muted-foreground">
+                                My profile
+                            </p>
+                            <h1 className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">
+                                Your public profile
+                            </h1>
+                            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                                This is how shippers and carriers find you.
+                                Contact details stay private until someone
+                                reveals them.
                             </p>
                         </div>
 
-                        <Button variant="outline" asChild>
-                            <Link href={`/p/${profile.slug}`}>
-                                <Eye className="mr-1.5 size-4" />
-                                Preview public profile
-                            </Link>
-                        </Button>
-                    </CardContent>
-                </Card>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">
+                                {form.data.account_type === 'business' ? (
+                                    <Building2 aria-hidden="true" />
+                                ) : (
+                                    <UserRound aria-hidden="true" />
+                                )}
+                                {ACCOUNT_TYPE_LABELS[form.data.account_type] ??
+                                    form.data.account_type}
+                            </Badge>
 
-                <form onSubmit={submit} className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Identity</CardTitle>
-                            <CardDescription>
-                                Who you are on the marketplace. Your display
-                                name is public; contact details are released
-                                through a reveal.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <IdentityFields
-                                values={form.data}
-                                errors={form.errors}
-                                locations={locations}
-                                accountTypes={accountTypes}
-                                legalForms={legalForms}
-                                onChange={updateIdentity}
-                            />
-                        </CardContent>
-                    </Card>
+                            {form.data.posts_freight && (
+                                <Badge variant="secondary">
+                                    <Package aria-hidden="true" />
+                                    Posts freight
+                                </Badge>
+                            )}
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>What you do here</CardTitle>
-                            <CardDescription>
-                                Choose at least one capability. You can change
-                                this whenever you need to.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <CapabilityFields
-                                values={form.data}
-                                errors={form.errors}
-                                onChange={(key, value) =>
-                                    form.setData(key, value)
-                                }
-                            />
-                        </CardContent>
-                    </Card>
+                            {form.data.provides_transport && (
+                                <Badge variant="secondary">
+                                    <Truck aria-hidden="true" />
+                                    Provides transport
+                                </Badge>
+                            )}
 
-                    <div className="flex flex-wrap items-center gap-4">
-                        <Button type="submit" disabled={form.processing}>
-                            Save profile
-                        </Button>
-                        {form.recentlySuccessful && (
-                            <p className="text-sm text-muted-foreground">
-                                Saved.
+                            <Badge className={verification.className}>
+                                {profile.verification_status === 'verified' ? (
+                                    <BadgeCheck aria-hidden="true" />
+                                ) : (
+                                    <ShieldQuestion aria-hidden="true" />
+                                )}
+                                {verification.label}
+                            </Badge>
+                        </div>
+
+                        {profile.provides_transport && (
+                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                <Info
+                                    className="mt-0.5 size-3.5 shrink-0"
+                                    aria-hidden="true"
+                                />
+                                {listingIsPublic
+                                    ? 'Your carrier listing is live in the public directory.'
+                                    : 'Your carrier listing is not public yet.'}
                             </p>
                         )}
                     </div>
-                </form>
 
-                {profile.provides_transport && (
-                    <TransportFields
-                        status={profile.status}
-                        rejectionReason={listing_rejection_reason}
-                        completionScore={completionScore}
-                        truckTypes={truckTypes}
-                        locations={locations}
-                        truckTypeIds={profile.truck_type_ids}
-                        routes={profile.routes}
-                        documents={profile.documents}
-                    />
-                )}
+                    <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                        <Button
+                            variant="outline"
+                            asChild
+                            className="w-full sm:w-auto"
+                        >
+                            <Link href={`/p/${profile.slug}`}>
+                                <Eye aria-hidden="true" />
+                                Preview public profile
+                            </Link>
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                            /p/{profile.slug}
+                        </span>
+                    </div>
+                </header>
 
-                <VerificationCard
-                    status={profile.verification_status}
-                    note={profile.verification_note}
-                    identityReady={identityReady}
-                />
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+                    <div className="flex min-w-0 flex-col gap-6">
+                        <form onSubmit={submit} className="flex flex-col gap-6">
+                            <Card id="identity" className="scroll-mt-24">
+                                <CardHeader>
+                                    <CardTitle className="text-base">
+                                        Identity
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Who you are on the marketplace, and the
+                                        channels a reveal may release.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <IdentityFields
+                                        values={form.data}
+                                        errors={form.errors}
+                                        locations={locations}
+                                        accountTypes={accountTypes}
+                                        legalForms={legalForms}
+                                        onChange={updateIdentity}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <Card id="role" className="scroll-mt-24">
+                                <CardHeader>
+                                    <CardTitle className="text-base">
+                                        Marketplace role
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Choose at least one. Both can be on, and
+                                        you can change this whenever you need
+                                        to.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <CapabilityFields
+                                        values={form.data}
+                                        errors={form.errors}
+                                        onChange={(key, value) =>
+                                            form.setData(key, value)
+                                        }
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-lg border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                                <p
+                                    role="status"
+                                    aria-live="polite"
+                                    className="text-sm"
+                                >
+                                    {form.processing ? (
+                                        <span className="text-muted-foreground">
+                                            Saving your changes…
+                                        </span>
+                                    ) : form.isDirty ? (
+                                        <span className="font-medium text-amber-700 dark:text-amber-400">
+                                            Unsaved changes
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                                            <CheckCircle2
+                                                className="size-4 text-emerald-600 dark:text-emerald-400"
+                                                aria-hidden="true"
+                                            />
+                                            All changes saved
+                                        </span>
+                                    )}
+                                </p>
+
+                                <Button
+                                    type="submit"
+                                    disabled={form.processing}
+                                    className="w-full sm:w-auto"
+                                    data-test="profile-save"
+                                >
+                                    {form.processing ? (
+                                        <Spinner />
+                                    ) : (
+                                        <Save aria-hidden="true" />
+                                    )}
+                                    Save changes
+                                </Button>
+                            </div>
+                        </form>
+
+                        {profile.provides_transport && (
+                            <TransportFields
+                                status={profile.status}
+                                rejectionReason={listing_rejection_reason}
+                                truckTypes={truckTypes}
+                                locations={locations}
+                                truckTypeIds={profile.truck_type_ids}
+                                routes={profile.routes}
+                                documents={profile.documents}
+                            />
+                        )}
+                    </div>
+
+                    <aside className="flex flex-col gap-6 lg:sticky lg:top-20">
+                        <ProfileStrength
+                            score={
+                                profile.provides_transport
+                                    ? completionScore
+                                    : null
+                            }
+                            items={strengthItems}
+                        />
+
+                        <VerificationCard
+                            status={profile.verification_status}
+                            note={profile.verification_note}
+                            identityReady={identityReady}
+                        />
+                    </aside>
+                </div>
             </div>
         </AppLayout>
     );

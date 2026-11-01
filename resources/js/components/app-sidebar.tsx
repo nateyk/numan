@@ -57,11 +57,6 @@ const getMainNavItems = (
             icon: Search,
         },
         {
-            title: t('navigation.transporters', 'Transporters'),
-            href: '/transporters',
-            icon: Truck,
-        },
-        {
             title: t('navigation.my_profile', 'My Profile'),
             href: '/public-profile',
             icon: UserRound,
@@ -154,13 +149,7 @@ export function AppSidebar() {
     const interestsEnabled = marketplace?.interests_enabled ?? false;
 
     const mainNavItems = useMemo(
-        () =>
-            getMainNavItems(
-                t,
-                isSuperadmin,
-                interestsEnabled,
-                is_individual,
-            ),
+        () => getMainNavItems(t, isSuperadmin, interestsEnabled, is_individual),
         [t, isSuperadmin, interestsEnabled, is_individual],
     );
     const footerNavItems = useMemo(() => getFooterNavItems(t), [t]);

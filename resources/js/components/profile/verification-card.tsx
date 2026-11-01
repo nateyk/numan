@@ -8,6 +8,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { useForm } from '@inertiajs/react';
 import { BadgeCheck, ShieldCheck, ShieldQuestion } from 'lucide-react';
 
@@ -78,32 +79,37 @@ export default function VerificationCard({
     };
 
     return (
-        <Card>
+        <Card id="verification" className="scroll-mt-24">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="size-4" />
-                    Verification
-                </CardTitle>
-                <CardDescription>
-                    One badge for your whole public profile, whether you post
-                    freight, carry it, or both.
-                </CardDescription>
-            </CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <ShieldCheck
+                                className="size-4 text-muted-foreground"
+                                aria-hidden="true"
+                            />
+                            Verification
+                        </CardTitle>
+                        <CardDescription>
+                            One badge for your whole profile.
+                        </CardDescription>
+                    </div>
 
-            <CardContent className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
                     <Badge className={current.className}>
                         {status === 'verified' ? (
-                            <BadgeCheck className="mr-1 size-3.5" />
+                            <BadgeCheck aria-hidden="true" />
                         ) : (
-                            <ShieldQuestion className="mr-1 size-3.5" />
+                            <ShieldQuestion aria-hidden="true" />
                         )}
                         {current.label}
                     </Badge>
-                    <p className="text-sm text-muted-foreground">
-                        {current.description}
-                    </p>
                 </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                    {current.description}
+                </p>
 
                 {status === 'rejected' && note && (
                     <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
@@ -114,33 +120,29 @@ export default function VerificationCard({
                     </div>
                 )}
 
-                {!identityReady && canRequest && (
-                    <p className="text-sm text-muted-foreground">
-                        Add your display name, phone number, and business legal
-                        details, then save before requesting verification.
-                    </p>
-                )}
+                {canRequest && (
+                    <form onSubmit={submit} className="space-y-2">
+                        <Button
+                            type="submit"
+                            size="sm"
+                            className="w-full"
+                            disabled={form.processing || !identityReady}
+                            data-test="request-verification"
+                        >
+                            {form.processing && <Spinner />}
+                            {status === 'rejected'
+                                ? 'Request verification again'
+                                : 'Request verification'}
+                        </Button>
 
-                <form
-                    onSubmit={submit}
-                    className="flex flex-wrap items-center gap-3"
-                >
-                    <Button
-                        type="submit"
-                        variant="outline"
-                        disabled={
-                            form.processing || !canRequest || !identityReady
-                        }
-                    >
-                        {status === 'rejected'
-                            ? 'Request verification again'
-                            : 'Request verification'}
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                        Verification is not a guarantee of service, insurance,
-                        or payment.
-                    </p>
-                </form>
+                        {!identityReady && (
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                                Save your display name, phone number, and
+                                business legal details first.
+                            </p>
+                        )}
+                    </form>
+                )}
 
                 <InputError
                     message={
@@ -148,6 +150,11 @@ export default function VerificationCard({
                             .verification
                     }
                 />
+
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                    Verification is not a guarantee of service, insurance, or
+                    payment.
+                </p>
             </CardContent>
         </Card>
     );

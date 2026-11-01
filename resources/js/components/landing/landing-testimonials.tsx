@@ -1,7 +1,7 @@
 import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTranslations } from '@/hooks/use-translations';
-import { MapPinned, Quote, Star } from 'lucide-react';
+import { Quote, Star } from 'lucide-react';
 
 export function LandingTestimonials() {
     const { t } = useTranslations();
@@ -175,16 +175,6 @@ export function LandingTestimonials() {
                                 'Post a Load',
                             )}
                         />
-                        <a
-                            href="/transporters"
-                            className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
-                        >
-                            <MapPinned className="h-4 w-4" />
-                            {t(
-                                'landing.testimonials.community.issues',
-                                'Browse Carriers',
-                            )}
-                        </a>
                         <a
                             href="/freight"
                             className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { login, register } from '@/routes';
 import { discovery, myInterests } from '@/routes/freight';
-import { index as transporters } from '@/routes/transporters';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Menu, Truck } from 'lucide-react';
@@ -22,7 +21,6 @@ import { useState } from 'react';
 
 const navLinks = [
     { href: discovery(), label: 'Browse' },
-    { href: transporters(), label: 'Transporters' },
     { href: myInterests(), label: 'My Interests' },
 ];
 
@@ -196,12 +194,6 @@ export function DiscoveryFooter() {
                         className="transition-colors hover:text-foreground"
                     >
                         Browse freight
-                    </Link>
-                    <Link
-                        href={transporters()}
-                        className="transition-colors hover:text-foreground"
-                    >
-                        Transporters
                     </Link>
                     <PostFreightButton
                         label="Post a load"

@@ -6,6 +6,7 @@ use App\Models\Location;
 use App\Models\TruckType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * The carrier half of the public profile.
@@ -51,5 +52,32 @@ class UpdateTransportProfileRequest extends FormRequest
             'routes.*.destination_location_id.required' => 'Destination is required for each route.',
             'routes.*.destination_location_id.different' => 'Origin and destination must be different.',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $routes = $this->input('routes');
+
+            if (! is_array($routes)) {
+                return;
+            }
+
+            $seen = [];
+
+            foreach ($routes as $index => $route) {
+                if (! is_array($route) || ! is_numeric($route['origin_location_id'] ?? null) || ! is_numeric($route['destination_location_id'] ?? null)) {
+                    continue;
+                }
+
+                $key = (int) $route['origin_location_id'].':'.(int) $route['destination_location_id'];
+
+                if (isset($seen[$key])) {
+                    $validator->errors()->add("routes.{$index}.destination_location_id", 'This route has already been added.');
+                }
+
+                $seen[$key] = true;
+            }
+        });
     }
 }

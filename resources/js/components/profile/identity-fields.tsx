@@ -10,9 +10,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, UserRound } from 'lucide-react';
+import { Building2, ShieldCheck, UserRound } from 'lucide-react';
 
 export interface IdentityValues {
     display_name: string;
@@ -70,19 +71,36 @@ const VISIBILITY_FIELDS: {
         key: 'phone_visible',
         label: 'Share my phone number',
         description:
-            'Released only to somebody who reveals your contact, never printed on your public page.',
+            'Released only when someone reveals your contact. Never printed on your public page.',
     },
     {
         key: 'whatsapp_visible',
         label: 'Share my WhatsApp number',
-        description: 'Adds WhatsApp to the contact a reveal releases.',
+        description:
+            'Adds WhatsApp to a reveal, when you have entered a number.',
     },
     {
         key: 'email_visible',
         label: 'Share my email address',
-        description: 'Adds email to the contact a reveal releases.',
+        description:
+            'Adds email to a reveal, when you have entered an address.',
     },
 ];
+
+function SectionHeading({
+    title,
+    description,
+}: {
+    title: string;
+    description: string;
+}) {
+    return (
+        <div className="space-y-1">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+    );
+}
 
 export default function IdentityFields({
     values,
@@ -101,8 +119,13 @@ export default function IdentityFields({
     const isBusiness = values.account_type === 'business';
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-7">
+            <section className="space-y-4">
+                <SectionHeading
+                    title="Basics"
+                    description="The name and account type people see when they find you."
+                />
+
                 <div className="grid gap-1.5">
                     <Label htmlFor="display_name">Display name</Label>
                     <Input
@@ -114,16 +137,16 @@ export default function IdentityFields({
                         aria-invalid={Boolean(errors.display_name)}
                     />
                     <p className="text-xs text-muted-foreground">
-                        The name people see on your posts and profile.
+                        Shown on your posts, your profile, and in the carrier
+                        directory.
                     </p>
                     <InputError message={errors.display_name} />
                 </div>
 
-                <div className="grid gap-1.5">
-                    <Label htmlFor="account_type">Account type</Label>
+                <div className="grid gap-2">
+                    <p className="text-sm font-medium">Account type</p>
                     <div
-                        id="account_type"
-                        className="grid gap-2 sm:grid-cols-2"
+                        className="grid gap-3 sm:grid-cols-2"
                         role="radiogroup"
                         aria-label="Account type"
                     >
@@ -149,60 +172,123 @@ export default function IdentityFields({
                                     onSelect={() =>
                                         onChange('account_type', type)
                                     }
+                                    testId={`account-type-${type}`}
                                 />
                             );
                         })}
                     </div>
                     <InputError message={errors.account_type} />
                 </div>
-            </div>
+            </section>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                    <Label htmlFor="phone">Phone number</Label>
-                    <Input
-                        id="phone"
-                        inputMode="tel"
-                        value={values.phone}
-                        onChange={(event) =>
-                            onChange('phone', event.target.value)
-                        }
-                        placeholder="+251 91 123 4567"
-                        aria-invalid={Boolean(errors.phone)}
-                    />
-                    <InputError message={errors.phone} />
+            <Separator />
+
+            <section className="space-y-4">
+                <SectionHeading
+                    title="Contact"
+                    description="How a shipper or carrier reaches you after revealing your contact."
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="phone">Phone number</Label>
+                        <Input
+                            id="phone"
+                            inputMode="tel"
+                            value={values.phone}
+                            onChange={(event) =>
+                                onChange('phone', event.target.value)
+                            }
+                            placeholder="+251 91 123 4567"
+                            aria-invalid={Boolean(errors.phone)}
+                        />
+                        <InputError message={errors.phone} />
+                    </div>
+
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="whatsapp">WhatsApp number</Label>
+                        <Input
+                            id="whatsapp"
+                            inputMode="tel"
+                            value={values.whatsapp}
+                            onChange={(event) =>
+                                onChange('whatsapp', event.target.value)
+                            }
+                            placeholder="Optional"
+                            aria-invalid={Boolean(errors.whatsapp)}
+                        />
+                        <InputError message={errors.whatsapp} />
+                    </div>
+
+                    <div className="grid gap-1.5 sm:col-span-2">
+                        <Label htmlFor="email">Contact email</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            value={values.email}
+                            onChange={(event) =>
+                                onChange('email', event.target.value)
+                            }
+                            aria-invalid={Boolean(errors.email)}
+                        />
+                        <InputError message={errors.email} />
+                    </div>
                 </div>
 
-                <div className="grid gap-1.5">
-                    <Label htmlFor="whatsapp">WhatsApp number</Label>
-                    <Input
-                        id="whatsapp"
-                        inputMode="tel"
-                        value={values.whatsapp}
-                        onChange={(event) =>
-                            onChange('whatsapp', event.target.value)
-                        }
-                        placeholder="Optional"
-                        aria-invalid={Boolean(errors.whatsapp)}
-                    />
-                    <InputError message={errors.whatsapp} />
-                </div>
-            </div>
+                <div className="rounded-lg border bg-muted/20">
+                    <div className="border-b px-4 py-3">
+                        <p className="flex items-center gap-2 text-sm font-medium">
+                            <ShieldCheck
+                                className="size-4 text-muted-foreground"
+                                aria-hidden="true"
+                            />
+                            Contact privacy
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                            Choose which channels a reveal may release. A
+                            channel you turn off stays hidden even from somebody
+                            already allowed to reveal you.
+                        </p>
+                    </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                    <Label htmlFor="email">Contact email</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        value={values.email}
-                        onChange={(event) =>
-                            onChange('email', event.target.value)
-                        }
-                        aria-invalid={Boolean(errors.email)}
-                    />
-                    <InputError message={errors.email} />
+                    <div className="divide-y">
+                        {VISIBILITY_FIELDS.map((field) => (
+                            <div
+                                key={field.key}
+                                className="flex items-start justify-between gap-4 px-4 py-3"
+                            >
+                                <div className="min-w-0">
+                                    <Label
+                                        htmlFor={field.key}
+                                        className="text-sm font-medium"
+                                    >
+                                        {field.label}
+                                    </Label>
+                                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                                        {field.description}
+                                    </p>
+                                </div>
+                                <Switch
+                                    id={field.key}
+                                    checked={values[field.key]}
+                                    onCheckedChange={(checked) =>
+                                        onChange(field.key, checked)
+                                    }
+                                    aria-label={field.label}
+                                />
+                            </div>
+                        ))}
+                    </div>
                 </div>
+            </section>
+
+            <Separator />
+
+            <section className="space-y-4">
+                <SectionHeading
+                    title="Base and about"
+                    description="Where you usually start from, and what you want people to know."
+                />
 
                 <div className="grid gap-1.5">
                     <Label htmlFor="primary_location_id">Base location</Label>
@@ -225,128 +311,112 @@ export default function IdentityFields({
                         placeholder="Search your city or town"
                     />
                     <p className="text-xs text-muted-foreground">
-                        Where you usually start from. Carriers need one before
-                        they can express interest.
+                        Carriers need a base before they can express interest in
+                        a load.
                     </p>
                     <InputError message={errors.primary_location_id} />
                 </div>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                    <Label htmlFor="legal_name">
-                        Legal name{' '}
-                        <span className="text-xs font-normal text-muted-foreground">
-                            (business)
-                        </span>
-                    </Label>
-                    <Input
-                        id="legal_name"
-                        value={values.legal_name}
+                    <Label htmlFor="business_description">About</Label>
+                    <Textarea
+                        id="business_description"
+                        rows={4}
+                        value={values.business_description}
                         onChange={(event) =>
-                            onChange('legal_name', event.target.value)
+                            onChange('business_description', event.target.value)
                         }
-                        aria-invalid={Boolean(errors.legal_name)}
+                        placeholder="What you carry, where you run, or what you usually ship."
+                        aria-invalid={Boolean(errors.business_description)}
                     />
-                    <InputError message={errors.legal_name} />
-                </div>
-
-                <div className="grid gap-1.5">
-                    <Label htmlFor="legal_form">Legal form</Label>
-                    <Select
-                        value={values.legal_form || 'none'}
-                        onValueChange={(value) =>
-                            onChange(
-                                'legal_form',
-                                value === 'none' ? '' : value,
-                            )
-                        }
-                    >
-                        <SelectTrigger id="legal_form">
-                            <SelectValue placeholder="Not specified" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">Not specified</SelectItem>
-                            {legalForms.map((form) => (
-                                <SelectItem key={form} value={form}>
-                                    {form}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.legal_form} />
-                </div>
-            </div>
-
-            {isBusiness && values.legal_form === 'Other' && (
-                <div className="grid gap-1.5">
-                    <Label htmlFor="legal_form_other">
-                        Describe the legal form
-                    </Label>
-                    <Input
-                        id="legal_form_other"
-                        value={values.legal_form_other}
-                        onChange={(event) =>
-                            onChange('legal_form_other', event.target.value)
-                        }
-                        aria-invalid={Boolean(errors.legal_form_other)}
-                    />
-                    <InputError message={errors.legal_form_other} />
-                </div>
-            )}
-
-            <div className="grid gap-1.5">
-                <Label htmlFor="business_description">About</Label>
-                <Textarea
-                    id="business_description"
-                    rows={4}
-                    value={values.business_description}
-                    onChange={(event) =>
-                        onChange('business_description', event.target.value)
-                    }
-                    placeholder="What you carry, where you run, or what you usually ship."
-                    aria-invalid={Boolean(errors.business_description)}
-                />
-                <p className="text-xs text-muted-foreground">
-                    Shown on your public page. Do not include contact details;
-                    those are released through a reveal.
-                </p>
-                <InputError message={errors.business_description} />
-            </div>
-
-            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
-                <div>
-                    <h3 className="text-sm font-semibold">
-                        Who can see your contact details
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        These switches decide which channels a reveal may
-                        release. Turning one off withholds that channel even
-                        from somebody already allowed to reveal you.
+                    <p className="text-xs text-muted-foreground">
+                        Shown on your public page. Do not include contact
+                        details; those are released through a reveal.
                     </p>
+                    <InputError message={errors.business_description} />
                 </div>
+            </section>
 
-                {VISIBILITY_FIELDS.map((field) => (
-                    <div
-                        key={field.key}
-                        className="flex items-start justify-between gap-4"
-                    >
-                        <div>
-                            <p className="text-sm font-medium">{field.label}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {field.description}
-                            </p>
-                        </div>
-                        <Switch
-                            checked={values[field.key]}
-                            onCheckedChange={(checked) =>
-                                onChange(field.key, checked)
-                            }
-                            aria-label={field.label}
+            {isBusiness && (
+                <>
+                    <Separator />
+
+                    <section className="space-y-4">
+                        <SectionHeading
+                            title="Business details"
+                            description="Used for verification and review. They are not printed on your public page."
                         />
-                    </div>
-                ))}
-            </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="legal_name">Legal name</Label>
+                                <Input
+                                    id="legal_name"
+                                    value={values.legal_name}
+                                    onChange={(event) =>
+                                        onChange(
+                                            'legal_name',
+                                            event.target.value,
+                                        )
+                                    }
+                                    aria-invalid={Boolean(errors.legal_name)}
+                                />
+                                <InputError message={errors.legal_name} />
+                            </div>
+
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="legal_form">Legal form</Label>
+                                <Select
+                                    value={values.legal_form || 'none'}
+                                    onValueChange={(value) =>
+                                        onChange(
+                                            'legal_form',
+                                            value === 'none' ? '' : value,
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger id="legal_form">
+                                        <SelectValue placeholder="Not specified" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">
+                                            Not specified
+                                        </SelectItem>
+                                        {legalForms.map((form) => (
+                                            <SelectItem key={form} value={form}>
+                                                {form}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.legal_form} />
+                            </div>
+                        </div>
+
+                        {values.legal_form === 'Other' && (
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="legal_form_other">
+                                    Describe the legal form
+                                </Label>
+                                <Input
+                                    id="legal_form_other"
+                                    value={values.legal_form_other}
+                                    onChange={(event) =>
+                                        onChange(
+                                            'legal_form_other',
+                                            event.target.value,
+                                        )
+                                    }
+                                    aria-invalid={Boolean(
+                                        errors.legal_form_other,
+                                    )}
+                                />
+                                <InputError message={errors.legal_form_other} />
+                            </div>
+                        )}
+                    </section>
+                </>
+            )}
         </div>
     );
 }

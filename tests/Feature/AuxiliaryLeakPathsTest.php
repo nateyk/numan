@@ -202,9 +202,17 @@ it('the shared props never carry another user contact data', function (string $r
 })->with([
     'dashboard' => ['dashboard'],
     'freight discovery' => ['freight.discovery'],
-    'transporter directory' => ['transporters.index'],
     'my interests' => ['freight.my-interests'],
 ]);
+
+it('redirects the retired transporter directory without loading profile data', function () {
+    $viewer = auditViewer();
+    auditStranger();
+
+    $this->actingAs($viewer)
+        ->get(route('transporters.index'))
+        ->assertRedirect('/freight');
+});
 
 // ── notification and mail bodies ──────────────────────────────────────────
 

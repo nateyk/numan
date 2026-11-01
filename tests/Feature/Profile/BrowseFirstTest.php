@@ -14,11 +14,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  */
 uses(RefreshDatabase::class);
 
-it('lets a signed-in user with no profile browse freight and transporters', function () {
+it('lets a signed-in user with no profile browse freight and redirects the retired directory', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/freight')->assertOk();
-    $this->actingAs($user)->get('/transporters')->assertOk();
+    $this->actingAs($user)->get('/transporters')->assertRedirect('/freight');
 });
 
 it('redirects onboarding to the public profile page', function () {

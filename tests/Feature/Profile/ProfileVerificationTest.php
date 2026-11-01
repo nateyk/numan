@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  */
 uses(RefreshDatabase::class);
 
-it('shows the verified badge on the profile, directory, and owner summary', function () {
+it('shows the verified badge on public profiles and owner summaries', function () {
     $profile = Profile::factory()->verified()->create([
         'provides_transport' => true,
         'status' => 'approved',
@@ -26,8 +26,7 @@ it('shows the verified badge on the profile, directory, and owner summary', func
     $this->get("/p/{$profile->slug}")
         ->assertInertia(fn ($page) => $page->where('profile.is_verified', true));
 
-    $this->get('/transporters')
-        ->assertInertia(fn ($page) => $page->where('profiles.data.0.is_verified', true));
+    $this->get('/transporters')->assertRedirect('/freight');
 });
 
 it('shows a rejection note and allows resubmission', function () {

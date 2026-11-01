@@ -75,6 +75,29 @@ it('rejects transport details when transport is turned off', function () {
     expect($user->profile->fresh()->truckTypes()->count())->toBe(0);
 });
 
+it('rejects duplicate routes without changing saved carrier details', function () {
+    $user = User::factory()->create();
+    $profile = Profile::factory()->for($user)->create(['provides_transport' => true, 'status' => 'draft']);
+    $origin = Location::factory()->create();
+    $destination = Location::factory()->create();
+    $existingDestination = Location::factory()->create();
+    $existingTruck = TruckType::factory()->create();
+    $newTruck = TruckType::factory()->create();
+    $profile->truckTypes()->attach($existingTruck);
+    $profile->routes()->create(['origin_location_id' => $origin->id, 'destination_location_id' => $existingDestination->id]);
+
+    $route = ['origin_location_id' => $origin->id, 'destination_location_id' => $destination->id];
+
+    $this->actingAs($user)->put('/public-profile/transport', [
+        'truck_type_ids' => [$newTruck->id],
+        'routes' => [$route, $route],
+    ])->assertSessionHasErrors('routes.1.destination_location_id');
+
+    expect($profile->fresh()->truckTypes()->pluck('truck_types.id')->all())->toBe([$existingTruck->id])
+        ->and($profile->routes()->pluck('destination_location_id')->all())->toBe([$existingDestination->id])
+        ->and($profile->fresh()->status)->toBe('draft');
+});
+
 it('stores, downloads, and deletes an owned private document', function () {
     Storage::fake('private');
     $user = User::factory()->create();

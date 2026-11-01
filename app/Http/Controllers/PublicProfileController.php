@@ -7,7 +7,6 @@ use App\Enums\LegalForm;
 use App\Enums\ProfileStatus;
 use App\Http\Requests\UpdatePublicProfileRequest;
 use App\Http\Requests\UpdateTransportProfileRequest;
-use App\Http\Resources\PublicProfileResource;
 use App\Models\Location;
 use App\Models\Profile;
 use App\Models\TruckType;
@@ -16,6 +15,7 @@ use App\Services\ProfileCompletionService;
 use App\Services\SavePublicProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -73,88 +73,6 @@ class PublicProfileController extends Controller
         ]);
     }
 
-    /**
-     * The public carrier directory.
-     *
-     * Only approved transport profiles, and only fields the public resource
-     * allows. The query uses withCount/withExists so a card can say whether
-     * documents exist and were reviewed without loading a single document row.
-     */
-    public function directory(Request $request): Response
-    {
-        $query = Profile::query()
-            ->where('provides_transport', true)
-            ->where('status', ProfileStatus::Approved->value)
-            ->with([
-                'user',
-                'primaryLocation',
-                'truckTypes',
-                'routes.originLocation',
-                'routes.destinationLocation',
-            ])
-            ->withCount('documents')
-            ->withExists([
-                'documents as has_approved_documents' => fn ($documents) => $documents->where('status', 'approved'),
-            ])
-            ->orderByDesc('updated_at');
-
-        if ($request->filled('truck_type')) {
-            $truckType = (string) $request->input('truck_type');
-
-            $query->whereHas('truckTypes', fn ($types) => $types->where('truck_types.slug', $truckType));
-        }
-
-        if ($request->filled('location')) {
-            $location = trim((string) $request->input('location'));
-
-            $query->where(function ($profiles) use ($location): void {
-                if (ctype_digit($location)) {
-                    $id = (int) $location;
-
-                    $profiles->where('primary_location_id', $id)
-                        ->orWhereHas('routes', fn ($routes) => $routes
-                            ->where('origin_location_id', $id)
-                            ->orWhere('destination_location_id', $id));
-
-                    return;
-                }
-
-                $like = "%{$location}%";
-
-                $profiles
-                    ->whereHas('primaryLocation', fn ($primary) => $primary->where('name', 'like', $like))
-                    ->orWhereHas('routes.originLocation', fn ($origin) => $origin->where('name', 'like', $like))
-                    ->orWhereHas('routes.destinationLocation', fn ($destination) => $destination->where('name', 'like', $like));
-            });
-        }
-
-        if ($request->filled('q')) {
-            $search = (string) $request->input('q');
-
-            $query->where(function ($profiles) use ($search): void {
-                $profiles->where('display_name', 'like', "%{$search}%")
-                    ->orWhere('legal_name', 'like', "%{$search}%");
-            });
-        }
-
-        $profiles = $query->paginate(12)->withQueryString();
-
-        return Inertia::render('transporters/index', [
-            'profiles' => PublicProfileResource::collection($profiles),
-            'total' => $profiles->total(),
-            'links' => $profiles->linkCollection()->toArray(),
-            'truckTypes' => TruckType::query()
-                ->active()
-                ->ordered()
-                ->get(['id', 'name', 'slug']),
-            'filters' => [
-                'q' => $request->query('q'),
-                'truck_type' => $request->query('truck_type'),
-                'location' => $request->query('location'),
-            ],
-        ]);
-    }
-
     public function update(UpdatePublicProfileRequest $request, PhoneNumberService $phones): RedirectResponse
     {
         $user = $request->user();
@@ -203,30 +121,28 @@ class PublicProfileController extends Controller
 
         $data = $request->validated();
 
-        // Both keys are optional and a partial save must not erase the other
-        // section.
-        if (array_key_exists('truck_type_ids', $data)) {
-            $profile->truckTypes()->sync($data['truck_type_ids'] ?? []);
-        }
-
-        if (array_key_exists('routes', $data)) {
-            $profile->routes()->delete();
-
-            foreach ($data['routes'] ?? [] as $route) {
-                $profile->routes()->create([
-                    'origin_location_id' => $route['origin_location_id'],
-                    'destination_location_id' => $route['destination_location_id'],
-                ]);
+        DB::transaction(function () use ($data, $profile): void {
+            if (array_key_exists('truck_type_ids', $data)) {
+                $profile->truckTypes()->sync($data['truck_type_ids'] ?? []);
             }
-        }
 
-        // Approved listings keep their approval across an edit; everything else
-        // goes back into the review queue.
-        if ($profile->status !== ProfileStatus::Approved->value) {
-            $profile->forceFill(['status' => ProfileStatus::Pending->value])->save();
-        }
+            if (array_key_exists('routes', $data)) {
+                $profile->routes()->delete();
 
-        $this->completion->update($profile->refresh());
+                foreach ($data['routes'] ?? [] as $route) {
+                    $profile->routes()->create([
+                        'origin_location_id' => $route['origin_location_id'],
+                        'destination_location_id' => $route['destination_location_id'],
+                    ]);
+                }
+            }
+
+            if ($profile->status !== ProfileStatus::Approved->value) {
+                $profile->forceFill(['status' => ProfileStatus::Pending->value])->save();
+            }
+
+            $this->completion->update($profile->refresh());
+        });
 
         return back()->with('success', 'Carrier details saved and submitted for review.');
     }

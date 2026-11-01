@@ -11,6 +11,7 @@ import { type ReactNode } from 'react';
 interface AppLayoutProps {
     children: ReactNode;
     breadcrumbs?: BreadcrumbItem[];
+    contentClassName?: string;
 }
 
 const echoConfigured = Boolean(import.meta.env.VITE_REVERB_APP_KEY);
