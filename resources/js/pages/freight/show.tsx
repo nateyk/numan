@@ -306,19 +306,17 @@ export default function FreightShow({
                                 )}
                             </div>
 
-                            {/* The three facts a carrier decides on now live at
-                                the top of the Freight Details card. */}
                             <div className="grid items-start gap-6 lg:grid-cols-12">
                                 {/* Wide: Freight Details on the left, Consignor Poster
                                     with the action buttons on the right. Compact: they
                                     stack in this order, so the details — what a
                                     transporter actually evaluates — come first and
                                     the call to action follows underneath. */}
-                                <div className="lg:col-span-7">
+                                <div className="lg:col-span-8">
                                     <FreightDetailsCard post={post} />
                                 </div>
 
-                                <div className="space-y-4 lg:col-span-5">
+                                <div className="space-y-4 lg:col-span-4">
                                     <ConsignorPosterCard
                                         owner={post.owner ?? null}
                                         ulid={post.ulid}
