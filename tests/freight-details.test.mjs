@@ -19,6 +19,7 @@ const { default: FreightDetailsCard } = await server.ssrLoadModule(
 );
 
 const post = {
+    status: 'active',
     origin: {
         name: 'Djibouti',
         region_name: 'Djibouti',
@@ -107,4 +108,16 @@ test('offers the map as an on-demand dialog beside the route heading', () => {
         routeSection.indexOf('View route map') < routeSection.indexOf('<dl>'),
     );
     assert.ok(!html.includes('Loading map'));
+});
+
+test('shows the listing status beside the freight details title', () => {
+    const html = renderToStaticMarkup(
+        React.createElement(FreightDetailsCard, { post }),
+    );
+    const header = html.slice(
+        html.indexOf('data-slot="card-header"'),
+        html.indexOf('data-slot="card-content"'),
+    );
+    assert.ok(header.includes('Freight details'));
+    assert.ok(header.includes('active'));
 });

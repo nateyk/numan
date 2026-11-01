@@ -215,10 +215,6 @@ export default function FreightShow({
     const canSubmitInterest =
         !isOwnPost && !hasInterest && post.status === 'active';
 
-    const regionLine = [post.origin?.region_name, post.destination?.region_name]
-        .filter(Boolean)
-        .join(' → ');
-
     return (
         <>
             <Head
@@ -268,42 +264,12 @@ export default function FreightShow({
                     <section className="py-6">
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="mb-6 space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant={
-                                            post.status === 'active'
-                                                ? 'default'
-                                                : 'secondary'
-                                        }
-                                        className="capitalize"
-                                    >
-                                        {post.status}
-                                    </Badge>
-                                    {post.cargo_type?.name && (
-                                        <Badge variant="outline">
-                                            {post.cargo_type.name}
-                                        </Badge>
-                                    )}
-                                    <span className="text-xs text-muted-foreground">
-                                        ULID {post.ulid.slice(0, 8)}
-                                        {post.created_at
-                                            ? ` • ${new Date(post.created_at).toLocaleDateString()}`
-                                            : ''}
-                                    </span>
-                                </div>
-
                                 <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
                                     <MapPin className="size-7 text-primary" />
                                     {post.origin?.name ?? 'Origin'}{' '}
                                     <ArrowRight className="size-5 text-muted-foreground" />
                                     {post.destination?.name ?? 'Destination'}
                                 </h1>
-
-                                {regionLine && (
-                                    <p className="text-muted-foreground">
-                                        {regionLine}
-                                    </p>
-                                )}
                             </div>
 
                             <div className="grid items-start gap-6 lg:grid-cols-12">

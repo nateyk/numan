@@ -5,6 +5,7 @@ import {
     formatDistance,
     formatDuration,
 } from '@/components/freight/format-route';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, Route, Truck } from 'lucide-react';
 
@@ -192,7 +193,7 @@ export default function FreightDetailsCard({
 
     return (
         <Card className="@container gap-0 overflow-hidden">
-            <CardHeader className="pb-4">
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 pb-4">
                 <CardTitle className="flex items-center gap-2 text-base">
                     <Package
                         className="size-4 text-muted-foreground"
@@ -200,6 +201,16 @@ export default function FreightDetailsCard({
                     />{' '}
                     Freight details
                 </CardTitle>
+                {post.status && (
+                    <Badge
+                        variant={
+                            post.status === 'active' ? 'default' : 'secondary'
+                        }
+                        className="capitalize"
+                    >
+                        {post.status}
+                    </Badge>
+                )}
             </CardHeader>
             <CardContent className="grid gap-5 @min-[38rem]:grid-cols-2 @min-[38rem]:gap-6">
                 <section aria-labelledby="freight-route-heading">

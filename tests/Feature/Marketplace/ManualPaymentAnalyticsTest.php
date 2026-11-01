@@ -11,6 +11,7 @@ use App\Services\MarketplaceRevenueAnalyticsService;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -344,15 +345,31 @@ it('zero-fills the daily series so a quiet day is a zero', function () {
     expect($daily[29]['total'])->toBe(0.0);
 });
 
-it('zero-fills the monthly series', function () {
+it('zero-fills the monthly series across calendar boundaries', function (string $today, int $revenueIndex, string $revenueMonth) {
+    $this->travelTo(Carbon::parse($today));
+
     revenueRow('manual', 'yearly', 3999, daysAgo: 2);
 
     $monthly = app(MarketplaceRevenueAnalyticsService::class)->monthly(12);
 
     expect($monthly)->toHaveCount(12);
-    expect($monthly[11]['manual'])->toBe(3999.0);
+    expect($monthly[$revenueIndex]['month'])->toBe($revenueMonth);
+    expect($monthly[$revenueIndex]['manual'])->toBe(3999.0);
+    expect($monthly[$revenueIndex]['total'])->toBe(3999.0);
+    expect($monthly[$revenueIndex]['count'])->toBe(1);
     expect($monthly[0]['total'])->toBe(0.0);
-});
+    expect(array_sum(array_column($monthly, 'manual')))->toBe(3999.0);
+
+    if ($revenueIndex !== 11) {
+        expect($monthly[11]['total'])->toBe(0.0);
+    }
+})->with([
+    'middle of month' => ['2026-11-15 12:00:00', 11, '2026-11'],
+    'first day of month' => ['2026-11-01 12:00:00', 10, '2026-10'],
+    'second day of month' => ['2026-11-02 12:00:00', 10, '2026-10'],
+    'year boundary' => ['2027-01-01 12:00:00', 10, '2026-12'],
+    'leap year boundary' => ['2028-03-01 12:00:00', 10, '2028-02'],
+]);
 
 it('groups revenue by plan', function () {
     revenueRow('chapa', 'weekly', 149);
