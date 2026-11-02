@@ -1,6 +1,6 @@
 import InputError from '@/components/input-error';
 import LocationSearchInput from '@/components/maps/location-search-input';
-import { AccountTypeCard } from '@/components/onboarding/account-type-card';
+import ContactNumberFields from '@/components/profile/contact-number-fields';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,16 +10,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, ShieldCheck, UserRound } from 'lucide-react';
 
 export interface IdentityValues {
     display_name: string;
     account_type: string;
     phone: string;
     whatsapp: string;
+    phone_numbers: string[];
+    whatsapp_numbers: string[];
     email: string;
     business_description: string;
     primary_location_id: number | null;
@@ -32,6 +32,7 @@ export interface IdentityValues {
 }
 
 interface Props {
+    section?: 'basics' | 'contact';
     values: IdentityValues;
     errors: Partial<Record<string, string>>;
     locations: {
@@ -48,61 +49,8 @@ interface Props {
     ) => void;
 }
 
-const ACCOUNT_TYPE_COPY: Record<
-    string,
-    { title: string; description: string }
-> = {
-    personal: {
-        title: 'Individual',
-        description: 'For a person posting or carrying freight themselves.',
-    },
-    business: {
-        title: 'Business',
-        description: 'For a company or organisation that trades on its behalf.',
-    },
-};
-
-const VISIBILITY_FIELDS: {
-    key: 'phone_visible' | 'whatsapp_visible' | 'email_visible';
-    label: string;
-    description: string;
-}[] = [
-    {
-        key: 'phone_visible',
-        label: 'Share my phone number',
-        description:
-            'Released only when someone reveals your contact. Never printed on your public page.',
-    },
-    {
-        key: 'whatsapp_visible',
-        label: 'Share my WhatsApp number',
-        description:
-            'Adds WhatsApp to a reveal, when you have entered a number.',
-    },
-    {
-        key: 'email_visible',
-        label: 'Share my email address',
-        description:
-            'Adds email to a reveal, when you have entered an address.',
-    },
-];
-
-function SectionHeading({
-    title,
-    description,
-}: {
-    title: string;
-    description: string;
-}) {
-    return (
-        <div className="space-y-1">
-            <h3 className="text-sm font-semibold">{title}</h3>
-            <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-    );
-}
-
 export default function IdentityFields({
+    section = 'basics',
     values,
     errors,
     locations,
@@ -110,312 +58,214 @@ export default function IdentityFields({
     legalForms,
     onChange,
 }: Props) {
-    const selectedLocation = values.primary_location_id
-        ? locations.find(
-              (location) => location.id === values.primary_location_id,
-          )
-        : undefined;
-
-    const isBusiness = values.account_type === 'business';
+    const selectedLocation = locations.find(
+        (location) => location.id === values.primary_location_id,
+    );
+    if (section === 'contact')
+        return (
+            <div className="space-y-6">
+                <p className="text-xs text-muted-foreground">
+                    Private until revealed. Use a country code for each number.
+                </p>
+                <ContactNumberFields
+                    field="phone_numbers"
+                    label="Phone"
+                    numbers={values.phone_numbers}
+                    required
+                    errors={errors}
+                    onChange={(numbers) => onChange('phone_numbers', numbers)}
+                />
+                <InputError message={errors.phone} />
+                <ContactNumberFields
+                    field="whatsapp_numbers"
+                    label="WhatsApp"
+                    numbers={values.whatsapp_numbers}
+                    errors={errors}
+                    onChange={(numbers) =>
+                        onChange('whatsapp_numbers', numbers)
+                    }
+                />
+                <div className="grid gap-1.5">
+                    <Label htmlFor="email">Contact email (optional)</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        value={values.email}
+                        onChange={(event) =>
+                            onChange('email', event.target.value)
+                        }
+                        aria-invalid={Boolean(errors.email)}
+                    />
+                    <InputError message={errors.email} />
+                </div>
+                <fieldset className="space-y-3 border-t pt-4">
+                    <legend className="text-sm font-medium">
+                        Share after a contact reveal
+                    </legend>
+                    {(
+                        [
+                            ['phone_visible', 'Phone numbers'],
+                            ['whatsapp_visible', 'WhatsApp numbers'],
+                            ['email_visible', 'Email'],
+                        ] as const
+                    ).map(([key, label]) => (
+                        <div
+                            key={key}
+                            className="flex items-center justify-between gap-4"
+                        >
+                            <Label htmlFor={key}>{label}</Label>
+                            <Switch
+                                id={key}
+                                checked={values[key]}
+                                onCheckedChange={(checked) =>
+                                    onChange(key, checked)
+                                }
+                            />
+                        </div>
+                    ))}
+                </fieldset>
+            </div>
+        );
 
     return (
-        <div className="space-y-7">
-            <section className="space-y-4">
-                <SectionHeading
-                    title="Basics"
-                    description="The name and account type people see when they find you."
-                />
-
+        <div className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                    <Label htmlFor="display_name">Display name</Label>
+                    <Label htmlFor="display_name">Display name *</Label>
                     <Input
                         id="display_name"
+                        required
+                        autoComplete="name"
                         value={values.display_name}
                         onChange={(event) =>
                             onChange('display_name', event.target.value)
                         }
                         aria-invalid={Boolean(errors.display_name)}
                     />
-                    <p className="text-xs text-muted-foreground">
-                        Shown on your posts, your profile, and in the carrier
-                        directory.
-                    </p>
                     <InputError message={errors.display_name} />
                 </div>
-
-                <div className="grid gap-2">
-                    <p className="text-sm font-medium">Account type</p>
-                    <div
-                        className="grid gap-3 sm:grid-cols-2"
-                        role="radiogroup"
-                        aria-label="Account type"
+                <div className="grid gap-1.5">
+                    <Label htmlFor="account_type">Account type</Label>
+                    <Select
+                        value={values.account_type}
+                        onValueChange={(value) =>
+                            onChange('account_type', value)
+                        }
                     >
-                        {accountTypes.map((type) => {
-                            const copy = ACCOUNT_TYPE_COPY[type] ?? {
-                                title: type,
-                                description: '',
-                            };
-
-                            return (
-                                <AccountTypeCard
-                                    key={type}
-                                    icon={
-                                        type === 'business' ? (
-                                            <Building2 className="size-4" />
-                                        ) : (
-                                            <UserRound className="size-4" />
-                                        )
-                                    }
-                                    title={copy.title}
-                                    description={copy.description}
-                                    selected={values.account_type === type}
-                                    onSelect={() =>
-                                        onChange('account_type', type)
-                                    }
-                                    testId={`account-type-${type}`}
-                                />
-                            );
-                        })}
-                    </div>
+                        <SelectTrigger id="account_type">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {accountTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                    {type === 'business'
+                                        ? 'Business'
+                                        : 'Individual'}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <InputError message={errors.account_type} />
                 </div>
-            </section>
-
-            <Separator />
-
-            <section className="space-y-4">
-                <SectionHeading
-                    title="Contact"
-                    description="How a shipper or carrier reaches you after revealing your contact."
+            </div>
+            <div className="grid gap-1.5">
+                <Label htmlFor="primary_location_id">Base location</Label>
+                <LocationSearchInput
+                    id="primary_location_id"
+                    initialName={selectedLocation?.name}
+                    onChange={(id) =>
+                        onChange('primary_location_id', id || null)
+                    }
+                    onSelectLocation={(location) => {
+                        if (!location) onChange('primary_location_id', null);
+                    }}
+                    localOnly
+                    type="city"
+                    placeholder="Search city or town"
                 />
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="phone">Phone number</Label>
-                        <Input
-                            id="phone"
-                            inputMode="tel"
-                            value={values.phone}
-                            onChange={(event) =>
-                                onChange('phone', event.target.value)
-                            }
-                            placeholder="+251 91 123 4567"
-                            aria-invalid={Boolean(errors.phone)}
-                        />
-                        <InputError message={errors.phone} />
-                    </div>
-
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="whatsapp">WhatsApp number</Label>
-                        <Input
-                            id="whatsapp"
-                            inputMode="tel"
-                            value={values.whatsapp}
-                            onChange={(event) =>
-                                onChange('whatsapp', event.target.value)
-                            }
-                            placeholder="Optional"
-                            aria-invalid={Boolean(errors.whatsapp)}
-                        />
-                        <InputError message={errors.whatsapp} />
-                    </div>
-
-                    <div className="grid gap-1.5 sm:col-span-2">
-                        <Label htmlFor="email">Contact email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            value={values.email}
-                            onChange={(event) =>
-                                onChange('email', event.target.value)
-                            }
-                            aria-invalid={Boolean(errors.email)}
-                        />
-                        <InputError message={errors.email} />
-                    </div>
-                </div>
-
-                <div className="rounded-lg border bg-muted/20">
-                    <div className="border-b px-4 py-3">
-                        <p className="flex items-center gap-2 text-sm font-medium">
-                            <ShieldCheck
-                                className="size-4 text-muted-foreground"
-                                aria-hidden="true"
+                <InputError message={errors.primary_location_id} />
+            </div>
+            <div className="grid gap-1.5">
+                <Label htmlFor="business_description">About (optional)</Label>
+                <Textarea
+                    id="business_description"
+                    rows={2}
+                    value={values.business_description}
+                    onChange={(event) =>
+                        onChange('business_description', event.target.value)
+                    }
+                    placeholder="What you ship or carry. Leave contact details out."
+                    aria-invalid={Boolean(errors.business_description)}
+                />
+                <InputError message={errors.business_description} />
+            </div>
+            {values.account_type === 'business' && (
+                <fieldset className="space-y-4 border-t pt-4">
+                    <legend className="text-sm font-medium">
+                        Business details
+                    </legend>
+                    <p className="text-xs text-muted-foreground">
+                        Optional for setup. Complete these to request
+                        verification.
+                    </p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="legal_name">Legal name</Label>
+                            <Input
+                                id="legal_name"
+                                autoComplete="organization"
+                                value={values.legal_name}
+                                onChange={(e) =>
+                                    onChange('legal_name', e.target.value)
+                                }
                             />
-                            Contact privacy
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                            Choose which channels a reveal may release. A
-                            channel you turn off stays hidden even from somebody
-                            already allowed to reveal you.
-                        </p>
-                    </div>
-
-                    <div className="divide-y">
-                        {VISIBILITY_FIELDS.map((field) => (
-                            <div
-                                key={field.key}
-                                className="flex items-start justify-between gap-4 px-4 py-3"
-                            >
-                                <div className="min-w-0">
-                                    <Label
-                                        htmlFor={field.key}
-                                        className="text-sm font-medium"
-                                    >
-                                        {field.label}
-                                    </Label>
-                                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                                        {field.description}
-                                    </p>
-                                </div>
-                                <Switch
-                                    id={field.key}
-                                    checked={values[field.key]}
-                                    onCheckedChange={(checked) =>
-                                        onChange(field.key, checked)
-                                    }
-                                    aria-label={field.label}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <Separator />
-
-            <section className="space-y-4">
-                <SectionHeading
-                    title="Base and about"
-                    description="Where you usually start from, and what you want people to know."
-                />
-
-                <div className="grid gap-1.5">
-                    <Label htmlFor="primary_location_id">Base location</Label>
-                    <LocationSearchInput
-                        id="primary_location_id"
-                        initialName={selectedLocation?.name}
-                        onChange={(id) =>
-                            onChange(
-                                'primary_location_id',
-                                id === 0 ? null : id,
-                            )
-                        }
-                        onSelectLocation={(location) => {
-                            if (location === null) {
-                                onChange('primary_location_id', null);
-                            }
-                        }}
-                        localOnly
-                        type="city"
-                        placeholder="Search your city or town"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        Carriers need a base before they can express interest in
-                        a load.
-                    </p>
-                    <InputError message={errors.primary_location_id} />
-                </div>
-
-                <div className="grid gap-1.5">
-                    <Label htmlFor="business_description">About</Label>
-                    <Textarea
-                        id="business_description"
-                        rows={4}
-                        value={values.business_description}
-                        onChange={(event) =>
-                            onChange('business_description', event.target.value)
-                        }
-                        placeholder="What you carry, where you run, or what you usually ship."
-                        aria-invalid={Boolean(errors.business_description)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        Shown on your public page. Do not include contact
-                        details; those are released through a reveal.
-                    </p>
-                    <InputError message={errors.business_description} />
-                </div>
-            </section>
-
-            {isBusiness && (
-                <>
-                    <Separator />
-
-                    <section className="space-y-4">
-                        <SectionHeading
-                            title="Business details"
-                            description="Used for verification and review. They are not printed on your public page."
-                        />
-
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="legal_name">Legal name</Label>
-                                <Input
-                                    id="legal_name"
-                                    value={values.legal_name}
-                                    onChange={(event) =>
-                                        onChange(
-                                            'legal_name',
-                                            event.target.value,
-                                        )
-                                    }
-                                    aria-invalid={Boolean(errors.legal_name)}
-                                />
-                                <InputError message={errors.legal_name} />
-                            </div>
-
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="legal_form">Legal form</Label>
-                                <Select
-                                    value={values.legal_form || 'none'}
-                                    onValueChange={(value) =>
-                                        onChange(
-                                            'legal_form',
-                                            value === 'none' ? '' : value,
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger id="legal_form">
-                                        <SelectValue placeholder="Not specified" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">
-                                            Not specified
-                                        </SelectItem>
-                                        {legalForms.map((form) => (
-                                            <SelectItem key={form} value={form}>
-                                                {form}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <InputError message={errors.legal_form} />
-                            </div>
+                            <InputError message={errors.legal_name} />
                         </div>
-
-                        {values.legal_form === 'Other' && (
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="legal_form_other">
-                                    Describe the legal form
-                                </Label>
-                                <Input
-                                    id="legal_form_other"
-                                    value={values.legal_form_other}
-                                    onChange={(event) =>
-                                        onChange(
-                                            'legal_form_other',
-                                            event.target.value,
-                                        )
-                                    }
-                                    aria-invalid={Boolean(
-                                        errors.legal_form_other,
-                                    )}
-                                />
-                                <InputError message={errors.legal_form_other} />
-                            </div>
-                        )}
-                    </section>
-                </>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="legal_form">Legal form</Label>
+                            <Select
+                                value={values.legal_form || 'none'}
+                                onValueChange={(value) =>
+                                    onChange(
+                                        'legal_form',
+                                        value === 'none' ? '' : value,
+                                    )
+                                }
+                            >
+                                <SelectTrigger id="legal_form">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">
+                                        Not specified
+                                    </SelectItem>
+                                    {legalForms.map((form) => (
+                                        <SelectItem key={form} value={form}>
+                                            {form}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.legal_form} />
+                        </div>
+                    </div>
+                    {values.legal_form === 'Other' && (
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="legal_form_other">
+                                Other legal form
+                            </Label>
+                            <Input
+                                id="legal_form_other"
+                                value={values.legal_form_other}
+                                onChange={(e) =>
+                                    onChange('legal_form_other', e.target.value)
+                                }
+                            />
+                            <InputError message={errors.legal_form_other} />
+                        </div>
+                    )}
+                </fieldset>
             )}
         </div>
     );

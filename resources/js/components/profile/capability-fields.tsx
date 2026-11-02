@@ -1,5 +1,5 @@
 import InputError from '@/components/input-error';
-import { CapabilityCard } from '@/components/onboarding/capability-card';
+import { Toggle } from '@/components/ui/toggle';
 import { Package, Truck } from 'lucide-react';
 import { useState } from 'react';
 
@@ -49,22 +49,26 @@ export default function CapabilityFields({ values, errors, onChange }: Props) {
     return (
         <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
-                <CapabilityCard
-                    icon={<Package className="size-4" />}
-                    title="I post freight"
-                    description="Publish loads and receive interest from carriers."
-                    selected={values.posts_freight}
-                    onToggle={() => toggle('posts_freight')}
-                    testId="capability-posts-freight"
-                />
-                <CapabilityCard
-                    icon={<Truck className="size-4" />}
-                    title="I provide transport"
-                    description="Express interest in loads and list in the carrier directory."
-                    selected={values.provides_transport}
-                    onToggle={() => toggle('provides_transport')}
-                    testId="capability-provides-transport"
-                />
+                <Toggle
+                    variant="outline"
+                    pressed={values.posts_freight}
+                    onPressedChange={() => toggle('posts_freight')}
+                    className="justify-start gap-2 px-3"
+                    data-test="capability-posts-freight"
+                >
+                    <Package className="size-4" />
+                    Post freight
+                </Toggle>
+                <Toggle
+                    variant="outline"
+                    pressed={values.provides_transport}
+                    onPressedChange={() => toggle('provides_transport')}
+                    className="justify-start gap-2 px-3"
+                    data-test="capability-provides-transport"
+                >
+                    <Truck className="size-4" />
+                    Provide transport
+                </Toggle>
             </div>
 
             {blocked && (

@@ -64,6 +64,8 @@ it('takes a new account from an empty profile to a verified public carrier listi
             'display_name' => 'Ada Haulage',
             'account_type' => 'business',
             'phone' => '+251911000001',
+            'phone_numbers' => ['+251911000001', '+25377123456'],
+            'whatsapp_numbers' => ['+251911000002', '+25377123457'],
             'whatsapp' => '+251911000002',
             'email' => 'dispatch@ada.test',
             'business_description' => 'Flatbed haulage between Addis Ababa and Djibouti.',
@@ -84,6 +86,7 @@ it('takes a new account from an empty profile to a verified public carrier listi
 
     expect($profile->display_name)->toBe('Ada Haulage')
         ->and($profile->phone)->toBe('+251911000001')
+        ->and($profile->phone_numbers)->toBe(['+251911000001', '+25377123456'])
         ->and($profile->posts_freight)->toBeTrue()
         ->and($profile->provides_transport)->toBeTrue()
         ->and($profile->status)->toBe('draft')
@@ -124,8 +127,8 @@ it('takes a new account from an empty profile to a verified public carrier listi
     // 5. A private document upload completes the score.
     $this->actingAs($user)
         ->post('/public-profile/documents', [
-            'type' => 'insurance',
-            'file' => UploadedFile::fake()->create('insurance.pdf', 250, 'application/pdf'),
+            'type' => 'business_registration',
+            'file' => UploadedFile::fake()->create('registration.pdf', 250, 'application/pdf'),
         ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();

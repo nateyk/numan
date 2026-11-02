@@ -48,6 +48,7 @@ function capabilityPayload(User $user, array $overrides = []): array
     return array_merge([
         'display_name' => $profile->display_name,
         'account_type' => $profile->account_type ?? 'personal',
+        'phone' => $profile->phone,
         'posts_freight' => (bool) $profile->posts_freight,
         'provides_transport' => (bool) $profile->provides_transport,
     ], $overrides);

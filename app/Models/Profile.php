@@ -37,6 +37,8 @@ class Profile extends Model
         'display_name',
         'phone',
         'whatsapp',
+        'phone_numbers',
+        'whatsapp_numbers',
         'email',
         'business_description',
         'primary_location_id',
@@ -60,6 +62,8 @@ class Profile extends Model
     protected function casts(): array
     {
         return [
+            'phone_numbers' => 'array',
+            'whatsapp_numbers' => 'array',
             'posts_freight' => 'boolean',
             'provides_transport' => 'boolean',
             'phone_visible' => 'boolean',

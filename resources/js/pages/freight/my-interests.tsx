@@ -1,3 +1,4 @@
+import ContactChannels from '@/components/profile/contact-channels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -68,6 +69,8 @@ interface Props {
             phone: string | null;
             email: string | null;
             whatsapp: string | null;
+            phone_numbers?: string[];
+            whatsapp_numbers?: string[];
         }
     >;
     reveal_blocked?: { limit: number; used: number } | null;
@@ -351,26 +354,15 @@ export default function MyInterests({
                                                             {revealedContacts?.[
                                                                 String(i.id)
                                                             ] ? (
-                                                                <div className="text-right text-xs text-muted-foreground">
-                                                                    <div>
-                                                                        {revealedContacts[
+                                                                <ContactChannels
+                                                                    contact={
+                                                                        revealedContacts[
                                                                             String(
                                                                                 i.id,
                                                                             )
-                                                                        ]
-                                                                            ?.phone ??
-                                                                            'No phone'}
-                                                                    </div>
-                                                                    <div>
-                                                                        {revealedContacts[
-                                                                            String(
-                                                                                i.id,
-                                                                            )
-                                                                        ]
-                                                                            ?.email ??
-                                                                            ''}
-                                                                    </div>
-                                                                </div>
+                                                                        ]!
+                                                                    }
+                                                                />
                                                             ) : canReveal?.[
                                                                   String(i.id)
                                                               ] ? (

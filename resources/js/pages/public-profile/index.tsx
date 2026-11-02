@@ -2,48 +2,26 @@ import CapabilityFields from '@/components/profile/capability-fields';
 import IdentityFields, {
     type IdentityValues,
 } from '@/components/profile/identity-fields';
-import ProfileStrength, {
-    type ProfileStrengthItem,
-} from '@/components/profile/profile-strength';
 import TransportFields from '@/components/profile/transport-fields';
 import VerificationCard, {
     VERIFICATION_STATUS,
 } from '@/components/profile/verification-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import {
-    BadgeCheck,
-    Building2,
-    CheckCircle2,
-    Eye,
-    Info,
-    Package,
-    Save,
-    ShieldQuestion,
-    Truck,
-    UserRound,
-} from 'lucide-react';
-import { useEffect } from 'react';
-
-interface ProfileDocument {
-    id: number;
-    type: string;
-    name: string;
-    status: string;
-    uploaded_at: string | null;
-}
+import { cn } from '@/lib/utils';
+import { type SharedData } from '@/types';
+import { Head, Link, useForm, usePage, useRemember } from '@inertiajs/react';
+import { ArrowLeft, ArrowRight, Eye } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 interface ProfilePayload extends IdentityValues {
     id: number;
@@ -60,9 +38,14 @@ interface ProfilePayload extends IdentityValues {
         origin_location_id: number | null;
         destination_location_id: number | null;
     }[];
-    documents: ProfileDocument[];
+    documents: {
+        id: number;
+        type: string;
+        name: string;
+        status: string;
+        uploaded_at: string | null;
+    }[];
 }
-
 interface Props {
     profile: ProfilePayload;
     locations: {
@@ -77,16 +60,7 @@ interface Props {
     completionScore: number;
     listing_rejection_reason: string | null;
 }
-
-interface PublicProfileFormValues extends IdentityValues {
-    posts_freight: boolean;
-    provides_transport: boolean;
-}
-
-const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-    personal: 'Individual',
-    business: 'Business',
-};
+type Step = 'basics' | 'contact' | 'carrier' | 'review';
 
 export default function PublicProfileIndex({
     profile,
@@ -94,27 +68,33 @@ export default function PublicProfileIndex({
     truckTypes,
     accountTypes,
     legalForms,
-    completionScore,
     listing_rejection_reason,
 }: Props) {
     const { flash } = usePage<SharedData>().props;
     const { addToast } = useToast();
-
+    const [step, setStep] = useRemember<Step>(
+        'basics',
+        `profile-step-${profile.id}`,
+    );
+    const heading = useRef<HTMLHeadingElement>(null);
     useEffect(() => {
-        if (flash?.success) {
-            addToast(flash.success, 'success');
-        }
-
-        if (flash?.error) {
-            addToast(flash.error, 'error');
-        }
+        if (flash?.success) addToast(flash.success, 'success');
+        if (flash?.error) addToast(flash.error, 'error');
     }, [flash?.success, flash?.error, addToast]);
 
-    const form = useForm<PublicProfileFormValues>({
+    const form = useForm<
+        IdentityValues & { posts_freight: boolean; provides_transport: boolean }
+    >({
         display_name: profile.display_name ?? '',
         account_type: profile.account_type ?? 'personal',
         phone: profile.phone ?? '',
         whatsapp: profile.whatsapp ?? '',
+        phone_numbers: profile.phone_numbers?.length
+            ? profile.phone_numbers
+            : [profile.phone ?? ''],
+        whatsapp_numbers:
+            profile.whatsapp_numbers ??
+            (profile.whatsapp ? [profile.whatsapp] : []),
         email: profile.email ?? '',
         business_description: profile.business_description ?? '',
         primary_location_id: profile.primary_location_id,
@@ -127,312 +107,381 @@ export default function PublicProfileIndex({
         posts_freight: profile.posts_freight,
         provides_transport: profile.provides_transport,
     });
-
-    const submit = (event: React.FormEvent) => {
-        event.preventDefault();
-
-        form.patch('/public-profile', { preserveScroll: true });
+    const steps: { id: Step; label: string }[] = [
+        { id: 'basics', label: 'Basics' },
+        { id: 'contact', label: 'Contact' },
+        ...(form.data.provides_transport
+            ? [{ id: 'carrier' as const, label: 'Carrier details' }]
+            : []),
+        { id: 'review', label: 'Review' },
+    ];
+    const currentStep =
+        step === 'carrier' && !profile.provides_transport ? 'contact' : step;
+    const index = steps.findIndex((item) => item.id === currentStep);
+    const goTo = (next: Step) => {
+        setStep(next);
+        requestAnimationFrame(() => {
+            heading.current?.focus();
+            heading.current?.scrollIntoView({
+                block: 'start',
+                behavior: 'instant',
+            });
+        });
     };
-
-    const verification =
-        VERIFICATION_STATUS[profile.verification_status ?? 'unverified'] ??
-        VERIFICATION_STATUS.unverified;
-
-    const savedIsBusiness = profile.account_type === 'business';
-
     const updateIdentity = <K extends keyof IdentityValues>(
         key: K,
         value: IdentityValues[K],
     ) => {
-        form.setData({ ...form.data, [key]: value });
+        form.setData({
+            ...form.data,
+            [key]: value,
+            ...(key === 'phone_numbers'
+                ? { phone: (value as string[])[0] ?? '' }
+                : {}),
+            ...(key === 'whatsapp_numbers'
+                ? { whatsapp: (value as string[])[0] ?? '' }
+                : {}),
+        });
     };
-
-    // The verification endpoint reads the saved profile, not the draft in the
-    // form. Derive readiness from the same values so the button cannot be
-    // enabled by edits that have not been saved yet.
-    const identityReady =
-        (profile.display_name ?? '').trim() !== '' &&
-        (profile.phone ?? '').trim() !== '' &&
-        (!savedIsBusiness ||
-            ((profile.legal_name ?? '').trim() !== '' &&
-                (profile.legal_form ?? '') !== ''));
-
-    const listingIsPublic =
-        profile.provides_transport && profile.status === 'approved';
-
-    const carrierStrengthItems: ProfileStrengthItem[] =
-        profile.provides_transport
-            ? [
-                  {
-                      label: 'Truck types and routes',
-                      state:
-                          profile.truck_type_ids.length > 0 &&
-                          profile.routes.length > 0
-                              ? 'done'
-                              : 'todo',
-                      href: '#carrier',
-                  },
-                  {
-                      label: 'Documents',
-                      state: profile.documents.length > 0 ? 'done' : 'todo',
-                      href: '#documents',
-                  },
-              ]
-            : [];
-
-    const verificationStrength: ProfileStrengthItem = {
-        label:
-            profile.verification_status === 'pending'
-                ? 'Verification in review'
-                : profile.verification_status === 'verified'
-                  ? 'Identity verified'
-                  : 'Identity verification',
-        state:
-            profile.verification_status === 'verified'
-                ? 'done'
-                : profile.verification_status === 'pending'
-                  ? 'pending'
-                  : 'todo',
-        href: '#verification',
+    const save = (advance: boolean) => {
+        form.patch('/public-profile', {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                form.setDefaults();
+                if (advance) {
+                    const saved = page.props.profile as ProfilePayload;
+                    goTo(saved.provides_transport ? 'carrier' : 'review');
+                }
+            },
+            onError: (errors) => {
+                const contactError = Object.keys(errors).some((key) =>
+                    /^(phone|whatsapp|email)/.test(key),
+                );
+                goTo(contactError ? 'contact' : 'basics');
+            },
+        });
     };
-
-    const strengthItems: ProfileStrengthItem[] = [
-        {
-            label: savedIsBusiness
-                ? 'Name, phone, and legal details'
-                : 'Name and phone',
-            state: identityReady ? 'done' : 'todo',
-            href: '#identity',
-        },
-        {
-            label: 'Base location',
-            state: profile.primary_location_id ? 'done' : 'todo',
-            href: '#identity',
-        },
-        {
-            label: 'About you',
-            state: profile.business_description?.trim() ? 'done' : 'todo',
-            href: '#identity',
-        },
-        {
-            label: 'Marketplace role',
-            state:
-                profile.posts_freight || profile.provides_transport
-                    ? 'done'
-                    : 'todo',
-            href: '#role',
-        },
-        ...carrierStrengthItems,
-        verificationStrength,
-    ];
-
-    const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'My Profile', href: '/public-profile' },
-    ];
+    const verification =
+        VERIFICATION_STATUS[profile.verification_status ?? 'unverified'] ??
+        VERIFICATION_STATUS.unverified;
+    const business = profile.account_type === 'business';
+    const hasBusinessProof = profile.documents.some(
+        (document) =>
+            document.type === 'business_registration' &&
+            document.status !== 'rejected',
+    );
+    const identityReady = Boolean(
+        profile.display_name?.trim() &&
+        profile.phone?.trim() &&
+        (!business ||
+            (profile.legal_name?.trim() &&
+                profile.legal_form &&
+                hasBusinessProof)),
+    );
+    const transportProps = {
+        status: profile.status,
+        rejectionReason: listing_rejection_reason,
+        truckTypes,
+        locations,
+        truckTypeIds: profile.truck_type_ids,
+        routes: profile.routes,
+        documents: profile.documents,
+    };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs} contentClassName="overflow-x-clip">
-            <Head title="Public profile" />
-
-            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-                <header className="flex flex-col gap-5 border-b pb-6 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 space-y-3">
-                        <div className="space-y-1.5">
-                            <p className="text-sm font-medium text-muted-foreground">
-                                My profile
-                            </p>
-                            <h1 className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">
-                                Your public profile
-                            </h1>
-                            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                                This is how shippers and carriers find you.
-                                Contact details stay private until someone
-                                reveals them.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline">
-                                {form.data.account_type === 'business' ? (
-                                    <Building2 aria-hidden="true" />
-                                ) : (
-                                    <UserRound aria-hidden="true" />
-                                )}
-                                {ACCOUNT_TYPE_LABELS[form.data.account_type] ??
-                                    form.data.account_type}
-                            </Badge>
-
-                            {form.data.posts_freight && (
-                                <Badge variant="secondary">
-                                    <Package aria-hidden="true" />
-                                    Posts freight
-                                </Badge>
-                            )}
-
-                            {form.data.provides_transport && (
-                                <Badge variant="secondary">
-                                    <Truck aria-hidden="true" />
-                                    Provides transport
-                                </Badge>
-                            )}
-
-                            <Badge className={verification.className}>
-                                {profile.verification_status === 'verified' ? (
-                                    <BadgeCheck aria-hidden="true" />
-                                ) : (
-                                    <ShieldQuestion aria-hidden="true" />
-                                )}
-                                {verification.label}
-                            </Badge>
-                        </div>
-
-                        {profile.provides_transport && (
-                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                <Info
-                                    className="mt-0.5 size-3.5 shrink-0"
-                                    aria-hidden="true"
-                                />
-                                {listingIsPublic
-                                    ? 'Your carrier listing is live in the public directory.'
-                                    : 'Your carrier listing is not public yet.'}
-                            </p>
-                        )}
+        <AppLayout
+            breadcrumbs={[{ title: 'My Profile', href: '/public-profile' }]}
+            contentClassName="overflow-x-clip"
+        >
+            <Head title="My profile" />
+            <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+                <header className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            My profile
+                        </h1>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Your details, contact, and marketplace role.
+                        </p>
                     </div>
-
-                    <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-                        <Button
-                            variant="outline"
-                            asChild
-                            className="w-full sm:w-auto"
-                        >
-                            <Link href={`/p/${profile.slug}`}>
-                                <Eye aria-hidden="true" />
-                                Preview public profile
-                            </Link>
-                        </Button>
-                        <span className="text-xs text-muted-foreground">
-                            /p/{profile.slug}
-                        </span>
-                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={`/p/${profile.slug}`}>
+                            <Eye className="size-4" />
+                            Preview
+                        </Link>
+                    </Button>
                 </header>
+                <nav
+                    aria-label="Profile setup"
+                    className="grid auto-cols-fr grid-flow-col gap-1 rounded-lg border bg-muted/30 p-1"
+                >
+                    {steps.map((item, i) => (
+                        <Button
+                            key={item.id}
+                            type="button"
+                            variant={
+                                currentStep === item.id ? 'secondary' : 'ghost'
+                            }
+                            className={cn(
+                                'h-auto min-h-11 flex-col gap-1 px-1 py-2 text-xs sm:flex-row sm:gap-2',
+                                currentStep === item.id &&
+                                    'bg-background shadow-sm',
+                            )}
+                            aria-current={
+                                currentStep === item.id ? 'step' : undefined
+                            }
+                            disabled={
+                                form.processing ||
+                                (i > index && form.isDirty) ||
+                                (item.id === 'carrier' &&
+                                    !profile.provides_transport)
+                            }
+                            onClick={() => goTo(item.id)}
+                        >
+                            <span
+                                className={cn(
+                                    'flex size-5 items-center justify-center rounded-full text-[10px]',
+                                    currentStep === item.id
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted text-muted-foreground',
+                                )}
+                            >
+                                {i + 1}
+                            </span>
+                            {item.label}
+                        </Button>
+                    ))}
+                </nav>
+                <div>
+                    <h2
+                        ref={heading}
+                        tabIndex={-1}
+                        className="scroll-mt-24 text-lg font-semibold outline-none"
+                    >
+                        {steps[index]?.label}
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Step {index + 1} of {steps.length}
+                    </p>
+                </div>
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-                    <div className="flex min-w-0 flex-col gap-6">
-                        <form onSubmit={submit} className="flex flex-col gap-6">
-                            <Card id="identity" className="scroll-mt-24">
-                                <CardHeader>
-                                    <CardTitle className="text-base">
-                                        Identity
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Who you are on the marketplace, and the
-                                        channels a reveal may release.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <IdentityFields
-                                        values={form.data}
-                                        errors={form.errors}
-                                        locations={locations}
-                                        accountTypes={accountTypes}
-                                        legalForms={legalForms}
-                                        onChange={updateIdentity}
-                                    />
-                                </CardContent>
-                            </Card>
-
-                            <Card id="role" className="scroll-mt-24">
-                                <CardHeader>
-                                    <CardTitle className="text-base">
-                                        Marketplace role
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Choose at least one. Both can be on, and
-                                        you can change this whenever you need
-                                        to.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <CapabilityFields
-                                        values={form.data}
-                                        errors={form.errors}
-                                        onChange={(key, value) =>
-                                            form.setData(key, value)
-                                        }
-                                    />
-                                </CardContent>
-                            </Card>
-
-                            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-lg border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-                                <p
-                                    role="status"
-                                    aria-live="polite"
-                                    className="text-sm"
-                                >
-                                    {form.processing ? (
-                                        <span className="text-muted-foreground">
-                                            Saving your changes…
-                                        </span>
-                                    ) : form.isDirty ? (
-                                        <span className="font-medium text-amber-700 dark:text-amber-400">
-                                            Unsaved changes
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                                            <CheckCircle2
-                                                className="size-4 text-emerald-600 dark:text-emerald-400"
-                                                aria-hidden="true"
-                                            />
-                                            All changes saved
-                                        </span>
-                                    )}
-                                </p>
-
+                {(currentStep === 'basics' || currentStep === 'contact') && (
+                    <form
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            if (currentStep === 'basics') goTo('contact');
+                            else save(true);
+                        }}
+                        className="space-y-4"
+                    >
+                        <Card>
+                            <CardContent className="space-y-6">
+                                <IdentityFields
+                                    section={currentStep}
+                                    values={form.data}
+                                    errors={form.errors}
+                                    locations={locations}
+                                    accountTypes={accountTypes}
+                                    legalForms={legalForms}
+                                    onChange={updateIdentity}
+                                />
+                                {currentStep === 'basics' && (
+                                    <fieldset className="space-y-3 border-t pt-4">
+                                        <legend className="text-sm font-medium">
+                                            What do you do?
+                                        </legend>
+                                        <CapabilityFields
+                                            values={form.data}
+                                            errors={form.errors}
+                                            onChange={(key, value) =>
+                                                form.setData(key, value)
+                                            }
+                                        />
+                                    </fieldset>
+                                )}
+                            </CardContent>
+                        </Card>
+                        <footer className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                {currentStep === 'contact' && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        disabled={form.processing}
+                                        onClick={() => goTo('basics')}
+                                    >
+                                        <ArrowLeft className="size-4" />
+                                        Back
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {currentStep === 'contact' && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={form.processing}
+                                        onClick={() => save(false)}
+                                    >
+                                        Save
+                                    </Button>
+                                )}
                                 <Button
                                     type="submit"
                                     disabled={form.processing}
-                                    className="w-full sm:w-auto"
                                     data-test="profile-save"
                                 >
-                                    {form.processing ? (
-                                        <Spinner />
-                                    ) : (
-                                        <Save aria-hidden="true" />
-                                    )}
-                                    Save changes
+                                    {form.processing ? <Spinner /> : null}
+                                    {currentStep === 'basics'
+                                        ? 'Continue'
+                                        : 'Save & continue'}
+                                    <ArrowRight className="size-4" />
                                 </Button>
                             </div>
-                        </form>
-
-                        {profile.provides_transport && (
-                            <TransportFields
-                                status={profile.status}
-                                rejectionReason={listing_rejection_reason}
-                                truckTypes={truckTypes}
-                                locations={locations}
-                                truckTypeIds={profile.truck_type_ids}
-                                routes={profile.routes}
-                                documents={profile.documents}
-                            />
+                        </footer>
+                        {form.isDirty && (
+                            <p
+                                role="status"
+                                className="text-xs text-muted-foreground"
+                            >
+                                Unsaved changes
+                            </p>
                         )}
-                    </div>
+                    </form>
+                )}
 
-                    <aside className="flex flex-col gap-6 lg:sticky lg:top-20">
-                        <ProfileStrength
-                            score={
-                                profile.provides_transport
-                                    ? completionScore
-                                    : null
-                            }
-                            items={strengthItems}
+                <div hidden={currentStep !== 'carrier'}>
+                    {profile.provides_transport && (
+                        <TransportFields
+                            {...transportProps}
+                            section="carrier"
+                            onSaved={() => goTo('review')}
                         />
+                    )}
+                </div>
+                {currentStep === 'carrier' && (
+                    <Button
+                        variant="ghost"
+                        type="button"
+                        onClick={() => goTo('contact')}
+                    >
+                        <ArrowLeft className="size-4" />
+                        Back
+                    </Button>
+                )}
 
-                        <VerificationCard
-                            status={profile.verification_status}
-                            note={profile.verification_note}
-                            identityReady={identityReady}
-                        />
-                    </aside>
+                <div hidden={currentStep !== 'review'} className="space-y-5">
+                    <Card>
+                        <CardHeader className="flex-row items-center justify-between gap-3">
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                Profile summary
+                            </CardTitle>
+                            <Badge className={verification.className}>
+                                {verification.label}
+                            </Badge>
+                        </CardHeader>
+                        <CardContent>
+                            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Name
+                                    </dt>
+                                    <dd className="mt-1 font-medium">
+                                        {profile.display_name}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Role
+                                    </dt>
+                                    <dd className="mt-1">
+                                        {[
+                                            profile.posts_freight &&
+                                                'Posts freight',
+                                            profile.provides_transport &&
+                                                'Provides transport',
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · ') || 'Not selected'}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Phone
+                                    </dt>
+                                    <dd className="mt-1">
+                                        {profile.phone_numbers?.join(', ') ||
+                                            profile.phone ||
+                                            'Add a phone number'}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Carrier listing
+                                    </dt>
+                                    <dd className="mt-1 capitalize">
+                                        {profile.provides_transport
+                                            ? (profile.status ?? 'Draft')
+                                            : 'Not enabled'}
+                                    </dd>
+                                </div>
+                            </dl>
+                            <Button
+                                className="mt-4"
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => goTo('basics')}
+                            >
+                                Edit details
+                            </Button>
+                        </CardContent>
+                    </Card>
+                    <Collapsible className="space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium">
+                                    {business
+                                        ? 'Business verification'
+                                        : 'Identity verification'}{' '}
+                                    <span className="font-normal text-muted-foreground">
+                                        · Optional
+                                    </span>
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {business
+                                        ? 'Upload registration proof for an admin to review.'
+                                        : 'Request a review for your verified badge.'}
+                                </p>
+                            </div>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    {profile.verification_status ===
+                                        'pending' ||
+                                    profile.verification_status === 'verified'
+                                        ? 'View verification'
+                                        : business
+                                          ? 'Verify business'
+                                          : 'Verify identity'}
+                                </Button>
+                            </CollapsibleTrigger>
+                        </div>
+                        <CollapsibleContent className="space-y-4">
+                            <TransportFields
+                                {...transportProps}
+                                key={business ? 'business' : 'personal'}
+                                section="documents"
+                                defaultDocumentType={
+                                    business ? 'business_registration' : 'id'
+                                }
+                            />
+                            <VerificationCard
+                                status={profile.verification_status}
+                                note={profile.verification_note}
+                                identityReady={identityReady}
+                            />
+                        </CollapsibleContent>
+                    </Collapsible>
                 </div>
             </div>
         </AppLayout>

@@ -1,3 +1,4 @@
+import ContactChannels from '@/components/profile/contact-channels';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,9 +34,7 @@ import {
     Check,
     CheckCircle2,
     Eye,
-    Mail,
     MoreHorizontal,
-    Phone,
     Star,
     User,
     X,
@@ -47,6 +46,8 @@ interface RevealedContact {
     phone: string | null;
     email: string | null;
     whatsapp: string | null;
+    phone_numbers?: string[];
+    whatsapp_numbers?: string[];
 }
 
 interface Interest {
@@ -351,26 +352,15 @@ export default function FreightInterests({
                                                         {revealedContacts?.[
                                                             String(i.id)
                                                         ] ? (
-                                                            <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                                                                <div className="flex items-center gap-1">
-                                                                    <Phone className="size-3" />{' '}
-                                                                    {revealedContacts[
+                                                            <ContactChannels
+                                                                contact={
+                                                                    revealedContacts[
                                                                         String(
                                                                             i.id,
                                                                         )
-                                                                    ]?.phone ??
-                                                                        '—'}
-                                                                </div>
-                                                                <div className="flex items-center gap-1">
-                                                                    <Mail className="size-3" />{' '}
-                                                                    {revealedContacts[
-                                                                        String(
-                                                                            i.id,
-                                                                        )
-                                                                    ]?.email ??
-                                                                        '—'}
-                                                                </div>
-                                                            </div>
+                                                                    ]!
+                                                                }
+                                                            />
                                                         ) : canReveal?.[
                                                               String(i.id)
                                                           ] ? (
@@ -540,13 +530,13 @@ export default function FreightInterests({
                                                     ]?.name
                                                 }
                                             </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {revealedContacts[String(i.id)]
-                                                    ?.phone ?? '—'}{' '}
-                                                •{' '}
-                                                {revealedContacts[String(i.id)]
-                                                    ?.email ?? '—'}
-                                            </div>
+                                            <ContactChannels
+                                                contact={
+                                                    revealedContacts[
+                                                        String(i.id)
+                                                    ]!
+                                                }
+                                            />
                                         </div>
                                     )}
                                     <div className="mt-3 flex gap-2">

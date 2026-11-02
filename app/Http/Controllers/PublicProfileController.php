@@ -78,7 +78,7 @@ class PublicProfileController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
-        if (array_key_exists('phone', $data)) {
+        if (array_key_exists('phone', $data) && ! array_key_exists('phone_numbers', $data)) {
             if (filled($data['phone'])) {
                 $normalized = $phones->normalize($data['phone']);
 
@@ -165,6 +165,8 @@ class PublicProfileController extends Controller
             'account_type' => $profile->account_type,
             'phone' => $profile->phone,
             'whatsapp' => $profile->whatsapp,
+            'phone_numbers' => $profile->phone_numbers ?? array_values(array_filter([$profile->phone])),
+            'whatsapp_numbers' => $profile->whatsapp_numbers ?? array_values(array_filter([$profile->whatsapp])),
             'email' => $profile->email,
             'business_description' => $profile->business_description,
             'primary_location_id' => $profile->primary_location_id,

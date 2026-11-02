@@ -1,3 +1,4 @@
+import ContactChannels from '@/components/profile/contact-channels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
@@ -24,6 +25,8 @@ interface ContactDetails {
     phone: string | null;
     email: string | null;
     whatsapp: string | null;
+    phone_numbers?: string[];
+    whatsapp_numbers?: string[];
 }
 
 interface Counterparty {
@@ -111,11 +114,7 @@ export default function ConnectionShow({
                     <div className="space-y-1 rounded-md border bg-muted/40 p-4">
                         <h3 className="font-semibold">Contact Details</h3>
                         <div>Name: {contact.name}</div>
-                        {contact.phone && <div>Phone: {contact.phone}</div>}
-                        {contact.whatsapp && (
-                            <div>WhatsApp: {contact.whatsapp}</div>
-                        )}
-                        {contact.email && <div>Email: {contact.email}</div>}
+                        <ContactChannels contact={contact} />
                     </div>
                 ) : reveal_blocked ? (
                     <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">

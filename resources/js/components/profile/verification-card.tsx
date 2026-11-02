@@ -1,13 +1,7 @@
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { useForm } from '@inertiajs/react';
 import { BadgeCheck, ShieldCheck, ShieldQuestion } from 'lucide-react';
@@ -24,29 +18,25 @@ export const VERIFICATION_STATUS: Record<
 > = {
     unverified: {
         label: 'Unverified',
-        description:
-            'Request verification once your identity details are complete. The same badge covers posting freight and carrying it.',
+        description: 'Complete your saved details to request a review.',
         className:
             'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-300',
     },
     pending: {
         label: 'Pending review',
-        description:
-            'A reviewer is checking your identity. You can keep using the marketplace while you wait.',
+        description: 'Your request is with the review team.',
         className:
             'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
     },
     verified: {
         label: 'Verified',
-        description:
-            'Your identity has been reviewed. The badge appears on your public profile and next to your name.',
+        description: 'Your verified badge is active.',
         className:
             'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
     },
     rejected: {
         label: 'Rejected',
-        description:
-            'Your verification was not approved. Read the note below, fix the details, and request it again.',
+        description: 'Update the details in the review note, then try again.',
         className:
             'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
@@ -90,9 +80,6 @@ export default function VerificationCard({
                             />
                             Verification
                         </CardTitle>
-                        <CardDescription>
-                            One badge for your whole profile.
-                        </CardDescription>
                     </div>
 
                     <Badge className={current.className}>
@@ -137,8 +124,8 @@ export default function VerificationCard({
 
                         {!identityReady && (
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                                Save your display name, phone number, and
-                                business legal details first.
+                                Complete your saved details and any required
+                                business proof first.
                             </p>
                         )}
                     </form>

@@ -26,6 +26,8 @@ class SavePublicProfile
         'display_name',
         'phone',
         'whatsapp',
+        'phone_numbers',
+        'whatsapp_numbers',
         'email',
         'business_description',
         'primary_location_id',
@@ -63,6 +65,17 @@ class SavePublicProfile
         // every surface can link to the public page.
         if (blank($profile->slug)) {
             $profile->forceFill(['slug' => $profile->generateUniqueSlug()])->save();
+        }
+
+        foreach (['phone' => 'phone_numbers', 'whatsapp' => 'whatsapp_numbers'] as $primary => $numbers) {
+            if (array_key_exists($numbers, $attributes)) {
+                $attributes[$primary] = $attributes[$numbers][0] ?? null;
+            } elseif (array_key_exists($primary, $attributes) && $profile->{$numbers} !== null) {
+                $attributes[$numbers] = array_values(array_unique(array_filter([
+                    $attributes[$primary],
+                    ...array_slice($profile->{$numbers}, 1),
+                ])));
+            }
         }
 
         $profile->fill(Arr::only($attributes, self::ATTRIBUTES));

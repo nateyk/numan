@@ -1,3 +1,4 @@
+import ContactChannels from '@/components/profile/contact-channels';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +35,8 @@ export type RevealedContacts = {
     phone: string | null;
     email: string | null;
     whatsapp?: string | null;
+    phone_numbers?: string[];
+    whatsapp_numbers?: string[];
 } | null;
 
 export type RevealBlocked = {
@@ -63,21 +66,6 @@ function initialsFor(name: string | null): string {
  * wa.me wants digits only, without a leading zero. International numbers are
  * left alone apart from stripping their punctuation.
  */
-function whatsappHref(raw: string): string {
-    let digits = raw.replace(/\D/g, '');
-
-    if (digits.startsWith('00')) {
-        digits = digits.slice(2);
-    }
-
-    if (digits.startsWith('0')) {
-        digits = `251${digits.slice(1)}`;
-    } else if (digits.length === 9 && /^[79]/.test(digits)) {
-        digits = `251${digits}`;
-    }
-
-    return `https://wa.me/${digits}`;
-}
 
 function VerificationBadge({ owner }: { owner: NonNullable<PostOwner> }) {
     // Verified is the only state worth saying. "Identity not verified" on every
@@ -124,53 +112,9 @@ function ContactBlock({
     const isGuest = !page.props.auth?.user;
 
     if (revealedContacts) {
-        const hasChannel =
-            revealedContacts.phone ||
-            revealedContacts.whatsapp ||
-            revealedContacts.email;
-
         return (
-            <div className="space-y-1 rounded-md border bg-muted/30 p-3 text-sm">
-                {revealedContacts.phone && (
-                    <p>
-                        <span className="text-muted-foreground">Phone</span>{' '}
-                        <a
-                            className="font-medium underline-offset-4 hover:underline"
-                            href={`tel:${revealedContacts.phone}`}
-                        >
-                            {revealedContacts.phone}
-                        </a>
-                    </p>
-                )}
-                {revealedContacts.whatsapp && (
-                    <p>
-                        <span className="text-muted-foreground">WhatsApp</span>{' '}
-                        <a
-                            className="font-medium underline-offset-4 hover:underline"
-                            href={whatsappHref(revealedContacts.whatsapp)}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            {revealedContacts.whatsapp}
-                        </a>
-                    </p>
-                )}
-                {revealedContacts.email && (
-                    <p className="break-all">
-                        <span className="text-muted-foreground">Email</span>{' '}
-                        <a
-                            className="font-medium underline-offset-4 hover:underline"
-                            href={`mailto:${revealedContacts.email}`}
-                        >
-                            {revealedContacts.email}
-                        </a>
-                    </p>
-                )}
-                {!hasChannel && (
-                    <p className="text-muted-foreground">
-                        This consignor has not shared a contact method yet.
-                    </p>
-                )}
+            <div className="rounded-md border bg-muted/30 p-3">
+                <ContactChannels contact={revealedContacts} />
             </div>
         );
     }

@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Schema;
 class ContactDetailsResolver
 {
     /**
-     * @return array{name: string, phone: ?string, email: ?string, whatsapp: ?string}
+     * @return array{name: string, phone: ?string, email: ?string, whatsapp: ?string, phone_numbers: list<string>, whatsapp_numbers: list<string>}
      */
     public function resolve(User $counterparty, ?Model $context = null): array
     {
@@ -54,6 +54,8 @@ class ContactDetailsResolver
                 ? $profile->display_name
                 : $counterparty->name,
             'phone' => filled($phone) ? $phone : null,
+            'phone_numbers' => $phoneRefused ? [] : array_values(array_unique(array_filter([$phone, ...array_slice($profile?->phone_numbers ?? [], 1)]))),
+            'whatsapp_numbers' => $whatsappRefused ? [] : array_values(array_unique(array_filter([$profile?->whatsapp, ...array_slice($profile?->whatsapp_numbers ?? [], 1)]))),
             'email' => filled($email) ? $email : null,
             'whatsapp' => $whatsappRefused || blank($profile?->whatsapp)
                 ? null

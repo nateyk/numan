@@ -149,17 +149,15 @@ it('demands a display name', function () {
         ->assertSessionHasErrors('display_name');
 });
 
-it('allows a missing phone to be saved because readiness, not the save, gates action', function () {
-    // A phone is required to post or carry, but not to save a draft profile. The
-    // gate that refuses the action names the missing field; the save path must
-    // not make the page impossible to complete in sections.
+it('requires a phone when saving the profile contact step', function () {
     $user = detailsUser();
+    $originalPhone = $user->profile()->firstOrFail()->phone;
 
     $this->actingAs($user)
         ->patch('/public-profile', detailsPayload(['phone' => '']))
-        ->assertSessionHasNoErrors();
+        ->assertSessionHasErrors('phone');
 
-    expect(Profile::where('user_id', $user->id)->value('phone'))->toBeNull();
+    expect($user->profile()->firstOrFail()->phone)->toBe($originalPhone);
 });
 
 it('rejects a phone number that is not a phone number', function () {

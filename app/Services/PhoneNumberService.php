@@ -81,6 +81,32 @@ class PhoneNumberService
         return '+'.self::COUNTRY_CODE.$digits;
     }
 
+    /** Normalize profile contact numbers; local inputs use Ethiopia's mobile format. */
+    public function normalizeContact(?string $input): ?string
+    {
+        if ($input === null || ! preg_match('/^\+?[0-9\s().-]+$/', trim($input))) {
+            return null;
+        }
+
+        $local = $this->normalize($input);
+
+        if ($local !== null) {
+            return $local;
+        }
+
+        $number = preg_replace('/[\s().-]+/', '', trim($input));
+
+        if (str_starts_with($number, '00')) {
+            $number = '+'.substr($number, 2);
+        }
+
+        if (str_starts_with($number, '+251')) {
+            return null;
+        }
+
+        return preg_match('/^\+[1-9][0-9]{7,14}$/', $number) ? $number : null;
+    }
+
     public function isValid(?string $input): bool
     {
         return $this->normalize($input) !== null;

@@ -434,7 +434,7 @@ it('never exposes bank columns through a reveal, whatever is on the interest', f
 
     // No bank key exists in the response at all.
     expect(array_keys(stepReveal($this, $consignor, $interest)->json('contact')))
-        ->toBe(['name', 'phone', 'email', 'whatsapp']);
+        ->toBe(['name', 'phone', 'phone_numbers', 'whatsapp_numbers', 'email', 'whatsapp']);
 });
 
 it('a transporter who turned phone visibility off does not fall through to another source', function () {

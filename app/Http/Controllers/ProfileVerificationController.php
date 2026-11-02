@@ -67,6 +67,10 @@ class ProfileVerificationController extends Controller
             if (blank($profile->legal_form)) {
                 $missing[] = 'legal form';
             }
+
+            if (! $profile->documents()->where('type', 'business_registration')->where('status', '!=', 'rejected')->exists()) {
+                $missing[] = 'business registration proof';
+            }
         }
 
         if ($missing !== []) {

@@ -32,6 +32,8 @@ class ActivityPropertyScrubber
     public const SENSITIVE_KEYS = [
         'phone',
         'whatsapp',
+        'phone_numbers',
+        'whatsapp_numbers',
         'email',
         'legal_name',
         'contact_name',

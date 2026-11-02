@@ -77,7 +77,7 @@ class MarketplaceConnection extends Model
      * number could be released on the connection page that the reveal endpoint
      * would withhold.
      *
-     * @return array<string, string>|null
+     * @return array<string, string|list<string>>|null
      */
     public function contactDetailsFor(User $user): ?array
     {
@@ -93,7 +93,7 @@ class MarketplaceConnection extends Model
 
         return array_filter(
             app(ContactDetailsResolver::class)->resolve($counterparty),
-            fn (?string $value): bool => filled($value),
+            fn (mixed $value): bool => filled($value),
         );
     }
 }
