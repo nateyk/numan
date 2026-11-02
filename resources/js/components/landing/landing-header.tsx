@@ -7,7 +7,7 @@ import { useTranslations } from '@/hooks/use-translations';
 import { login, register } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Menu, Sparkles } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useState } from 'react';
 
 interface LandingHeaderProps {
@@ -20,30 +20,49 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const navLinks = [
-        { href: '#features', label: t('landing.nav.features', 'Features') },
-        { href: '#pricing', label: t('landing.nav.pricing', 'Pricing') },
         {
-            href: '#testimonials',
-            label: t('landing.nav.testimonials', 'Testimonials'),
+            href: '#how-it-works',
+            label: t('brand.home.nav.how_it_works', 'How it works'),
         },
-        { href: '#faq', label: t('landing.nav.faq', 'FAQ') },
     ];
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
             <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                 {/* Logo */}
-                <Link href="/" className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-foreground">
-                        <Sparkles className="h-4 w-4 text-background" />
-                    </div>
-                    <span className="text-base font-bold tracking-tight">
-                        Laravel SAAS Starter
+                <Link
+                    href="/"
+                    aria-label="Numan Freight home"
+                    className="flex items-center gap-2"
+                >
+                    <span className="flex h-6 w-8 items-center justify-center rounded bg-white sm:h-8 sm:w-10">
+                        <img
+                            src="/brand/numanfreight-symbol.svg"
+                            alt=""
+                            className="h-5 w-7 object-contain sm:h-7 sm:w-9"
+                        />
                     </span>
+                    <img
+                        src="/brand/numanfreight-wordmark.svg"
+                        alt="Numan Freight"
+                        className="h-6 w-auto max-w-28 sm:h-7 sm:max-w-40 dark:hidden"
+                    />
+                    <img
+                        src="/brand/numanfreight-wordmark-white.svg"
+                        alt=""
+                        aria-hidden="true"
+                        className="hidden h-6 w-auto max-w-28 sm:h-7 sm:max-w-40 dark:block"
+                    />
                 </Link>
 
                 {/* Desktop Navigation */}
                 <nav className="hidden items-center gap-6 md:flex">
+                    <Link
+                        href="/freight"
+                        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        {t('brand.home.nav.browse', 'Browse freight')}
+                    </Link>
                     {navLinks.map((link) => (
                         <a
                             key={link.href}
@@ -83,8 +102,8 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                 <Button asChild>
                                     <Link href={register()}>
                                         {t(
-                                            'landing.hero.get_started',
-                                            'Get Started',
+                                            'brand.home.nav.post_load',
+                                            'Post a load',
                                         )}
                                     </Link>
                                 </Button>
@@ -95,8 +114,6 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
 
                 {/* Mobile Menu */}
                 <div className="flex items-center gap-2 md:hidden">
-                    <LanguageSwitcher currentLocale={locale} />
-                    <AppearanceToggleDropdown />
                     <Sheet
                         open={mobileMenuOpen}
                         onOpenChange={setMobileMenuOpen}
@@ -113,6 +130,16 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                         >
                             <div className="flex flex-col gap-6 pt-6">
                                 <nav className="flex flex-col gap-4">
+                                    <Link
+                                        href="/freight"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-lg font-medium text-foreground"
+                                    >
+                                        {t(
+                                            'brand.home.nav.browse',
+                                            'Browse freight',
+                                        )}
+                                    </Link>
                                     {navLinks.map((link) => (
                                         <a
                                             key={link.href}
@@ -171,14 +198,18 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                                 >
                                                     <Link href={register()}>
                                                         {t(
-                                                            'landing.hero.get_started',
-                                                            'Get Started',
+                                                            'brand.home.nav.post_load',
+                                                            'Post a load',
                                                         )}
                                                     </Link>
                                                 </Button>
                                             )}
                                         </>
                                     )}
+                                </div>
+                                <div className="flex items-center gap-3 border-t pt-4">
+                                    <LanguageSwitcher currentLocale={locale} />
+                                    <AppearanceToggleDropdown />
                                 </div>
                             </div>
                         </SheetContent>

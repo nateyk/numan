@@ -150,6 +150,7 @@ Route::get('/', function () {
 
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
+        'appUrl' => rtrim((string) config('app.url'), '/'),
         'marketplacePlans' => $marketplacePlans,
         // Free limits come from admin-editable settings, never hardcoded text.
         'freeLimits' => app(MarketplaceSettingsService::class)->all(),

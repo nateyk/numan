@@ -1,10 +1,10 @@
+import AppLogoIcon from '@/components/app-logo-icon';
 import AppearanceToggleDropdown from '@/components/appearance-dropdown';
 import CookieConsentBanner from '@/components/cookie-consent-banner';
 import { Card, CardContent } from '@/components/ui/card';
 import AuthLayoutTemplate from '@/layouts/auth/auth-simple-layout';
 import { home } from '@/routes';
 import { Link } from '@inertiajs/react';
-import { Truck } from 'lucide-react';
 
 type AuthLayoutVariant = 'centered' | 'split';
 type AuthLayoutMaxWidth = 'md' | 'lg';
@@ -29,18 +29,20 @@ function CenteredAuthLayout({
         <div className="flex min-h-svh flex-col bg-muted">
             {/* Top bar — mobile + desktop */}
             <header className="flex items-center justify-between border-b bg-background px-4 py-3 sm:px-6">
-                <Link href={home()} className="flex items-center gap-2">
-                    <div className="flex size-8 items-center justify-center rounded-md bg-foreground text-background">
-                        <Truck className="size-4" />
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-sm leading-none font-semibold tracking-tight">
-                            NumanFreight
-                        </span>
-                        <span className="hidden text-[11px] leading-none text-muted-foreground sm:block">
-                            Move freight with more confidence.
-                        </span>
-                    </div>
+                <Link
+                    href={home()}
+                    aria-label="Numan Freight home"
+                    className="flex items-center gap-2"
+                >
+                    <AppLogoIcon
+                        alt=""
+                        className="size-8 rounded-md object-contain"
+                    />
+                    <img
+                        src="/brand/numanfreight-wordmark.svg"
+                        alt="Numan Freight"
+                        className="h-6 w-auto max-w-32"
+                    />
                 </Link>
                 <AppearanceToggleDropdown />
             </header>
@@ -50,9 +52,6 @@ function CenteredAuthLayout({
                     <Card className="rounded-lg border bg-card py-6 shadow-sm">
                         <CardContent className="space-y-6 p-6">
                             <div className="space-y-2 text-center">
-                                <div className="mx-auto flex size-9 items-center justify-center rounded-md bg-foreground text-background sm:hidden">
-                                    <Truck className="size-4" />
-                                </div>
                                 <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                                     {title}
                                 </h1>

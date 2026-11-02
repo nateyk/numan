@@ -22,10 +22,13 @@ export default function AuthSplitLayout({
                 <div className="absolute inset-0 bg-zinc-900" />
                 <Link
                     href={home()}
-                    className="relative z-20 flex items-center text-lg font-medium"
+                    className="relative z-20 flex items-center gap-3 text-lg font-medium"
                 >
-                    <AppLogoIcon className="mr-2 size-8 fill-current text-white" />
-                    {name}
+                    <AppLogoIcon
+                        alt=""
+                        className="h-9 w-10 rounded bg-white object-contain"
+                    />
+                    <span>{name}</span>
                 </Link>
                 {quote && (
                     <div className="relative z-20 mt-auto">
@@ -44,9 +47,13 @@ export default function AuthSplitLayout({
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
                     <Link
                         href={home()}
+                        aria-label="Numan Freight home"
                         className="relative z-20 flex items-center justify-center lg:hidden"
                     >
-                        <AppLogoIcon className="h-10 fill-current text-foreground sm:h-12" />
+                        <AppLogoIcon
+                            alt=""
+                            className="h-12 w-12 rounded bg-white object-contain"
+                        />
                     </Link>
                     <div className="flex flex-col items-start gap-2 text-left sm:items-center sm:text-center">
                         <h1 className="text-xl font-medium">{title}</h1>

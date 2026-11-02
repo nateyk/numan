@@ -2,207 +2,157 @@ import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/hooks/use-translations';
 import { Link } from '@inertiajs/react';
-import {
-    CheckCircle,
-    CreditCard,
-    MapPinned,
-    ShieldCheck,
-    Truck,
-} from 'lucide-react';
+import { ArrowDown, ArrowRight, MapPin, Package, Truck } from 'lucide-react';
 
 export function LandingHero() {
     const { t } = useTranslations();
 
-    const stats = [
-        {
-            icon: Truck,
-            value: '5,000+',
-            label: t('landing.hero.stats.developers', 'Loads Posted'),
-        },
-        {
-            icon: ShieldCheck,
-            value: '2,000+',
-            label: t('landing.hero.stats.features', 'Verified Carriers'),
-        },
-        {
-            icon: CreditCard,
-            value: 'ETB',
-            label: t('landing.hero.stats.opensource', 'Via Chapa'),
-        },
-    ];
-
-    const features = [
-        t('landing.hero.features.auth', 'Post Loads in Seconds'),
-        t('landing.hero.features.team', 'Discover Verified Trucks'),
-        t('landing.hero.features.billing', 'ETB Payments via Chapa'),
-        t('landing.hero.features.admin', 'Real-time Tracking'),
-        t('landing.hero.features.flags', 'KYC Verification'),
-        t('landing.hero.features.audit', 'Addis–Djibouti & Nationwide'),
-    ];
-
     return (
-        <section className="relative overflow-hidden py-20 sm:py-28 lg:py-36">
-            {/* Subtle background */}
-            <div className="absolute inset-0 -z-10">
-                <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/30" />
-            </div>
-
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-3xl text-center">
-                    <div className="mb-6 inline-flex items-center gap-2 rounded-sm border border-accent/40 bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wider text-foreground uppercase">
-                        <MapPinned className="h-3.5 w-3.5 text-accent-foreground" />
-                        <span>
-                            {t(
-                                'landing.hero.badge',
-                                "Ethiopia's Freight Marketplace • ETB via Chapa",
-                            )}
-                        </span>
+        <section
+            id="top"
+            className="relative isolate overflow-hidden border-b bg-[#F5FAFD] dark:bg-[#091A2D]"
+        >
+            <div
+                aria-hidden="true"
+                className="absolute -top-48 -right-44 -z-10 size-[34rem] rounded-full bg-[#2D9CDB]/10 blur-3xl"
+            />
+            <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16 lg:px-8 lg:py-28">
+                <div className="max-w-2xl">
+                    <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#2D9CDB]/25 bg-white/80 px-3.5 py-1.5 text-sm font-medium text-[#0F294A] shadow-sm dark:bg-slate-900 dark:text-slate-100">
+                        <span className="size-2 rounded-full bg-[#2D9CDB]" />
+                        {t(
+                            'brand.home.hero.badge',
+                            "Ethiopia's freight marketplace",
+                        )}
                     </div>
 
-                    {/* Headline — freight-forward */}
-                    <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
-                        <span className="block">
-                            {t(
-                                'landing.hero.title.part1',
-                                "Ethiopia's Freight",
-                            )}
-                        </span>
-                        <span className="block text-primary">
-                            {t('landing.hero.title.part2', 'Marketplace')}
-                        </span>
-                    </h1>
-
-                    {/* Subheadline */}
-                    <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
+                    <h1 className="max-w-2xl text-4xl leading-[1.08] font-bold tracking-tight text-[#0F294A] sm:text-5xl lg:text-6xl dark:text-slate-50">
                         {t(
-                            'landing.hero.description',
-                            'Post loads, discover verified carriers, and move freight from Addis Ababa to Djibouti and nationwide. Secure payments in ETB via Chapa, live tracking, and KYC-verified transporters.',
-                        )}{' '}
-                        <span className="font-semibold text-foreground">
-                            {t(
-                                'landing.hero.description_highlight',
-                                'Pay in ETB via Chapa.',
-                            )}
-                        </span>
+                            'brand.home.hero.title',
+                            'A clearer way to move freight.',
+                        )}
+                    </h1>
+                    <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600 sm:text-xl dark:text-slate-300">
+                        {t(
+                            'brand.home.hero.description',
+                            'Post a load, find freight, and connect with carriers. Numan Freight brings the people moving goods across Ethiopia into one marketplace.',
+                        )}
                     </p>
 
-                    {/* CTA Buttons */}
-                    <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                         <PostFreightButton
                             size="lg"
-                            className="h-11 px-7 text-sm font-semibold"
-                            label={t(
-                                'landing.hero.cta.get_started',
-                                'Post a Load Free',
-                            )}
+                            className="h-12 bg-[#0F294A] px-6 text-white hover:bg-[#173B67] dark:bg-[#2D9CDB] dark:text-[#0F294A] dark:hover:bg-[#65BCEB]"
+                            label={t('brand.home.nav.post_load', 'Post a load')}
                         />
                         <Button
+                            asChild
                             size="lg"
                             variant="outline"
-                            asChild
-                            className="h-11 px-7 text-sm"
+                            className="h-12 border-[#0F294A]/20 bg-white px-6 text-[#0F294A] hover:bg-[#0F294A]/5 dark:border-slate-600 dark:bg-slate-900 dark:!text-slate-100 dark:hover:bg-slate-800"
                         >
                             <Link href="/freight">
-                                <Truck className="mr-2 h-4 w-4" />
-                                {t(
-                                    'landing.hero.cta.browse_freight',
-                                    'Browse Freight',
-                                )}
+                                {t('brand.home.nav.browse', 'Browse freight')}
+                                <ArrowRight className="size-4" />
                             </Link>
                         </Button>
                     </div>
 
-                    {/* Quick Features */}
-                    <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-                        {features.map((feature) => (
-                            <div
-                                key={feature}
-                                className="flex items-center gap-1.5 text-sm text-muted-foreground"
-                            >
-                                <CheckCircle className="h-3.5 w-3.5 text-primary" />
-                                {feature}
-                            </div>
-                        ))}
+                    <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-600">
+                        <span className="inline-flex items-center gap-2 dark:text-slate-300">
+                            <Package className="size-4 text-[#2D9CDB]" />
+                            {t(
+                                'brand.home.hero.point.loads',
+                                'Loads with clear routes and cargo details',
+                            )}
+                        </span>
+                        <span className="inline-flex items-center gap-2 dark:text-slate-300">
+                            <Truck className="size-4 text-[#2D9CDB]" />
+                            {t(
+                                'brand.home.hero.point.carriers',
+                                'Carriers ready to find their next run',
+                            )}
+                        </span>
                     </div>
                 </div>
 
-                <div className="mx-auto mt-14 grid max-w-2xl grid-cols-3 divide-x divide-border border-y">
-                    {stats.map((stat) => (
-                        <div key={stat.label} className="py-6 text-center">
-                            <div className="text-2xl font-bold tabular-nums sm:text-3xl">
-                                {stat.value}
+                <div className="relative mx-auto w-full max-w-xl lg:ml-auto">
+                    <div className="absolute -inset-4 rounded-[2rem] bg-[#2D9CDB]/10 blur-xl" />
+                    <div className="relative overflow-hidden rounded-2xl border border-[#0F294A]/10 bg-white shadow-[0_24px_70px_-35px_rgba(15,41,74,0.35)] dark:border-white/10 dark:bg-slate-900">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+                            <div>
+                                <p className="text-sm font-semibold text-[#0F294A] dark:text-slate-100">
+                                    {t(
+                                        'brand.home.hero.route_title',
+                                        'Every load starts with a route',
+                                    )}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                    {t(
+                                        'brand.home.hero.route_description',
+                                        'Bring the route, cargo, and people together.',
+                                    )}
+                                </p>
                             </div>
-                            <div className="mt-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                                {stat.label}
-                            </div>
+                            <img
+                                src="/brand/numanfreight-symbol.svg"
+                                alt=""
+                                className="h-9 w-12 object-contain"
+                            />
                         </div>
-                    ))}
-                </div>
 
-                {/* Hero preview card — freight board mock */}
-                <div className="relative mx-auto mt-12 max-w-5xl">
-                    <div className="overflow-hidden rounded-lg border bg-foreground shadow-xl">
-                        {/* Window chrome bar */}
-                        <div className="flex items-center gap-1.5 border-b border-white/10 bg-foreground px-4 py-3">
-                            <span className="h-3 w-3 rounded-full bg-red-500/70" />
-                            <span className="h-3 w-3 rounded-full bg-yellow-500/70" />
-                            <span className="h-3 w-3 rounded-full bg-green-500/70" />
-                            <div className="ml-4 flex-1 rounded bg-white/10 px-3 py-1 text-xs text-white/40">
-                                app.numanfreight.et/board • ETB • Chapa Secured
-                            </div>
-                        </div>
-                        <div className="flex h-64 items-center justify-center p-8 sm:h-80">
-                            <div className="text-center">
-                                <div className="mb-4 flex justify-center">
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-md bg-primary/20">
-                                        <Truck className="h-7 w-7 text-primary" />
-                                    </div>
+                        <div className="space-y-0 px-5 py-3 sm:px-6">
+                            <div className="flex items-center gap-4 py-4">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#2D9CDB]/10 text-[#0F294A] dark:text-sky-300">
+                                    <MapPin className="size-5" />
                                 </div>
-                                <p className="text-base font-semibold text-white">
-                                    {t(
-                                        'landing.hero.preview.title',
-                                        'Live Freight Board',
-                                    )}
-                                </p>
-                                <p className="mt-2 text-sm text-white/50">
-                                    {t(
-                                        'landing.hero.preview.description',
-                                        'Post loads, get bids, and track shipments across Ethiopia — all in ETB via Chapa',
-                                    )}
-                                </p>
-                                <div className="mt-5 flex flex-wrap justify-center gap-2">
-                                    {[
-                                        t(
-                                            'landing.hero.preview.tags.multi_tenant',
-                                            'Post Load',
-                                        ),
-                                        t(
-                                            'landing.hero.preview.tags.stripe_billing',
-                                            'Chapa ETB',
-                                        ),
-                                        t(
-                                            'landing.hero.preview.tags.admin_panel',
-                                            'Live Tracking',
-                                        ),
-                                        t(
-                                            'landing.hero.preview.tags.team_roles',
-                                            'Verified Trucks',
-                                        ),
-                                        t(
-                                            'landing.hero.preview.tags.feature_flags',
-                                            'KYC Verified',
-                                        ),
-                                    ].map((tag) => (
-                                        <span
-                                            key={tag}
-                                            className="rounded-sm border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70"
-                                        >
-                                            {tag}
-                                        </span>
-                                    ))}
+                                <div>
+                                    <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                                        {t(
+                                            'brand.home.hero.origin_label',
+                                            'Origin',
+                                        )}
+                                    </p>
+                                    <p className="mt-1 text-base font-semibold text-[#0F294A] dark:text-slate-100">
+                                        {t(
+                                            'brand.home.hero.origin_value',
+                                            'Where the freight begins',
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="ml-5 h-8 border-l-2 border-dashed border-[#2D9CDB]/50" />
+                            <div className="flex items-center gap-4 py-4">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#0F294A] text-white">
+                                    <MapPin className="size-5" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                                        {t(
+                                            'brand.home.hero.destination_label',
+                                            'Destination',
+                                        )}
+                                    </p>
+                                    <p className="mt-1 text-base font-semibold text-[#0F294A] dark:text-slate-100">
+                                        {t(
+                                            'brand.home.hero.destination_value',
+                                            'Where it needs to go',
+                                        )}
+                                    </p>
                                 </div>
                             </div>
                         </div>
+
+                        <Link
+                            href="/freight"
+                            className="flex items-center justify-between bg-[#F3F8FB] px-5 py-4 text-sm font-medium text-[#0F294A] transition-colors hover:bg-[#EAF4FA] sm:px-6 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                        >
+                            {t(
+                                'brand.home.hero.route_link',
+                                'Explore freight on the board',
+                            )}
+                            <ArrowDown className="size-4 -rotate-90 text-[#2D9CDB]" />
+                        </Link>
                     </div>
                 </div>
             </div>
