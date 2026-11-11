@@ -39,6 +39,7 @@ interface Props {
     interestId: number | null;
     canReveal: boolean;
     revealedContacts: RevealedContacts;
+    revealBlock?: RevealBlocked;
     interestsCount: number | null;
     canRegister?: boolean;
     /**
@@ -78,6 +79,7 @@ export default function FreightShow({
     interestId,
     canReveal,
     revealedContacts,
+    revealBlock = null,
     interestsCount,
     isHiddenListing = false,
     canRestoreListing = false,
@@ -194,7 +196,7 @@ export default function FreightShow({
         });
     };
 
-    const blocked = (revealBlocked ?? null) as RevealBlocked;
+    const blocked = (revealBlocked ?? revealBlock ?? null) as RevealBlocked;
 
     // Five interest outcomes, five honest renderings. The server allows a fresh
     // expression after a rejection or withdrawal (its duplicate check skips
