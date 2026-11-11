@@ -205,14 +205,20 @@ class PublicFreightDiscoveryController extends Controller
         // for the owner — the owner gets an Edit action instead.
         $canReveal = false;
         $revealedContacts = null;
+        $revealBlock = null;
 
         if ($user && $user->id !== $post->user_id && $post->user) {
             $canReveal = $this->reveals->canReveal($user, $post->user, $post);
 
-            // Read-only. contactIfAlreadyRevealed() never records a reveal, so
-            // loading this page cannot consume anybody's quota.
+            // Read-only. Contact and usage are not changed by loading a page.
             $revealedContacts = $canReveal
                 ? $this->reveals->contactIfAlreadyRevealed($user, $post->user, $post)
+                : null;
+
+            // Show the upgrade state before offering an action which the
+            // server would reject. An already-unlocked contact stays available.
+            $revealBlock = $canReveal
+                ? $this->reveals->revealBlockFor($user, $post->user)
                 : null;
         }
 
@@ -254,6 +260,7 @@ class PublicFreightDiscoveryController extends Controller
             // goes through the metered, ledgered endpoint.
             'canReveal' => $canReveal,
             'revealedContacts' => $revealedContacts,
+            'revealBlock' => $revealBlock,
             'interestsCount' => $interestsCount,
             'marketplaceEntitlement' => $marketplaceEntitlement,
             // Lets the owner page render the "hidden, subscribe to restore"
