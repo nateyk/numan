@@ -171,6 +171,7 @@ export default function DiscoverIndex({
     // "Updating results…" instead of announcing a sort order that has not
     // landed yet.
     const [updatingResults, setUpdatingResults] = useState(false);
+    const [showMoreFilters, setShowMoreFilters] = useState(false);
 
     // Express Interest is a commitment the shipper sees, so it asks first: one
     // tap used to fire the POST from mid-scroll with no confirmation and no
@@ -347,40 +348,37 @@ export default function DiscoverIndex({
             <div className="min-h-screen bg-background text-foreground">
                 <DiscoveryHeader canRegister={canRegister} />
                 <main id="main-content">
-                    <section aria-labelledby="freight-heading" className="py-8">
+                    <section aria-labelledby="freight-heading" className="pt-6 pb-3 sm:pt-8 sm:pb-4">
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                            <div className="mb-6">
+                            <div className="mb-4">
                                 <h1
                                     id="freight-heading"
-                                    className="text-3xl font-bold tracking-tight text-balance"
+                                    className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl"
                                 >
-                                    Discover Freight Across Ethiopia
+                                    Find freight for your next trip
                                 </h1>
-                                <p className="mt-2 max-w-2xl text-muted-foreground">
-                                    Browse{' '}
-                                    {safeFreight.total ??
-                                        safeFreight.data.length}{' '}
-                                    active freight posts — 934 major towns from
-                                    Addis Ababa to Jijiga, Hawassa to Mekelle.
-                                    Find verified loads for your fleet.
+                                <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                                    Browse {resultTotal} active load
+                                    {resultTotal === 1 ? '' : 's'} and find
+                                    routes that work for your fleet.
                                 </p>
                             </div>
 
                             {/* Not overflow-hidden: the location combobox
                                 must be able to escape this card when its
                                 results open. */}
-                            <Card className="gap-0 border py-0 shadow-sm">
-                                <CardContent className="space-y-4 p-4 sm:p-5">
+                            <Card className="gap-0 border py-0 shadow-none">
+                                <CardContent className="space-y-3 p-3 sm:p-5">
                                     <form
                                         onSubmit={(e) => {
                                             e.preventDefault();
                                             doSearch();
                                         }}
                                         aria-label="Filter freight posts"
-                                        className="space-y-4"
+                                        className="space-y-3"
                                     >
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                                            <div className="w-full max-w-md space-y-1.5">
+                                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                                            <div className="min-w-0 space-y-1.5">
                                                 <Label
                                                     htmlFor="freight-search"
                                                     className="text-xs font-medium"
@@ -402,7 +400,7 @@ export default function DiscoverIndex({
                                                                 e.target.value,
                                                             )
                                                         }
-                                                        className="h-9 pl-10"
+                                                        className="h-11 pl-10"
                                                         aria-label="Search cargo and description"
                                                     />
                                                 </div>
@@ -420,7 +418,7 @@ export default function DiscoverIndex({
                                                     >
                                                         <Button
                                                             variant="outline"
-                                                            className="h-9 w-full justify-between sm:w-auto"
+                                                            className="h-11 w-full justify-between sm:min-w-44"
                                                             aria-labelledby="sort-label"
                                                         >
                                                             <span className="inline-flex items-center gap-2">
@@ -482,12 +480,29 @@ export default function DiscoverIndex({
                                             </div>
                                         </div>
 
-                                        <fieldset className="space-y-3 border-0 p-0">
+                                        <div className="sm:contents">
+                                            <button
+                                                type="button"
+                                                aria-expanded={showMoreFilters}
+                                                aria-controls="freight-advanced-filters"
+                                                onClick={() => setShowMoreFilters((current) => !current)}
+                                                className="flex min-h-11 w-full items-center justify-between rounded-md border bg-muted/40 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+                                            >
+                                                <span className="inline-flex items-center gap-2">
+                                                    <SlidersHorizontal className="size-4" aria-hidden="true" />
+                                                    Route & cargo filters
+                                                </span>
+                                                <ChevronDown className={showMoreFilters ? 'size-4 rotate-180 text-muted-foreground transition-transform' : 'size-4 text-muted-foreground transition-transform'} aria-hidden="true" />
+                                            </button>
+                                            <fieldset
+                                                id="freight-advanced-filters"
+                                                className={showMoreFilters ? 'mt-3 block border-0 p-0 sm:mt-0 sm:block' : 'mt-3 hidden border-0 p-0 sm:mt-0 sm:block'}
+                                            >
                                             <legend className="sr-only">
                                                 Location and cargo filters
                                             </legend>
-                                            <div className="flex flex-wrap items-end gap-3">
-                                                <div className="space-y-1.5">
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                                <div className="min-w-0 space-y-1.5">
                                                     <Label
                                                         htmlFor="origin-filter"
                                                         className="text-xs font-medium"
@@ -518,11 +533,11 @@ export default function DiscoverIndex({
                                                             );
                                                         }}
                                                         placeholder="Addis Ababa…"
-                                                        className="w-48"
+                                                        className="w-full [&_input]:h-11"
                                                         localOnly
                                                     />
                                                 </div>
-                                                <div className="space-y-1.5">
+                                                <div className="min-w-0 space-y-1.5">
                                                     <Label
                                                         htmlFor="destination-filter"
                                                         className="text-xs font-medium"
@@ -553,11 +568,11 @@ export default function DiscoverIndex({
                                                             );
                                                         }}
                                                         placeholder="Hawassa…"
-                                                        className="w-48"
+                                                        className="w-full [&_input]:h-11"
                                                         localOnly
                                                     />
                                                 </div>
-                                                <div className="space-y-1.5">
+                                                <div className="min-w-0 space-y-1.5">
                                                     <Label
                                                         className="text-xs font-medium"
                                                         id="cargo-label"
@@ -571,7 +586,7 @@ export default function DiscoverIndex({
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                className="h-8 gap-1.5 text-xs"
+                                                                className="h-11 w-full justify-between gap-2 px-3 text-sm"
                                                                 aria-labelledby="cargo-label"
                                                             >
                                                                 {selectedCargo ===
@@ -628,7 +643,7 @@ export default function DiscoverIndex({
                                                 <Button
                                                     type="submit"
                                                     size="sm"
-                                                    className="h-8 px-3 text-xs"
+                                                    className="h-11 w-full text-sm"
                                                 >
                                                     <Search
                                                         className="size-3.5"
@@ -641,12 +656,13 @@ export default function DiscoverIndex({
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={clearAll}
-                                                    className="h-8 px-3 text-xs"
+                                                    className="h-11 w-full text-sm"
                                                 >
                                                     Clear all
                                                 </Button>
                                             </div>
-                                        </fieldset>
+                                            </fieldset>
+                                        </div>
                                     </form>
 
                                     {activeFilters.length > 0 && (
@@ -686,29 +702,29 @@ export default function DiscoverIndex({
 
                             {marketplaceEntitlement &&
                                 !marketplaceEntitlement.can_post && (
-                                    <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
-                                        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                                    <aside
+                                        aria-label="Freight posting access"
+                                        className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-3 sm:px-4"
+                                    >
+                                        <div className="flex min-w-0 items-start gap-2.5">
+                                            <AlertTriangle
+                                                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                                aria-hidden="true"
+                                            />
                                             <div>
-                                                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
-                                                    Post limit reached on{' '}
-                                                    {
-                                                        marketplaceEntitlement
-                                                            .plan.name
-                                                    }{' '}
-                                                    plan
+                                                <p className="text-sm font-medium">
+                                                    Posting limit reached on{' '}
+                                                    {marketplaceEntitlement.plan.name}
                                                 </p>
-                                                <p className="text-xs text-amber-800 dark:text-amber-200">
-                                                    Upgrade to post more
-                                                    freight. ETB via Chapa.
+                                                <p className="text-xs text-muted-foreground">
+                                                    You can still browse loads. Upgrade to post more freight, billed in ETB via Chapa.
                                                 </p>
                                             </div>
-                                            <Button size="sm" asChild>
-                                                <Link href="/billing/plans">
-                                                    View ETB Plans
-                                                </Link>
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
+                                        </div>
+                                        <Button size="sm" variant="outline" className="min-h-9" asChild>
+                                            <Link href="/billing/plans">View plans</Link>
+                                        </Button>
+                                    </aside>
                                 )}
 
                             {(unknownOrigin || unknownDestination) && (
@@ -734,7 +750,7 @@ export default function DiscoverIndex({
                                 was the first line many readers saw. */}
                             {resultTotal > 0 && (
                                 <div
-                                    className="flex items-center justify-between gap-4 px-1 py-2 text-sm"
+                                    className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1 py-2 text-sm"
                                     aria-live="polite"
                                     aria-atomic="true"
                                 >
@@ -856,7 +872,7 @@ export default function DiscoverIndex({
                                 </Card>
                             ) : (
                                 <div
-                                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                                    className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
                                     role="list"
                                 >
                                     {safeFreight.data.map((f) => {
@@ -895,13 +911,13 @@ export default function DiscoverIndex({
                                                 key={f.ulid}
                                                 role="listitem"
                                                 aria-labelledby={titleId}
-                                                className="flex flex-col overflow-hidden border bg-card"
+                                                className="flex flex-col gap-0 overflow-hidden border bg-card py-0 shadow-xs transition-colors hover:border-primary/25"
                                             >
                                                 <div className="p-4 pb-3">
                                                     <div className="flex items-start justify-between gap-3">
                                                         <h3
                                                             id={titleId}
-                                                            className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight"
+                                                            className="flex min-w-0 items-center gap-2 text-base font-semibold tracking-tight"
                                                         >
                                                             <span
                                                                 className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10"
@@ -935,7 +951,7 @@ export default function DiscoverIndex({
                                                                       ? 'outline'
                                                                       : 'default'
                                                             }
-                                                            className="shrink-0 rounded-full px-2.5 text-[11px] capitalize"
+                                                            className="shrink-0 rounded-full px-2.5 py-1 text-xs capitalize"
                                                             aria-label={`Status: ${interest ? interest.status : isOwn ? 'Your Post' : 'Active'}`}
                                                         >
                                                             {interest
@@ -971,9 +987,9 @@ export default function DiscoverIndex({
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex flex-1 flex-col gap-2.5 px-4 pb-3">
-                                                    <div className="divide-y">
-                                                        <div className="flex items-center justify-between py-2 text-xs">
+                                                <div className="flex flex-1 flex-col gap-3 px-4 pb-4">
+                                                    <div className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3">
+                                                        <div className="flex min-w-0 flex-col items-start gap-1">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Package
                                                                     className="size-3.5"
@@ -981,7 +997,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Item
                                                             </span>
-                                                            <span className="text-sm font-medium">
+                                                            <span className="break-words text-sm font-medium">
                                                                 {(
                                                                     f as unknown as {
                                                                         item_name?: string;
@@ -991,7 +1007,7 @@ export default function DiscoverIndex({
                                                                     'General Cargo'}
                                                             </span>
                                                         </div>
-                                                        <div className="flex items-center justify-between py-2 text-xs">
+                                                        <div className="flex min-w-0 flex-col items-start gap-1">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Calendar
                                                                     className="size-3.5"
@@ -999,7 +1015,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Pickup
                                                             </span>
-                                                            <span className="text-sm font-medium">
+                                                            <span className="break-words text-sm font-medium">
                                                                 {f.pickup_date
                                                                     ? String(
                                                                           f.pickup_date,
@@ -1018,8 +1034,8 @@ export default function DiscoverIndex({
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="divide-y text-xs">
-                                                        <div className="flex items-center justify-between py-2">
+                                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                                        <div className="flex min-w-0 flex-col items-start gap-1">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Weight
                                                                     className="size-3.5"
@@ -1027,7 +1043,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Weight
                                                             </span>
-                                                            <span className="text-sm font-semibold">
+                                                            <span className="break-words text-sm font-semibold">
                                                                 {(
                                                                     f as unknown as {
                                                                         actual_weight?: string;
@@ -1037,7 +1053,7 @@ export default function DiscoverIndex({
                                                                     : '—'}
                                                             </span>
                                                         </div>
-                                                        <div className="flex items-center justify-between py-2">
+                                                        <div className="flex min-w-0 flex-col items-start gap-1">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Banknote
                                                                     className="size-3.5"
@@ -1045,7 +1061,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Tariff
                                                             </span>
-                                                            <span className="text-sm font-semibold">
+                                                            <span className="break-words text-sm font-semibold">
                                                                 {(
                                                                     f as unknown as {
                                                                         tariff_amount?: string;
@@ -1055,7 +1071,7 @@ export default function DiscoverIndex({
                                                                     : '—'}
                                                             </span>
                                                         </div>
-                                                        <div className="flex items-center justify-between py-2">
+                                                        <div className="flex min-w-0 flex-col items-start gap-1">
                                                             <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                                                                 <Truck
                                                                     className="size-3.5"
@@ -1063,7 +1079,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Trucks
                                                             </span>
-                                                            <span className="text-sm font-semibold">
+                                                            <span className="break-words text-sm font-semibold">
                                                                 {truckType?.name ??
                                                                     'Any'}{' '}
                                                                 {f.truck_count
@@ -1073,10 +1089,10 @@ export default function DiscoverIndex({
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2 p-4 pt-0">
+                                                <div className="flex gap-2 border-t border-border/70 px-4 py-3">
                                                     <Button
                                                         asChild
-                                                        className="h-8 flex-1 text-xs"
+                                                        className="min-h-11 flex-1 text-sm"
                                                     >
                                                         <Link
                                                             href={`/freight/${f.ulid}`}
@@ -1088,14 +1104,14 @@ export default function DiscoverIndex({
                                                     {isOwn ? (
                                                         <Badge
                                                             variant="secondary"
-                                                            className="flex flex-1 items-center justify-center rounded-md py-1.5 text-xs"
+                                                            className="flex flex-1 items-center justify-center rounded-md py-2 text-sm"
                                                         >
                                                             Your Post
                                                         </Badge>
                                                     ) : interest ? (
                                                         <Button
                                                             variant="outline"
-                                                            className="h-8 flex-1 text-xs capitalize"
+                                                            className="min-h-11 flex-1 text-sm capitalize"
                                                             onClick={() =>
                                                                 interest.status !==
                                                                     'rejected' &&
@@ -1134,7 +1150,7 @@ export default function DiscoverIndex({
                                                     ) : interestsEnabled ? (
                                                         <Button
                                                             variant="secondary"
-                                                            className="h-8 flex-1 text-xs"
+                                                            className="min-h-11 flex-1 text-sm"
                                                             onClick={() => {
                                                                 if (
                                                                     !auth?.user
