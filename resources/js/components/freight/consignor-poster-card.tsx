@@ -40,6 +40,7 @@ export type RevealedContacts = {
 } | null;
 
 export type RevealBlocked = {
+    reason?: 'post_limit' | 'contact_limit';
     limit: number;
     used: number;
 } | null;
@@ -96,6 +97,7 @@ function ContactBlock({
     revealedContacts,
     canReveal,
     isOwnPost,
+    revealBlocked,
     requiresPhone,
     onRevealed,
     processing,
@@ -103,6 +105,7 @@ function ContactBlock({
     revealedContacts: RevealedContacts;
     canReveal: boolean;
     isOwnPost: boolean;
+    revealBlocked: RevealBlocked;
     requiresPhone: boolean;
     onRevealed: () => void;
     processing: boolean;
@@ -121,6 +124,30 @@ function ContactBlock({
 
     if (isOwnPost) {
         return null;
+    }
+
+    if (canReveal && revealBlocked) {
+        const postLimitReached = revealBlocked.reason === 'post_limit';
+
+        return (
+            <div
+                role="status"
+                className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40"
+            >
+                <p className="flex items-center gap-2 font-semibold">
+                    <AlertCircle className="size-4 shrink-0" />
+                    {postLimitReached ? 'Freight post limit reached' : 'Contact reveal limit reached'}
+                </p>
+                <p className="text-muted-foreground">
+                    {postLimitReached
+                        ? `Your workspace has ${revealBlocked.used} of ${revealBlocked.limit} live freight posts. Upgrade your plan to reveal new consignor contacts.`
+                        : `Your workspace has used ${revealBlocked.used} of ${revealBlocked.limit} contact reveals. Upgrade to reveal new contacts.`}
+                </p>
+                <Button size="sm" className="w-full" asChild>
+                    <Link href="/billing/plans">View upgrade plans</Link>
+                </Button>
+            </div>
+        );
     }
 
     // The reveal hands over a phone, so the viewer needs one too. The server
@@ -312,29 +339,11 @@ export default function ConsignorPosterCard({
                     revealedContacts={revealedContacts}
                     canReveal={canReveal}
                     isOwnPost={isOwnPost}
+                    revealBlocked={revealBlocked}
                     requiresPhone={requiresPhone}
                     onRevealed={onRevealed}
                     processing={processing}
                 />
-
-                {/* Only where a reveal is possible: a contact already on screen
-                    needs no quota warning, and a guest cannot hold a quota. */}
-                {canReveal && revealBlocked && !revealedContacts && (
-                    <p className="flex items-start gap-2 text-xs text-destructive">
-                        <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-                        <span>
-                            You have used all {revealBlocked.limit} free contact
-                            reveals.{' '}
-                            <a
-                                href="/billing/plans"
-                                className="underline underline-offset-4"
-                            >
-                                See plans
-                            </a>{' '}
-                            for unlimited reveals.
-                        </span>
-                    </p>
-                )}
 
                 {isOwnPost && interestsEnabled && (
                     <>
