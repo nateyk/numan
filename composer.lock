@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a4a2015814b908d18094214a211e694f",
+    "content-hash": "0bbfc5bd732f01a71b8193012aba17a9",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1823,6 +1823,66 @@
                 }
             ],
             "time": "2025-10-12T15:31:36+00:00"
+        },
+        {
+            "name": "laravel-notification-channels/telegram",
+            "version": "8.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel-notification-channels/telegram.git",
+                "reference": "eea15cb6275aeb03bcba3481a3dde05bfb105800"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel-notification-channels/telegram/zipball/eea15cb6275aeb03bcba3481a3dde05bfb105800",
+                "reference": "eea15cb6275aeb03bcba3481a3dde05bfb105800",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "guzzlehttp/guzzle": "^7.8 || ^8.0",
+                "illuminate/contracts": "^12.0 || ^13.0",
+                "illuminate/notifications": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "php": "^8.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "NotificationChannels\\Telegram\\TelegramServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "NotificationChannels\\Telegram\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Irfaq Syed",
+                    "email": "github@lukonet.net",
+                    "homepage": "https://lukonet.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Telegram Notifications Channel for Laravel",
+            "keywords": [
+                "telegram notification",
+                "laravel",
+                "telegram",
+                "telegram notifications channel"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel-notification-channels/telegram/issues",
+                "source": "https://github.com/laravel-notification-channels/telegram/tree/8.0.0"
+            },
+            "time": "2026-08-24T21:54:00+00:00"
         },
         {
             "name": "laravel/ai",
