@@ -187,10 +187,15 @@ class MarketplaceConnectionController extends Controller
         $outcome = $this->reveals->reveal($viewer, $counterparty, $context);
 
         if ($outcome['status'] === 'blocked') {
+            $message = $outcome['reason'] === 'post_limit'
+                ? 'Your workspace has reached its live freight post limit. Upgrade to reveal new contacts.'
+                : 'You have used all your contact reveals. Upgrade to reveal new contacts.';
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'blocked' => true,
-                    'message' => "You have used all {$outcome['limit']} free contact reveals.",
+                    'reason' => $outcome['reason'],
+                    'message' => $message,
                     'limit' => $outcome['limit'],
                     'used' => $outcome['used'],
                     'subscribe_url' => route('billing.plans'),
@@ -199,10 +204,11 @@ class MarketplaceConnectionController extends Controller
 
             return back()
                 ->with('reveal_blocked', [
+                    'reason' => $outcome['reason'],
                     'limit' => $outcome['limit'],
                     'used' => $outcome['used'],
                 ])
-                ->withErrors(['contact' => 'You have used all your free contact reveals.']);
+                ->withErrors(['contact' => $message]);
         }
 
         if ($request->wantsJson()) {
