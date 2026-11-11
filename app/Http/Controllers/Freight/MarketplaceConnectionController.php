@@ -202,12 +202,19 @@ class MarketplaceConnectionController extends Controller
                 ], 402);
             }
 
+            $flash = [
+                'limit' => $outcome['limit'],
+                'used' => $outcome['used'],
+            ];
+
+            // Preserve the existing contact-limit flash contract for older
+            // clients; only the new post-limit state needs its own reason.
+            if ($outcome['reason'] === 'post_limit') {
+                $flash['reason'] = 'post_limit';
+            }
+
             return back()
-                ->with('reveal_blocked', [
-                    'reason' => $outcome['reason'],
-                    'limit' => $outcome['limit'],
-                    'used' => $outcome['used'],
-                ])
+                ->with('reveal_blocked', $flash)
                 ->withErrors(['contact' => $message]);
         }
 
