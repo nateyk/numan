@@ -6,10 +6,9 @@ use App\Models\FreightPost;
 use App\Models\TelegramAccount;
 use App\Models\User;
 use App\Notifications\FreightChannelAnnouncement;
-use App\Notifications\FreightInterestSubmitted;
 use App\Notifications\FreightPostModerated;
-use App\Notifications\MarketplaceConnectionCreated;
 use App\Notifications\TelegramBotReply;
+use App\Services\DeferredTelegramChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 
@@ -131,24 +130,24 @@ it('adds Telegram only for opted-in linked users with a configured bot', functio
 
     $notification = new FreightPostModerated($post, 'approved');
 
-    expect($notification->via($user))->not->toContain('telegram');
+    expect($notification->via($user))->not->toContain(DeferredTelegramChannel::class);
 
     TelegramAccount::query()->create(['user_id' => $user->id, 'chat_id' => '112233']);
 
-    expect($notification->via($user->fresh()))->toContain('telegram');
+    expect($notification->via($user->fresh()))->toContain(DeferredTelegramChannel::class);
 
     $user->update(['notification_preferences' => [
         'channels' => ['telegram' => false],
     ]]);
 
-    expect($notification->via($user->fresh()))->not->toContain('telegram');
+    expect($notification->via($user->fresh()))->not->toContain(DeferredTelegramChannel::class);
 
     $user->update(['notification_preferences' => [
         'channels' => ['telegram' => true],
     ]]);
     config()->set('services.telegram.token', null);
 
-    expect($notification->via($user->fresh()))->not->toContain('telegram');
+    expect($notification->via($user->fresh()))->not->toContain(DeferredTelegramChannel::class);
 });
 
 it('publishes only visible active freight and never repeats an announcement', function () {

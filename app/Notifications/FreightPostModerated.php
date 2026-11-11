@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\FreightPost;
+use App\Services\DeferredTelegramChannel;
 use App\Services\TelegramNotificationRouting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -39,7 +40,7 @@ class FreightPostModerated extends Notification
         }
 
         if (TelegramNotificationRouting::enabled($notifiable)) {
-            $channels[] = 'telegram';
+            $channels[] = DeferredTelegramChannel::class;
         }
 
         return $channels;

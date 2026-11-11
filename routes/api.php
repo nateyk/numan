@@ -34,7 +34,6 @@ Route::prefix('v1')->middleware('api-key:read')->group(function () {
     Route::get('/members', [WorkspaceController::class, 'members']);
 });
 
-
 Route::post('/telegram/webhook', TelegramWebhookController::class)
     ->middleware('throttle:60,1')
     ->name('telegram.webhook');
