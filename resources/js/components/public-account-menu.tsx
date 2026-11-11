@@ -27,6 +27,7 @@ import {
 interface PublicAccountMenuProps {
     onNavigate?: () => void;
     className?: string;
+    display?: 'dropdown' | 'inline';
 }
 
 /**
@@ -40,6 +41,7 @@ interface PublicAccountMenuProps {
 export function PublicAccountMenu({
     onNavigate,
     className,
+    display = 'dropdown',
 }: PublicAccountMenuProps) {
     const { auth, is_individual } = usePage<SharedData>().props;
     const getInitials = useInitials();
@@ -51,6 +53,72 @@ export function PublicAccountMenu({
 
     const isSuperadmin = user.is_superadmin === true;
     const showWorkspaceLinks = isSuperadmin || !is_individual;
+
+    // A modal navigation sheet should not open a second floating menu.
+    // Render the same account destinations as full-width links on phones.
+    if (display === 'inline') {
+        const itemClassName =
+            'flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+        return (
+            <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-3 px-2 pb-3">
+                    <Avatar className="size-10 shrink-0 rounded-full">
+                        <AvatarImage
+                            src={user.avatar_url || user.avatar}
+                            alt=""
+                        />
+                        <AvatarFallback className="rounded-full bg-muted text-sm">
+                            {getInitials(user.name)}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Signed in as</p>
+                        <p className="truncate text-sm font-semibold" title={user.name}>
+                            {user.name}
+                        </p>
+                    </div>
+                </div>
+                <nav aria-label="Account" className="flex flex-col gap-1 border-t pt-3">
+                    <Link href="/my-freight" className={itemClassName} onClick={onNavigate}>
+                        <Package className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        My Freight
+                    </Link>
+                    <Link href="/public-profile" className={itemClassName} onClick={onNavigate}>
+                        <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        My Profile
+                    </Link>
+                    {showWorkspaceLinks && (
+                        <Link href="/dashboard" className={itemClassName} onClick={onNavigate}>
+                            <LayoutGrid className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            Dashboard
+                        </Link>
+                    )}
+                    {isSuperadmin && (
+                        <Link href={adminDashboard()} className={itemClassName} onClick={onNavigate}>
+                            <ShieldAlert className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            Admin
+                        </Link>
+                    )}
+                    <div className="my-2 border-t" aria-hidden="true" />
+                    <Link href={edit()} className={itemClassName} onClick={onNavigate}>
+                        <Settings className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        Settings
+                    </Link>
+                    <Link
+                        href={logout()}
+                        method="post"
+                        as="button"
+                        className={itemClassName}
+                        onClick={onNavigate}
+                    >
+                        <LogOut className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        Sign out
+                    </Link>
+                </nav>
+            </div>
+        );
+    }
 
     return (
         <DropdownMenu>
