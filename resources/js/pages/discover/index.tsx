@@ -651,7 +651,7 @@ export default function DiscoverIndex({
                                                     Clear all
                                                 </Button>
                                             </div>
-                                        </fieldset>
+                                            </fieldset>
                                         </details>
                                     </form>
 
@@ -707,7 +707,7 @@ export default function DiscoverIndex({
                                                     {marketplaceEntitlement.plan.name}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    You can still browse loads. Upgrade to post more in ETB via Chapa.
+                                                    You can still browse loads. Upgrade to post more freight, billed in ETB via Chapa.
                                                 </p>
                                             </div>
                                         </div>
