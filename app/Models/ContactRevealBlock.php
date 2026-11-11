@@ -23,6 +23,7 @@ class ContactRevealBlock extends Model
         'interest_id',
         'connection_id',
         'limit_at_time',
+        'reason',
     ];
 
     protected function casts(): array

@@ -2,6 +2,7 @@
 
 use App\Enums\FreightPostStatus;
 use App\Models\ContactReveal;
+use App\Models\ContactRevealBlock;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Profile;
@@ -223,6 +224,95 @@ it('blocks the sixth reveal through the listing endpoint', function () {
             'used' => 5,
         ])
         ->assertSessionHasErrors('contact');
+
+    expect(ContactReveal::count())->toBe(5);
+});
+
+it('keeps freight browseable but locks new consignor contacts when the live-post allowance is spent', function () {
+    [$consignor] = listingUser();
+    [$viewer, $workspace] = listingUser();
+    $target = listingPost($consignor);
+
+    for ($i = 0; $i < 5; $i++) {
+        listingPost($viewer, ['workspace_id' => $workspace->id]);
+    }
+
+    $page = $this->actingAs($viewer)->get(route('freight.public.show', $target->ulid));
+    $page->assertOk();
+
+    $props = $page->viewData('page')['props'];
+    expect($props['revealedContacts'])->toBeNull()
+        ->and($props['revealBlock'])->toMatchArray([
+            'reason' => 'post_limit',
+            'limit' => 5,
+            'used' => 5,
+        ])
+        ->and($props['post'])->not->toHaveKey('owner');
+
+    $this->actingAs($viewer)
+        ->postJson(route('freight.reveal', $target->ulid))
+        ->assertStatus(402)
+        ->assertJsonPath('reason', 'post_limit')
+        ->assertJsonMissingPath('contact.phone')
+        ->assertJsonMissingPath('contact.email');
+
+    expect(ContactReveal::count())->toBe(0)
+        ->and(ContactRevealBlock::query()->where('user_id', $viewer->id)->value('reason'))
+        ->toBe('post_limit');
+});
+
+it('retains an already-unlocked consignor contact after the live-post allowance is spent', function () {
+    [$consignor] = listingUser();
+    [$viewer, $workspace] = listingUser();
+    $target = listingPost($consignor);
+
+    $this->actingAs($viewer)
+        ->postJson(route('freight.reveal', $target->ulid))
+        ->assertOk()
+        ->assertJsonPath('status', 'allowed');
+
+    for ($i = 0; $i < 5; $i++) {
+        listingPost($viewer, ['workspace_id' => $workspace->id]);
+    }
+
+    $this->actingAs($viewer)
+        ->postJson(route('freight.reveal', $target->ulid))
+        ->assertOk()
+        ->assertJsonPath('status', 'already');
+
+    $props = $this->actingAs($viewer)
+        ->get(route('freight.public.show', $target->ulid))
+        ->viewData('page')['props'];
+
+    expect($props['revealBlock'])->toBeNull()
+        ->and($props['revealedContacts']['phone'])->toBe($consignor->profile->phone)
+        ->and(ContactReveal::count())->toBe(1);
+});
+
+it('shares the free contact-reveal allowance between all members of a workspace', function () {
+    [$first, $workspace] = listingUser();
+    [$second] = listingUser();
+
+    $workspace->addUser($second, 'member');
+    $second->switchWorkspace($workspace);
+    $second = $second->fresh();
+
+    for ($i = 0; $i < 5; $i++) {
+        [$consignor] = listingUser();
+        $this->actingAs($first)
+            ->postJson(route('freight.reveal', listingPost($consignor)->ulid))
+            ->assertOk();
+    }
+
+    [$next] = listingUser();
+    $target = listingPost($next);
+
+    $this->actingAs($second)
+        ->postJson(route('freight.reveal', $target->ulid))
+        ->assertStatus(402)
+        ->assertJsonPath('reason', 'contact_limit')
+        ->assertJsonPath('used', 5)
+        ->assertJsonMissingPath('contact.phone');
 
     expect(ContactReveal::count())->toBe(5);
 });

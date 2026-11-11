@@ -187,22 +187,35 @@ class MarketplaceConnectionController extends Controller
         $outcome = $this->reveals->reveal($viewer, $counterparty, $context);
 
         if ($outcome['status'] === 'blocked') {
+            $message = $outcome['reason'] === 'post_limit'
+                ? 'Your workspace has reached its live freight post limit. Upgrade to reveal new contacts.'
+                : 'You have used all your contact reveals. Upgrade to reveal new contacts.';
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'blocked' => true,
-                    'message' => "You have used all {$outcome['limit']} free contact reveals.",
+                    'reason' => $outcome['reason'],
+                    'message' => $message,
                     'limit' => $outcome['limit'],
                     'used' => $outcome['used'],
                     'subscribe_url' => route('billing.plans'),
                 ], 402);
             }
 
+            $flash = [
+                'limit' => $outcome['limit'],
+                'used' => $outcome['used'],
+            ];
+
+            // Preserve the existing contact-limit flash contract for older
+            // clients; only the new post-limit state needs its own reason.
+            if ($outcome['reason'] === 'post_limit') {
+                $flash['reason'] = 'post_limit';
+            }
+
             return back()
-                ->with('reveal_blocked', [
-                    'limit' => $outcome['limit'],
-                    'used' => $outcome['used'],
-                ])
-                ->withErrors(['contact' => 'You have used all your free contact reveals.']);
+                ->with('reveal_blocked', $flash)
+                ->withErrors(['contact' => $message]);
         }
 
         if ($request->wantsJson()) {

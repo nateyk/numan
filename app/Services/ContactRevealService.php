@@ -141,29 +141,22 @@ class ContactRevealService
         }
 
         $workspace = $viewer->currentWorkspace;
-        $limit = $this->entitlements->getLimitValue($workspace, 'contact_reveals');
-
         $contextIds = $this->contextIds($context);
 
-        $outcome = DB::transaction(function () use ($viewer, $counterparty, $limit, $contextIds): array {
-            // Lock the REVEALER'S user row for the duration of this
-            // transaction. Every reveal by this user serialises behind it, so
-            // two concurrent requests cannot both read the same count
-            // and both decide there is room. Locking the contact_reveals rows
-            // instead would not work: the rows being counted may not exist yet,
-            // and a row lock cannot be taken on an absence.
-            //
-            // This is a no-op on SQLite, which is what the test suite runs on,
-            // so the tests below prove the arithmetic and the uniqueness, not
-            // the concurrency. On MySQL and PostgreSQL the lock is real.
-            //
-            // The unique (revealer_id, revealed_id) key remains the backstop:
-            // two requests for the SAME pair both want the same outcome, and
-            // the loser is treated as "already revealed", which is correct.
-            User::query()
-                ->whereKey($viewer->id)
-                ->lockForUpdate()
-                ->first();
+        $outcome = DB::transaction(function () use ($viewer, $counterparty, $workspace, $contextIds): array {
+            // Serialize decisions on the shared workspace row so parallel
+            // reveals by different members cannot each spend the last slot.
+            // SQLite ignores row locks; MySQL and PostgreSQL enforce them.
+            // The user lock is a fallback for legacy accounts without a workspace.
+            // The unique ledger pair remains the last line of defence for
+            // duplicate requests against the same person.
+            if ($workspace !== null) {
+                // All members spending the same workspace allowance must wait
+                // on the same row, not their individual user rows.
+                $workspace->newQuery()->whereKey($workspace->id)->lockForUpdate()->first();
+            } else {
+                User::query()->whereKey($viewer->id)->lockForUpdate()->first();
+            }
 
             // Re-revealing a partner is free, forever. Checked first and inside
             // the transaction so it cannot race with the allowance check below.
@@ -177,22 +170,17 @@ class ContactRevealService
                 return ['status' => 'already'];
             }
 
-            if ($limit !== -1) {
-                // All-time, deliberately. The free allowance is five reveals
-                // ever, not five per week. No time-based reset exists.
-                $used = ContactReveal::query()
-                    ->where('revealer_id', $viewer->id)
-                    ->count();
+            $block = $this->newContactBlockFor($viewer);
 
-                if ($used >= $limit) {
-                    ContactRevealBlock::create(array_merge($contextIds, [
-                        'user_id' => $viewer->id,
-                        'revealed_id' => $counterparty->id,
-                        'limit_at_time' => $limit,
-                    ]));
+            if ($block !== null) {
+                ContactRevealBlock::create(array_merge($contextIds, [
+                    'user_id' => $viewer->id,
+                    'revealed_id' => $counterparty->id,
+                    'limit_at_time' => $block['limit'],
+                    'reason' => $block['reason'],
+                ]));
 
-                    return ['status' => 'blocked', 'used' => $used];
-                }
+                return array_merge(['status' => 'blocked'], $block);
             }
 
             try {
@@ -210,16 +198,69 @@ class ContactRevealService
         });
 
         if ($outcome['status'] === 'blocked') {
-            return $this->result('blocked', null, $limit, $outcome['used'], 0);
+            return array_merge(
+                $this->result('blocked', null, $outcome['limit'], $outcome['used'], 0),
+                ['reason' => $outcome['reason']],
+            );
         }
 
+        $limit = $this->entitlements->getLimitValue($workspace, 'contact_reveals');
         $contact = $this->contactDetailsFor($viewer, $counterparty, $context);
 
-        $used = $this->usedReveals($viewer);
+        $used = $workspace !== null
+            ? $this->entitlements->revealCount($workspace)
+            : $this->usedReveals($viewer);
 
         $remaining = $limit === -1 ? -1 : max(0, $limit - $used);
 
         return $this->result($outcome['status'], $contact, $limit, $used, $remaining);
+    }
+
+    /**
+     * Read-only quota state used by the public listing page. Revisiting an
+     * already-revealed contact is always free, even after either limit is spent.
+     *
+     * @return array{reason: 'post_limit'|'contact_limit', limit: int, used: int}|null
+     */
+    public function revealBlockFor(User $viewer, User $counterparty): ?array
+    {
+        if ($viewer->id === $counterparty->id || $this->hasRevealed($viewer, $counterparty)) {
+            return null;
+        }
+
+        return $this->newContactBlockFor($viewer);
+    }
+
+    /**
+     * A new reveal needs capacity in both the posting and contact allowances.
+     * Public freight remains browseable; this restriction applies only when
+     * unlocking a new person's private details.
+     *
+     * @return array{reason: 'post_limit'|'contact_limit', limit: int, used: int}|null
+     */
+    private function newContactBlockFor(User $viewer): ?array
+    {
+        $workspace = $viewer->currentWorkspace;
+        $postLimit = $this->entitlements->getLimitValue($workspace, 'active_freight_posts');
+
+        if ($workspace !== null && $postLimit !== -1) {
+            $postsUsed = $this->entitlements->livePostCount($workspace);
+
+            if ($postsUsed >= $postLimit) {
+                return ['reason' => 'post_limit', 'limit' => $postLimit, 'used' => $postsUsed];
+            }
+        }
+
+        $contactLimit = $this->entitlements->getLimitValue($workspace, 'contact_reveals');
+        $contactsUsed = $workspace !== null
+            ? $this->entitlements->revealCount($workspace)
+            : $this->usedReveals($viewer);
+
+        if ($contactLimit !== -1 && $contactsUsed >= $contactLimit) {
+            return ['reason' => 'contact_limit', 'limit' => $contactLimit, 'used' => $contactsUsed];
+        }
+
+        return null;
     }
 
     /**
