@@ -2,6 +2,7 @@
 
 use App\Enums\FreightPostStatus;
 use App\Models\ContactReveal;
+use App\Models\ContactRevealBlock;
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\Profile;
@@ -227,7 +228,6 @@ it('blocks the sixth reveal through the listing endpoint', function () {
     expect(ContactReveal::count())->toBe(5);
 });
 
-
 it('keeps freight browseable but locks new consignor contacts when the live-post allowance is spent', function () {
     [$consignor] = listingUser();
     [$viewer, $workspace] = listingUser();
@@ -256,7 +256,9 @@ it('keeps freight browseable but locks new consignor contacts when the live-post
         ->assertJsonMissingPath('contact.phone')
         ->assertJsonMissingPath('contact.email');
 
-    expect(ContactReveal::count())->toBe(0);
+    expect(ContactReveal::count())->toBe(0)
+        ->and(ContactRevealBlock::query()->where('user_id', $viewer->id)->value('reason'))
+        ->toBe('post_limit');
 });
 
 it('retains an already-unlocked consignor contact after the live-post allowance is spent', function () {
