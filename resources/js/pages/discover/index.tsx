@@ -171,6 +171,7 @@ export default function DiscoverIndex({
     // "Updating results…" instead of announcing a sort order that has not
     // landed yet.
     const [updatingResults, setUpdatingResults] = useState(false);
+    const [showMoreFilters, setShowMoreFilters] = useState(false);
 
     // Express Interest is a commitment the shipper sees, so it asks first: one
     // tap used to fire the POST from mid-scroll with no confirmation and no
@@ -479,15 +480,24 @@ export default function DiscoverIndex({
                                             </div>
                                         </div>
 
-                                        <details className="group sm:contents">
-                                            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md border bg-muted/40 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden [&::-webkit-details-marker]:hidden">
+                                        <div className="sm:contents">
+                                            <button
+                                                type="button"
+                                                aria-expanded={showMoreFilters}
+                                                aria-controls="freight-advanced-filters"
+                                                onClick={() => setShowMoreFilters((current) => !current)}
+                                                className="flex min-h-11 w-full items-center justify-between rounded-md border bg-muted/40 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+                                            >
                                                 <span className="inline-flex items-center gap-2">
                                                     <SlidersHorizontal className="size-4" aria-hidden="true" />
                                                     Route & cargo filters
                                                 </span>
-                                                <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
-                                            </summary>
-                                            <fieldset className="mt-3 hidden border-0 p-0 group-open:block sm:mt-0 sm:block">
+                                                <ChevronDown className={showMoreFilters ? 'size-4 rotate-180 text-muted-foreground transition-transform' : 'size-4 text-muted-foreground transition-transform'} aria-hidden="true" />
+                                            </button>
+                                            <fieldset
+                                                id="freight-advanced-filters"
+                                                className={showMoreFilters ? 'mt-3 block border-0 p-0 sm:mt-0 sm:block' : 'mt-3 hidden border-0 p-0 sm:mt-0 sm:block'}
+                                            >
                                             <legend className="sr-only">
                                                 Location and cargo filters
                                             </legend>
@@ -652,7 +662,7 @@ export default function DiscoverIndex({
                                                 </Button>
                                             </div>
                                             </fieldset>
-                                        </details>
+                                        </div>
                                     </form>
 
                                     {activeFilters.length > 0 && (
