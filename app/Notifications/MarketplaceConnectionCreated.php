@@ -3,9 +3,11 @@
 namespace App\Notifications;
 
 use App\Models\MarketplaceConnection;
+use App\Services\TelegramNotificationRouting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\Telegram\TelegramMessage;
 
 class MarketplaceConnectionCreated extends Notification
 {
@@ -35,6 +37,10 @@ class MarketplaceConnectionCreated extends Notification
             $channels[] = 'database';
         }
 
+        if (TelegramNotificationRouting::enabled($notifiable)) {
+            $channels[] = 'telegram';
+        }
+
         return $channels;
     }
 
@@ -47,6 +53,14 @@ class MarketplaceConnectionCreated extends Notification
             ->line('You can now view contact details in your connections.')
             ->action('View Connection', url('/connections/'.$this->marketplaceConnection->public_id))
             ->line('Thank you for using NumanFreight!');
+    }
+
+    public function toTelegram(object $notifiable): TelegramMessage
+    {
+        return TelegramMessage::create()
+            ->normal()
+            ->content('A freight connection has been established. View the connection securely in Numan Freight.')
+            ->button('View connection', url('/connections/'.$this->marketplaceConnection->public_id));
     }
 
     public function toArray(object $notifiable): array

@@ -4,9 +4,11 @@ namespace App\Notifications;
 
 use App\Models\FreightInterest;
 use App\Models\FreightPost;
+use App\Services\TelegramNotificationRouting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\Telegram\TelegramMessage;
 
 class FreightInterestSubmitted extends Notification
 {
@@ -37,6 +39,10 @@ class FreightInterestSubmitted extends Notification
             $channels[] = 'database';
         }
 
+        if (TelegramNotificationRouting::enabled($notifiable)) {
+            $channels[] = 'telegram';
+        }
+
         return $channels;
     }
 
@@ -51,6 +57,14 @@ class FreightInterestSubmitted extends Notification
             ->line('Message: '.($this->interest->message ?? 'No message'))
             ->action('View Interest', url("/my-freight/{$this->post->ulid}"))
             ->line('Thank you for using NumanFreight!');
+    }
+
+    public function toTelegram(object $notifiable): TelegramMessage
+    {
+        return TelegramMessage::create()
+            ->normal()
+            ->content("🚚 A transporter expressed interest in your freight.\nReference: {$this->post->ulid}")
+            ->button('View interests', url('/my-freight/'.$this->post->ulid));
     }
 
     public function toArray(object $notifiable): array

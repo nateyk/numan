@@ -18,6 +18,7 @@ use App\Models\FreightPost;
 use App\Models\MarketplaceConnection;
 use App\Models\Workspace;
 use App\Observers\ActivityLogObserver;
+use App\Observers\TelegramFreightPostObserver;
 use App\Policies\FreightInterestPolicy;
 use App\Policies\FreightPostPolicy;
 use App\Policies\MarketplaceConnectionPolicy;
@@ -84,6 +85,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Activity::observe(ActivityLogObserver::class);
+        FreightPost::observe(TelegramFreightPostObserver::class);
 
         Gate::policy(Workspace::class, WorkspacePolicy::class);
         Gate::policy(FreightPost::class, FreightPostPolicy::class);
