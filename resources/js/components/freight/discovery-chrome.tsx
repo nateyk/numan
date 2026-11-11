@@ -156,7 +156,7 @@ export function DiscoveryHeader({
                     </SheetTrigger>
                     <SheetContent
                         side="right"
-                        className="w-[calc(100%-2rem)] max-w-sm gap-0 overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-sm"
+                        className="w-[calc(100%-2rem)] max-w-sm gap-0 overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-sm [&>button]:right-1 [&>button]:top-1 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center"
                     >
                         <SheetHeader className="border-b px-1 pb-4">
                             <SheetTitle className="text-base">Menu</SheetTitle>
@@ -198,7 +198,7 @@ export function DiscoveryHeader({
                             />
                         </nav>
 
-                        <div className="border-t pt-4">
+                        <div className="mt-auto border-t pt-4">
                             <AccountLinks
                                 canRegister={canRegister}
                                 onNavigate={() => setMobileMenuOpen(false)}
