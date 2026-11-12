@@ -489,6 +489,7 @@ export default function FreightIndex({
                                                                 asChild
                                                             >
                                                                 <Link
+                                                                    aria-label={`View ${routeLabel(p)}`}
                                                                     href={
                                                                         isDraft
                                                                             ? `/my-freight/${p.ulid}/route`
@@ -506,6 +507,7 @@ export default function FreightIndex({
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="size-9"
+                                                                         aria-label={`More actions for ${routeLabel(p)}`}
                                                                     >
                                                                         <MoreHorizontal className="size-4" />
                                                                     </Button>
@@ -657,8 +659,8 @@ export default function FreightIndex({
                             ].includes(p.status);
                             return (
                                 <Card key={p.ulid} className="p-4">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-center gap-2 font-medium">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
                                             <MapPin className="size-4 text-primary" />
                                             <span>{origin?.name ?? '—'}</span>
                                             <ArrowRight className="size-3 text-muted-foreground" />
@@ -720,8 +722,9 @@ export default function FreightIndex({
                                             <DropdownMenuTrigger asChild>
                                                 <Button
                                                     variant="outline"
-                                                    size="sm"
+                                                    size="icon"
                                                     className="size-11"
+                                                    aria-label={`More actions for ${routeLabel(p)}`}
                                                 >
                                                     <MoreHorizontal className="size-4" />
                                                 </Button>
