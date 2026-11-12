@@ -69,7 +69,7 @@ export default function CollapsibleRouteMap({
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     type="button"
                     className="min-h-11 gap-2 px-3 text-sm"
