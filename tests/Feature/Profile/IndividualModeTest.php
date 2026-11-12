@@ -23,7 +23,26 @@ it('does not mark a multi-member workspace as individual', function () {
         ->assertInertia(fn ($page) => $page->where('is_individual', false));
 });
 
-it('redirects an individual user from the dashboard to freight', function () {
+it('shows the personal dashboard to an individual when workspace UI is disabled', function () {
+    config()->set('features.workspace.ui', false);
+
+    $user = User::factory()->create();
+    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
+    $user->switchWorkspace($workspace);
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('dashboard')
+            ->where('workspace_ui_enabled', false)
+            ->where('is_individual', true)
+        );
+});
+
+it('retains the individual freight redirect when workspace UI is enabled', function () {
+    config()->set('features.workspace.ui', true);
+
     $user = User::factory()->create();
     $workspace = app(WorkspaceService::class)->createPersonalWorkspace($user);
     $user->switchWorkspace($workspace);
