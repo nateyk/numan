@@ -130,6 +130,9 @@ class HandleInertiaRequests extends Middleware
             // chrome uses this to hide team-shaped navigation; the workspace
             // itself still exists underneath.
             'is_individual' => $user?->isIndividual() ?? false,
+            // UI-only switch. Workspace ownership, billing, and access checks
+            // remain backed by the existing workspace model.
+            'workspace_ui_enabled' => (bool) config('features.workspace.ui', false),
             'show_experience_survey' => $showExperienceSurvey,
             'locale' => $locale,
             'currentWorkspace' => $currentWorkspace ? [

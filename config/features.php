@@ -25,6 +25,9 @@ return [
 
     // Workspace Features
     'workspace' => [
+        // Personal-first navigation is the default. Turn this on to restore
+        // the existing multi-workspace and team interface without data changes.
+        'ui' => env('FEATURE_WORKSPACE_UI', false),
         'billing' => env('FEATURE_BILLING', true),
         'teams' => env('FEATURE_TEAMS', true),
         'invitations' => env('FEATURE_INVITATIONS', true),

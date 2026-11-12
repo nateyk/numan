@@ -116,6 +116,7 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     is_individual: boolean;
+    workspace_ui_enabled: boolean;
     currentWorkspace: Workspace | null;
     workspaces: Workspace[];
     sidebarOpen: boolean;

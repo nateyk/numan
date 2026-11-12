@@ -28,7 +28,7 @@ interface UserMenuContentProps {
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { t } = useTranslations();
-    const { is_individual } = usePage<SharedData>().props;
+    const { is_individual, workspace_ui_enabled } = usePage<SharedData>().props;
 
     const handleLogout = () => {
         cleanup();
@@ -44,7 +44,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                {!is_individual && (
+                {workspace_ui_enabled && !is_individual && (
                     <DropdownMenuItem asChild>
                         <Link
                             className="block w-full"
@@ -85,7 +85,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         {t('navigation.profile_settings', 'Profile Settings')}
                     </Link>
                 </DropdownMenuItem>
-                {is_individual && (
+                {workspace_ui_enabled && is_individual && (
                     <DropdownMenuItem asChild>
                         <Link
                             className="block w-full"
@@ -102,7 +102,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         </Link>
                     </DropdownMenuItem>
                 )}
-                {!is_individual && (
+                {workspace_ui_enabled && !is_individual && (
                     <DropdownMenuItem asChild>
                         <Link
                             className="block w-full"

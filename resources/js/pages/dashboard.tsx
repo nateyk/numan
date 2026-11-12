@@ -1,6 +1,7 @@
 import { OnboardingChecklist } from '@/components/onboarding-checklist';
 import { ProductTour } from '@/components/product-tour';
 import { PostFreightButton } from '@/components/profile/post-freight-button';
+import PersonalDashboard from '@/pages/personal-dashboard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +39,7 @@ const getBreadcrumbs = (
 ];
 
 export default function Dashboard() {
-    const { currentWorkspace, auth } = usePage<SharedData>().props;
+    const { currentWorkspace, auth, workspace_ui_enabled } = usePage<SharedData>().props;
     const { t } = useTranslations();
 
     // Default values if no workspace data passed from controller
@@ -103,6 +104,12 @@ export default function Dashboard() {
     ];
 
     const breadcrumbs = getBreadcrumbs(t);
+
+    // The team dashboard is retained for a future team launch. Personal
+    // accounts see freight and profile actions rather than workspace metrics.
+    if (!workspace_ui_enabled) {
+        return <PersonalDashboard />;
+    }
 
     if (!workspace) {
         return (
