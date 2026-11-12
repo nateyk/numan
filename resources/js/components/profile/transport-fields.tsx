@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { router, useForm } from '@inertiajs/react';
 import {
     AlertTriangle,
+    ArrowLeft,
     ArrowRight,
     Download,
     FileText,
@@ -59,6 +60,7 @@ interface ProfileDocument {
 interface Props {
     section?: 'carrier' | 'documents';
     onSaved?: () => void;
+    onBack?: () => void;
     defaultDocumentType?: string;
     status: string | null;
     rejectionReason: string | null;
@@ -169,6 +171,7 @@ export default function TransportFields({
     documents,
     section = 'carrier',
     onSaved,
+    onBack,
     defaultDocumentType = 'license',
 }: Props) {
     const nextKey = useRef(0);
@@ -358,9 +361,9 @@ export default function TransportFields({
                                                 variant="outline"
                                                 size="sm"
                                                 className={cn(
-                                                    'h-8 px-3',
+                                                    'min-h-10 px-3 text-sm',
                                                     selected &&
-                                                        'border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
+                                                        'border-primary/60 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground hover:bg-primary/10',
                                                 )}
                                             >
                                                 {type.name}
@@ -405,7 +408,7 @@ export default function TransportFields({
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            className="mt-1"
+                                            className="mt-1 min-h-11"
                                             onClick={addRoute}
                                         >
                                             <Plus aria-hidden="true" />
@@ -418,7 +421,7 @@ export default function TransportFields({
                                             (route, index) => (
                                                 <div
                                                     key={route.key}
-                                                    className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:items-start"
+                                                    className="grid gap-3 rounded-lg border bg-muted/10 p-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:items-start"
                                                 >
                                                     <div>
                                                         <LocationSearchInput
@@ -436,6 +439,7 @@ export default function TransportFields({
                                                             }
                                                             localOnly
                                                             type="city"
+                                                            className="w-full [&_input]:h-11"
                                                             placeholder="Origin"
                                                             ariaLabel={`Origin for route ${index + 1}`}
                                                         />
@@ -469,6 +473,7 @@ export default function TransportFields({
                                                             }
                                                             localOnly
                                                             type="city"
+                                                            className="w-full [&_input]:h-11"
                                                             placeholder="Destination"
                                                             ariaLabel={`Destination for route ${index + 1}`}
                                                         />
@@ -485,7 +490,7 @@ export default function TransportFields({
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="justify-self-start text-muted-foreground hover:text-destructive sm:mt-0.5"
+                                                        className="size-11 justify-self-start text-muted-foreground hover:text-destructive sm:mt-0.5"
                                                         onClick={() =>
                                                             removeRoute(
                                                                 route.key,
@@ -504,6 +509,7 @@ export default function TransportFields({
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
+                                                className="min-h-11"
                                                 onClick={addRoute}
                                                 disabled={
                                                     form.data.routes.length >= 5
@@ -523,19 +529,39 @@ export default function TransportFields({
                                 <InputError message={errors.routes} />
                             </section>
 
-                            <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="space-y-3 border-t pt-5">
                                 <p className="text-xs leading-relaxed text-muted-foreground">
-                                    An approved listing stays approved when you
-                                    edit it.
+                                    Saving sends your carrier details for review. An approved listing stays approved when edited.
                                 </p>
-                                <Button
-                                    type="submit"
-                                    disabled={form.processing}
-                                    data-test="carrier-save"
-                                >
-                                    {form.processing && <Spinner />}
-                                    Save and submit for review
-                                </Button>
+                                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    {onBack ? (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            className="min-h-11 w-full sm:w-auto"
+                                            disabled={form.processing}
+                                            onClick={onBack}
+                                        >
+                                            <ArrowLeft className="size-4" aria-hidden="true" />
+                                            Back
+                                        </Button>
+                                    ) : (
+                                        <span />
+                                    )}
+                                    <Button
+                                        type="submit"
+                                        className="min-h-11 w-full sm:w-auto"
+                                        disabled={form.processing}
+                                        data-test="carrier-save"
+                                    >
+                                        {form.processing ? (
+                                            <Spinner />
+                                        ) : (
+                                            <ArrowRight className="size-4" aria-hidden="true" />
+                                        )}
+                                        Save and submit for review
+                                    </Button>
+                                </div>
                             </div>
                         </form>
                     </CardContent>
@@ -683,7 +709,7 @@ export default function TransportFields({
                                     >
                                         <SelectTrigger
                                             id="document_type"
-                                            className="mt-1 w-full"
+                                            className="mt-1 h-11 w-full"
                                         >
                                             <SelectValue />
                                         </SelectTrigger>
@@ -707,7 +733,7 @@ export default function TransportFields({
                                         id="document_file"
                                         type="file"
                                         accept=".pdf,.jpg,.jpeg,.png"
-                                        className="mt-1 cursor-pointer"
+                                        className="mt-1 h-11 cursor-pointer"
                                         data-test="document-input"
                                         onChange={(event) =>
                                             documentForm.setData(
@@ -722,7 +748,7 @@ export default function TransportFields({
                                 <Button
                                     type="submit"
                                     variant="outline"
-                                    className="w-full sm:w-auto"
+                                    className="min-h-11 w-full sm:w-auto"
                                     disabled={
                                         documentForm.processing ||
                                         documentForm.data.file === null

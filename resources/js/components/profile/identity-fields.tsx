@@ -63,9 +63,9 @@ export default function IdentityFields({
     );
     if (section === 'contact')
         return (
-            <div className="space-y-6">
-                <p className="text-xs text-muted-foreground">
-                    Private until revealed. Use a country code for each number.
+            <div className="space-y-5">
+                <p className="rounded-md border bg-muted/30 px-3 py-3 text-sm leading-relaxed text-muted-foreground">
+                    Your contact details are private until revealed. Use a country code for each number.
                 </p>
                 <ContactNumberFields
                     field="phone_numbers"
@@ -91,6 +91,7 @@ export default function IdentityFields({
                         id="email"
                         type="email"
                         autoComplete="email"
+                        className="h-11"
                         value={values.email}
                         onChange={(event) =>
                             onChange('email', event.target.value)
@@ -100,9 +101,12 @@ export default function IdentityFields({
                     <InputError message={errors.email} />
                 </div>
                 <fieldset className="space-y-3 border-t pt-4">
-                    <legend className="text-sm font-medium">
+                    <legend className="px-1 text-sm font-semibold">
                         Share after a contact reveal
                     </legend>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                        Choose which contact methods people can see after they unlock your details.
+                    </p>
                     {(
                         [
                             ['phone_visible', 'Phone numbers'],
@@ -112,7 +116,7 @@ export default function IdentityFields({
                     ).map(([key, label]) => (
                         <div
                             key={key}
-                            className="flex items-center justify-between gap-4"
+                            className="flex min-h-12 items-center justify-between gap-4 rounded-md border px-3 py-2"
                         >
                             <Label htmlFor={key}>{label}</Label>
                             <Switch
@@ -137,6 +141,7 @@ export default function IdentityFields({
                         id="display_name"
                         required
                         autoComplete="name"
+                        className="h-11"
                         value={values.display_name}
                         onChange={(event) =>
                             onChange('display_name', event.target.value)
@@ -153,7 +158,7 @@ export default function IdentityFields({
                             onChange('account_type', value)
                         }
                     >
-                        <SelectTrigger id="account_type">
+                        <SelectTrigger id="account_type" className="h-11">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -182,6 +187,7 @@ export default function IdentityFields({
                     }}
                     localOnly
                     type="city"
+                    className="w-full [&_input]:h-11"
                     placeholder="Search city or town"
                 />
                 <InputError message={errors.primary_location_id} />
@@ -190,7 +196,8 @@ export default function IdentityFields({
                 <Label htmlFor="business_description">About (optional)</Label>
                 <Textarea
                     id="business_description"
-                    rows={2}
+                    rows={3}
+                    className="min-h-24 resize-y"
                     value={values.business_description}
                     onChange={(event) =>
                         onChange('business_description', event.target.value)
@@ -201,8 +208,8 @@ export default function IdentityFields({
                 <InputError message={errors.business_description} />
             </div>
             {values.account_type === 'business' && (
-                <fieldset className="space-y-4 border-t pt-4">
-                    <legend className="text-sm font-medium">
+                <fieldset className="space-y-4 border-t pt-5">
+                    <legend className="px-1 text-sm font-semibold">
                         Business details
                     </legend>
                     <p className="text-xs text-muted-foreground">
@@ -215,6 +222,7 @@ export default function IdentityFields({
                             <Input
                                 id="legal_name"
                                 autoComplete="organization"
+                                className="h-11"
                                 value={values.legal_name}
                                 onChange={(e) =>
                                     onChange('legal_name', e.target.value)
@@ -233,7 +241,7 @@ export default function IdentityFields({
                                     )
                                 }
                             >
-                                <SelectTrigger id="legal_form">
+                                <SelectTrigger id="legal_form" className="h-11">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -257,6 +265,7 @@ export default function IdentityFields({
                             </Label>
                             <Input
                                 id="legal_form_other"
+                                className="h-11"
                                 value={values.legal_form_other}
                                 onChange={(e) =>
                                     onChange('legal_form_other', e.target.value)

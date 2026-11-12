@@ -1,6 +1,7 @@
 import InputError from '@/components/input-error';
 import { Toggle } from '@/components/ui/toggle';
-import { Package, Truck } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Check, Package, Truck } from 'lucide-react';
 import { useState } from 'react';
 
 export interface CapabilityValues {
@@ -53,21 +54,65 @@ export default function CapabilityFields({ values, errors, onChange }: Props) {
                     variant="outline"
                     pressed={values.posts_freight}
                     onPressedChange={() => toggle('posts_freight')}
-                    className="justify-start gap-2 px-3"
+                    className={cn(
+                        'min-h-20 w-full justify-start gap-3 rounded-lg px-3 py-3 text-left whitespace-normal sm:px-4',
+                        values.posts_freight &&
+                            'border-primary/60 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground',
+                    )}
                     data-test="capability-posts-freight"
                 >
-                    <Package className="size-4" />
-                    Post freight
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                        <Package className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1 space-y-0.5">
+                        <span className="block font-semibold">Post freight</span>
+                        <span className="block text-xs font-normal leading-relaxed text-muted-foreground">
+                            Find transport for your loads
+                        </span>
+                    </span>
+                    <span
+                        className={cn(
+                            'flex size-5 shrink-0 items-center justify-center rounded-full border',
+                            values.posts_freight
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-muted-foreground/40',
+                        )}
+                        aria-hidden="true"
+                    >
+                        {values.posts_freight && <Check className="size-3" />}
+                    </span>
                 </Toggle>
                 <Toggle
                     variant="outline"
                     pressed={values.provides_transport}
                     onPressedChange={() => toggle('provides_transport')}
-                    className="justify-start gap-2 px-3"
+                    className={cn(
+                        'min-h-20 w-full justify-start gap-3 rounded-lg px-3 py-3 text-left whitespace-normal sm:px-4',
+                        values.provides_transport &&
+                            'border-primary/60 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground',
+                    )}
                     data-test="capability-provides-transport"
                 >
-                    <Truck className="size-4" />
-                    Provide transport
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                        <Truck className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1 space-y-0.5">
+                        <span className="block font-semibold">Provide transport</span>
+                        <span className="block text-xs font-normal leading-relaxed text-muted-foreground">
+                            Offer trucks and routes to shippers
+                        </span>
+                    </span>
+                    <span
+                        className={cn(
+                            'flex size-5 shrink-0 items-center justify-center rounded-full border',
+                            values.provides_transport
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-muted-foreground/40',
+                        )}
+                        aria-hidden="true"
+                    >
+                        {values.provides_transport && <Check className="size-3" />}
+                    </span>
                 </Toggle>
             </div>
 
