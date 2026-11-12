@@ -13,6 +13,7 @@ use App\Http\Controllers\Settings\SessionSummaryController;
 use App\Http\Controllers\Settings\TicketController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\Settings\UserAvatarController;
+use App\Http\Middleware\EnsureWorkspaceUiEnabled;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -56,10 +57,13 @@ Route::middleware('auth')->group(function () {
         return redirect('/settings/security/authentication');
     });
 
-    // API Tokens
-    Route::get('settings/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
-    Route::post('settings/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
-    Route::delete('settings/api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    // Developer token management is not a consumer account setting.
+    // Keep the routes for future workspace mode without exposing credentials UI.
+    Route::middleware(EnsureWorkspaceUiEnabled::class)->group(function () {
+        Route::get('settings/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+        Route::post('settings/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+        Route::delete('settings/api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    });
 
     // Data Export
     Route::post('settings/export-data', [SecurityController::class, 'exportData'])->name('security.export-data');

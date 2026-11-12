@@ -4,8 +4,8 @@ import { Separator } from '@/components/ui/separator';
 import { useTranslations } from '@/hooks/use-translations';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit } from '@/routes/profile';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import {
     Bell,
     Briefcase,
@@ -27,6 +27,7 @@ interface NavSection {
 
 const getNavSections = (
     t: (key: string, fallback: string) => string,
+    workspaceUiEnabled: boolean,
 ): NavSection[] => [
     {
         title: t('navigation.profile_section', 'Profile'),
@@ -81,11 +82,15 @@ const getNavSections = (
                 href: '/settings/notifications',
                 icon: Bell,
             },
-            {
-                title: t('navigation.api_tokens', 'API Tokens'),
-                href: '/settings/api-tokens',
-                icon: Fingerprint,
-            },
+            ...(workspaceUiEnabled
+                ? [
+                      {
+                          title: t('navigation.api_tokens', 'API Tokens'),
+                          href: '/settings/api-tokens',
+                          icon: Fingerprint,
+                      },
+                  ]
+                : []),
         ],
     },
     {
@@ -113,7 +118,11 @@ export default function ProfileLayout({
     fullWidth = false,
 }: ProfileLayoutProps) {
     const { t, i18n } = useTranslations();
-    const navSections = useMemo(() => getNavSections(t), [t]);
+    const { workspace_ui_enabled } = usePage<SharedData>().props;
+    const navSections = useMemo(
+        () => getNavSections(t, workspace_ui_enabled),
+        [t, workspace_ui_enabled],
+    );
 
     const defaultTitle =
         title ?? t('settings.profile.title', 'Profile Settings');

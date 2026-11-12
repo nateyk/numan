@@ -203,10 +203,10 @@ export default function BillingIndex({
                 fullWidth
             >
                 <div className="space-y-8 pb-12">
-                    <div className="grid gap-8 lg:grid-cols-3">
+                    <div className="grid items-start gap-4 lg:grid-cols-3 lg:gap-6">
                         {/* Current Plan */}
-                        <Card className="glass animate-fade-in-up overflow-hidden border-2 border-primary/10 transition-all hover:border-primary/30 lg:col-span-2">
-                            <CardHeader className="border-b border-primary/5 bg-muted/30 pb-6">
+                        <Card className="overflow-hidden border shadow-sm lg:col-span-2">
+                            <CardHeader className="border-b bg-muted/20 pb-4">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <CardTitle className="flex items-center gap-2">
@@ -218,8 +218,8 @@ export default function BillingIndex({
                                         </CardTitle>
                                         <CardDescription>
                                             {t(
-                                                'billing.your_workspace_on',
-                                                'Your workspace is on the {{plan}} plan.',
+                                                'billing.your_account_on',
+                                                'Your account is on the {{plan}} plan.',
                                                 { plan: workspace.plan },
                                             )}
                                         </CardDescription>
@@ -227,7 +227,7 @@ export default function BillingIndex({
                                     {getStatusBadge()}
                                 </div>
                             </CardHeader>
-                            <CardContent className="pt-6">
+                            <CardContent className="pt-5">
                                 <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                                     <div className="space-y-1">
                                         <p className="text-4xl font-extrabold tracking-tight">
@@ -458,20 +458,20 @@ export default function BillingIndex({
 
                             {/* Trial Countdown or Help */}
                             {!subscription && workspace.plan === 'Free' && (
-                                <Card className="glass animate-fade-in-up border-dashed bg-muted/20 delay-300">
-                                    <CardContent className="flex flex-col items-center pt-8 pb-8 text-center">
-                                        <Sparkles className="mb-4 h-10 w-10 text-primary opacity-50" />
-                                        <p className="mb-2 text-lg font-bold">
+                                <Card className="border bg-muted/20 shadow-none">
+                                    <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
+                                        <Sparkles className="size-7 text-primary" />
+                                        <p className="text-base font-semibold">
                                             Unlock more power
                                         </p>
-                                        <p className="mb-6 px-6 text-sm leading-relaxed text-muted-foreground">
+                                        <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
                                             Unlimited freight posts and contact
                                             reveals, paid in ETB.
                                         </p>
                                         <Button
                                             asChild
                                             size="lg"
-                                            className="animate-pulse-premium w-full max-w-[180px] rounded-full font-bold shadow-lg shadow-primary/20 transition-transform hover:scale-105 active:scale-95"
+                                            className="w-full max-w-[180px] font-medium"
                                         >
                                             <Link href="/billing/plans">
                                                 Explore Plans

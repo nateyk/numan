@@ -45,7 +45,7 @@ class OnboardingChecklistController extends Controller
             ],
             // A one-person workspace has nobody to invite. Asking them to grow
             // a team is a step they can never complete, so it is not shown.
-            ...($user->isIndividual() ? [] : [[
+            ...(! config('features.workspace.ui', false) || $user->isIndividual() ? [] : [[
                 'id' => 'invite_member',
                 'label' => 'Invite a team member',
                 'description' => 'Grow your workspace team',
