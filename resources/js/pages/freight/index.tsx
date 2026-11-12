@@ -282,19 +282,19 @@ export default function FreightIndex({
                                     placeholder="Search cargo, towns, or post ID"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="h-11 pr-12"
+                                    className="h-11 pr-14"
                                 />
                                 <Button
                                     type="submit"
                                     size="icon"
-                                    className="absolute top-1/2 right-1 size-9 -translate-y-1/2"
+                                    className="absolute top-0 right-0 size-11 rounded-l-none"
                                     aria-label="Search freight posts"
                                 >
                                     <Search className="size-4" aria-hidden="true" />
                                 </Button>
                             </div>
                         </form>
-                        <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[minmax(11rem,13rem)_auto] sm:self-end lg:shrink-0">
+                        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(11rem,13rem)_auto] sm:self-end lg:shrink-0">
                             <div className="min-w-0 space-y-1.5">
                                 <Label
                                     htmlFor="my-freight-status"
