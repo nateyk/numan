@@ -35,9 +35,10 @@ const getMainNavItems = (
     isSuperadmin: boolean = false,
     interestsEnabled: boolean = false,
     isIndividual: boolean = false,
+    workspaceUiEnabled: boolean = true,
 ): NavItem[] => {
     const items = [
-        ...(isIndividual
+        ...(isIndividual && workspaceUiEnabled
             ? []
             : [
                   {
@@ -75,7 +76,7 @@ const getMainNavItems = (
             href: '/usage',
             icon: BarChart3,
         },
-        ...(isIndividual
+        ...(!workspaceUiEnabled || isIndividual
             ? []
             : [
                   {
@@ -132,7 +133,7 @@ function IndividualBrand() {
                                 Numan Freight
                             </span>
                             <span className="truncate text-xs text-muted-foreground">
-                                Individual account
+                                Personal account
                             </span>
                         </span>
                     </Link>
@@ -144,13 +145,13 @@ function IndividualBrand() {
 
 export function AppSidebar() {
     const { t, i18n } = useTranslations();
-    const { auth, marketplace, is_individual } = usePage<SharedData>().props;
+    const { auth, marketplace, is_individual, workspace_ui_enabled } = usePage<SharedData>().props;
     const isSuperadmin = auth.user.is_superadmin === true;
     const interestsEnabled = marketplace?.interests_enabled ?? false;
 
     const mainNavItems = useMemo(
-        () => getMainNavItems(t, isSuperadmin, interestsEnabled, is_individual),
-        [t, isSuperadmin, interestsEnabled, is_individual],
+        () => getMainNavItems(t, isSuperadmin, interestsEnabled, is_individual, workspace_ui_enabled),
+        [t, isSuperadmin, interestsEnabled, is_individual, workspace_ui_enabled],
     );
     const footerNavItems = useMemo(() => getFooterNavItems(t), [t]);
 
@@ -162,7 +163,7 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset" side={sidebarSide}>
             <SidebarHeader>
-                {is_individual ? <IndividualBrand /> : <WorkspaceSwitcher />}
+                {!workspace_ui_enabled || is_individual ? <IndividualBrand /> : <WorkspaceSwitcher />}
             </SidebarHeader>
             <SidebarSeparator />
 

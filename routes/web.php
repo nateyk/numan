@@ -223,7 +223,7 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     Route::get('dashboard', function () {
         $user = request()->user();
 
-        if ($user->isIndividual()) {
+        if (config('features.workspace.ui') && $user->isIndividual()) {
             return redirect()->route('freight.discovery');
         }
 
