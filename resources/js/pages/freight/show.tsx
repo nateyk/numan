@@ -265,13 +265,32 @@ export default function FreightShow({
 
                     <section className="py-6">
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                            <div className="mb-6 space-y-1">
-                                <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
-                                    <MapPin className="size-7 text-primary" />
-                                    {post.origin?.name ?? 'Origin'}{' '}
-                                    <ArrowRight className="size-5 text-muted-foreground" />
-                                    {post.destination?.name ?? 'Destination'}
+                            <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+                                <h1 className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+                                    <MapPin
+                                        className="size-6 shrink-0 text-primary"
+                                        aria-hidden="true"
+                                    />
+                                    <span className="min-w-0 break-words">
+                                        {post.origin?.name ?? 'Origin'}
+                                    </span>
+                                    <ArrowRight
+                                        className="size-5 shrink-0 text-muted-foreground"
+                                        aria-hidden="true"
+                                    />
+                                    <span className="sr-only">to</span>
+                                    <span className="min-w-0 break-words">
+                                        {post.destination?.name ?? 'Destination'}
+                                    </span>
                                 </h1>
+                                {post.status && (
+                                    <Badge
+                                        variant={post.status === 'active' ? 'default' : 'secondary'}
+                                        className="shrink-0 capitalize"
+                                    >
+                                        {post.status.replaceAll('_', ' ')}
+                                    </Badge>
+                                )}
                             </div>
 
                             <div className="grid items-start gap-6 lg:grid-cols-12">
