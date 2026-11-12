@@ -194,17 +194,17 @@ export default function PublicProfileIndex({
             contentClassName="overflow-x-clip"
         >
             <Head title="My profile" />
-            <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-                <header className="flex flex-wrap items-center justify-between gap-3">
+            <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:space-y-7 sm:px-6 sm:py-8">
+                <header className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight">
                             My profile
                         </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                             Your details, contact, and marketplace role.
                         </p>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" className="min-h-11" asChild>
                         <Link href={`/p/${profile.slug}`}>
                             <Eye className="size-4" />
                             Preview
@@ -213,23 +213,19 @@ export default function PublicProfileIndex({
                 </header>
                 <nav
                     aria-label="Profile setup"
-                    className="grid auto-cols-fr grid-flow-col gap-1 rounded-lg border bg-muted/30 p-1"
+                    className="hidden auto-cols-fr grid-flow-col gap-1 rounded-lg border bg-muted/30 p-1 sm:grid"
                 >
                     {steps.map((item, i) => (
                         <Button
                             key={item.id}
                             type="button"
-                            variant={
-                                currentStep === item.id ? 'secondary' : 'ghost'
-                            }
+                            variant="ghost"
                             className={cn(
-                                'h-auto min-h-11 flex-col gap-1 px-1 py-2 text-xs sm:flex-row sm:gap-2',
+                                'min-h-12 gap-2 px-2 text-sm font-medium',
                                 currentStep === item.id &&
-                                    'bg-background shadow-sm',
+                                    'border border-border bg-background shadow-xs hover:bg-background',
                             )}
-                            aria-current={
-                                currentStep === item.id ? 'step' : undefined
-                            }
+                            aria-current={currentStep === item.id ? 'step' : undefined}
                             disabled={
                                 form.processing ||
                                 (i > index && form.isDirty) ||
@@ -240,27 +236,54 @@ export default function PublicProfileIndex({
                         >
                             <span
                                 className={cn(
-                                    'flex size-5 items-center justify-center rounded-full text-[10px]',
+                                    'flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
                                     currentStep === item.id
                                         ? 'bg-primary text-primary-foreground'
                                         : 'bg-muted text-muted-foreground',
                                 )}
+                                aria-hidden="true"
                             >
                                 {i + 1}
                             </span>
-                            {item.label}
+                            <span className="truncate">{item.label}</span>
                         </Button>
                     ))}
                 </nav>
-                <div>
+
+                <div
+                    className="space-y-2 sm:hidden"
+                    role="progressbar"
+                    aria-label="Profile setup progress"
+                    aria-valuemin={1}
+                    aria-valuemax={steps.length}
+                    aria-valuenow={index + 1}
+                    aria-valuetext={`Step ${index + 1} of ${steps.length}: ${steps[index]?.label}`}
+                >
+                    <p className="text-xs font-medium text-muted-foreground">
+                        Step {index + 1} of {steps.length}
+                    </p>
+                    <div className="grid grid-flow-col gap-1" aria-hidden="true">
+                        {steps.map((item, i) => (
+                            <span
+                                key={item.id}
+                                className={cn(
+                                    'h-1 rounded-full',
+                                    i <= index ? 'bg-primary' : 'bg-border',
+                                )}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-1">
                     <h2
                         ref={heading}
                         tabIndex={-1}
-                        className="scroll-mt-24 text-lg font-semibold outline-none"
+                        className="scroll-mt-24 text-xl font-semibold tracking-tight outline-none"
                     >
                         {steps[index]?.label}
                     </h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="hidden text-sm text-muted-foreground sm:block">
                         Step {index + 1} of {steps.length}
                     </p>
                 </div>
