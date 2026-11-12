@@ -27,9 +27,10 @@ import {
     type BreadcrumbItem,
     type Invoice,
     type Plan,
+    type SharedData,
     type WorkspaceRole,
 } from '@/types';
-import { Deferred, Head, Link } from '@inertiajs/react';
+import { Deferred, Head, Link, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
     Ban,
@@ -116,7 +117,11 @@ export default function BillingIndex({
     userRole,
 }: BillingIndexProps) {
     const { t } = useTranslations();
+    const { workspace_ui_enabled } = usePage<SharedData>().props;
     const isOwner = userRole === 'owner' || userRole === 'admin';
+    const displayedPlan = workspace_ui_enabled
+        ? workspace.plan
+        : (marketplacePlan?.name ?? workspace.plan);
     const currentPlan = plans.find((p) => p.name === workspace.plan);
     const [portalLoading, setPortalLoading] = useState(false);
     const [resumeLoading, setResumeLoading] = useState(false);
@@ -161,6 +166,18 @@ export default function BillingIndex({
     };
 
     const getStatusBadge = () => {
+        if (!workspace_ui_enabled) {
+            const status = marketplaceSubscription?.status;
+
+            return (
+                <Badge variant={status === 'active' ? 'default' : 'secondary'}>
+                    {status === 'active'
+                        ? t('billing.active', 'Active')
+                        : (status ?? displayedPlan)}
+                </Badge>
+            );
+        }
+
         if (!subscription) {
             return (
                 <Badge variant="secondary">{t('billing.free', 'Free')}</Badge>
@@ -203,9 +220,21 @@ export default function BillingIndex({
                 fullWidth
             >
                 <div className="space-y-8 pb-12">
-                    <div className="grid items-start gap-4 lg:grid-cols-3 lg:gap-6">
+                    <div
+                        className={cn(
+                            'grid items-start gap-4 lg:gap-6',
+                            workspace_ui_enabled
+                                ? 'lg:grid-cols-3'
+                                : 'lg:grid-cols-1',
+                        )}
+                    >
                         {/* Current Plan */}
-                        <Card className="overflow-hidden border shadow-sm lg:col-span-2">
+                        <Card
+                            className={cn(
+                                'overflow-hidden border shadow-sm',
+                                workspace_ui_enabled && 'lg:col-span-2',
+                            )}
+                        >
                             <CardHeader className="border-b bg-muted/20 pb-4">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -220,7 +249,7 @@ export default function BillingIndex({
                                             {t(
                                                 'billing.your_account_on',
                                                 'Your account is on the {{plan}} plan.',
-                                                { plan: workspace.plan },
+                                                { plan: displayedPlan },
                                             )}
                                         </CardDescription>
                                     </div>
@@ -231,9 +260,9 @@ export default function BillingIndex({
                                 <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                                     <div className="space-y-1">
                                         <p className="text-4xl font-extrabold tracking-tight">
-                                            {workspace.plan}
+                                            {displayedPlan}
                                         </p>
-                                        {currentPlan && (
+                                        {workspace_ui_enabled && currentPlan && (
                                             <p className="font-medium text-muted-foreground">
                                                 {currentPlan.price.monthly > 0
                                                     ? `$${currentPlan.price.monthly}/month`
@@ -308,7 +337,7 @@ export default function BillingIndex({
                                                 className="rounded-full px-6 shadow-sm transition-transform active:scale-95"
                                             >
                                                 <Link href="/billing/plans">
-                                                    {workspace.plan === 'Free'
+                                                    {displayedPlan === 'Free'
                                                         ? t(
                                                               'billing.upgrade',
                                                               'Subscribe',
@@ -388,7 +417,7 @@ export default function BillingIndex({
                                 </div>
 
                                 {/* Plan Features */}
-                                {currentPlan && (
+                                {workspace_ui_enabled && currentPlan && (
                                     <div className="-mx-6 mt-8 border-t bg-muted/30 px-6 py-6">
                                         <h4 className="mb-4 text-xs font-bold tracking-wider text-muted-foreground uppercase">
                                             {t(
@@ -457,7 +486,7 @@ export default function BillingIndex({
                                 still registered on the server. */}
 
                             {/* Trial Countdown or Help */}
-                            {!subscription && workspace.plan === 'Free' && (
+                            {workspace_ui_enabled && !subscription && workspace.plan === 'Free' && (
                                 <Card className="border bg-muted/20 shadow-none">
                                     <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
                                         <Sparkles className="size-7 text-primary" />
