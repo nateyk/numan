@@ -501,7 +501,7 @@ export default function DiscoverIndex({
                                             <legend className="sr-only">
                                                 Location and cargo filters
                                             </legend>
-                                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-4">
+                                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(16rem,1fr)]">
                                                 <div className="min-w-0 space-y-1.5">
                                                     <Label
                                                         htmlFor="origin-filter"
@@ -658,14 +658,16 @@ export default function DiscoverIndex({
                                                             ? 'Applying…'
                                                             : 'Apply filters'}
                                                     </Button>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        onClick={clearAll}
-                                                        className="h-11 shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
-                                                    >
-                                                        Clear all
-                                                    </Button>
+                                                    {hasActiveFilters && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            onClick={clearAll}
+                                                            className="h-11 shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                                        >
+                                                            Clear all
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
                                             </fieldset>
