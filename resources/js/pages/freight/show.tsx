@@ -278,6 +278,7 @@ export default function FreightShow({
                                         className="size-5 shrink-0 text-muted-foreground"
                                         aria-hidden="true"
                                     />
+                                    <span className="sr-only">to</span>
                                     <span className="min-w-0 break-words">
                                         {post.destination?.name ?? 'Destination'}
                                     </span>
