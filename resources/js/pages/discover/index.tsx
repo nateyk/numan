@@ -368,16 +368,16 @@ export default function DiscoverIndex({
                                 must be able to escape this card when its
                                 results open. */}
                             <Card className="gap-0 border py-0 shadow-none">
-                                <CardContent className="space-y-3 p-3 sm:p-5">
+                                <CardContent className="space-y-4 p-4 sm:p-5 lg:p-6">
                                     <form
                                         onSubmit={(e) => {
                                             e.preventDefault();
                                             doSearch();
                                         }}
                                         aria-label="Filter freight posts"
-                                        className="space-y-3"
+                                        className="space-y-4"
                                     >
-                                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                                        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end">
                                             <div className="min-w-0 space-y-1.5">
                                                 <Label
                                                     htmlFor="freight-search"
@@ -418,7 +418,7 @@ export default function DiscoverIndex({
                                                     >
                                                         <Button
                                                             variant="outline"
-                                                            className="h-11 w-full justify-between sm:min-w-44"
+                                                            className="h-11 w-full justify-between"
                                                             aria-labelledby="sort-label"
                                                         >
                                                             <span className="inline-flex items-center gap-2">
@@ -501,7 +501,7 @@ export default function DiscoverIndex({
                                             <legend className="sr-only">
                                                 Location and cargo filters
                                             </legend>
-                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-4">
                                                 <div className="min-w-0 space-y-1.5">
                                                     <Label
                                                         htmlFor="origin-filter"
@@ -640,26 +640,33 @@ export default function DiscoverIndex({
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </div>
-                                                <Button
-                                                    type="submit"
-                                                    size="sm"
-                                                    className="h-11 w-full text-sm"
+                                                <div
+                                                    role="group"
+                                                    aria-label="Filter actions"
+                                                    className="flex min-w-0 items-center gap-2 self-end"
                                                 >
-                                                    <Search
-                                                        className="size-3.5"
-                                                        aria-hidden="true"
-                                                    />{' '}
-                                                    Apply filters
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={clearAll}
-                                                    className="h-11 w-full text-sm"
-                                                >
-                                                    Clear all
-                                                </Button>
+                                                    <Button
+                                                        type="submit"
+                                                        className="h-11 min-w-0 flex-1 px-3 text-sm"
+                                                        disabled={updatingResults}
+                                                    >
+                                                        <Search
+                                                            className="size-4"
+                                                            aria-hidden="true"
+                                                        />
+                                                        {updatingResults
+                                                            ? 'Applying…'
+                                                            : 'Apply filters'}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        onClick={clearAll}
+                                                        className="h-11 shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                                    >
+                                                        Clear all
+                                                    </Button>
+                                                </div>
                                             </div>
                                             </fieldset>
                                         </div>
