@@ -297,8 +297,8 @@ export default function PublicProfileIndex({
                         }}
                         className="space-y-4"
                     >
-                        <Card>
-                            <CardContent className="space-y-6">
+                        <Card className="gap-0 py-0 shadow-none">
+                            <CardContent className="space-y-6 p-4 sm:p-6">
                                 <IdentityFields
                                     section={currentStep}
                                     values={form.data}
@@ -309,8 +309,8 @@ export default function PublicProfileIndex({
                                     onChange={updateIdentity}
                                 />
                                 {currentStep === 'basics' && (
-                                    <fieldset className="space-y-3 border-t pt-4">
-                                        <legend className="text-sm font-medium">
+                                    <fieldset className="space-y-3 border-t pt-5">
+                                        <legend className="px-1 text-sm font-semibold">
                                             What do you do?
                                         </legend>
                                         <CapabilityFields
@@ -324,25 +324,32 @@ export default function PublicProfileIndex({
                                 )}
                             </CardContent>
                         </Card>
-                        <footer className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
+                        <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex min-h-11 items-center gap-3">
                                 {currentStep === 'contact' && (
                                     <Button
                                         type="button"
                                         variant="ghost"
+                                        className="min-h-11"
                                         disabled={form.processing}
                                         onClick={() => goTo('basics')}
                                     >
-                                        <ArrowLeft className="size-4" />
+                                        <ArrowLeft className="size-4" aria-hidden="true" />
                                         Back
                                     </Button>
                                 )}
+                                {form.isDirty && (
+                                    <span role="status" className="text-xs text-muted-foreground">
+                                        Unsaved changes
+                                    </span>
+                                )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
                                 {currentStep === 'contact' && (
                                     <Button
                                         type="button"
                                         variant="outline"
+                                        className="min-h-11 w-full sm:w-auto"
                                         disabled={form.processing}
                                         onClick={() => save(false)}
                                     >
@@ -351,6 +358,7 @@ export default function PublicProfileIndex({
                                 )}
                                 <Button
                                     type="submit"
+                                    className="min-h-11 w-full sm:w-auto"
                                     disabled={form.processing}
                                     data-test="profile-save"
                                 >
@@ -358,18 +366,10 @@ export default function PublicProfileIndex({
                                     {currentStep === 'basics'
                                         ? 'Continue'
                                         : 'Save & continue'}
-                                    <ArrowRight className="size-4" />
+                                    <ArrowRight className="size-4" aria-hidden="true" />
                                 </Button>
                             </div>
                         </footer>
-                        {form.isDirty && (
-                            <p
-                                role="status"
-                                className="text-xs text-muted-foreground"
-                            >
-                                Unsaved changes
-                            </p>
-                        )}
                     </form>
                 )}
 
@@ -379,22 +379,12 @@ export default function PublicProfileIndex({
                             {...transportProps}
                             section="carrier"
                             onSaved={() => goTo('review')}
+                            onBack={() => goTo('contact')}
                         />
                     )}
                 </div>
-                {currentStep === 'carrier' && (
-                    <Button
-                        variant="ghost"
-                        type="button"
-                        onClick={() => goTo('contact')}
-                    >
-                        <ArrowLeft className="size-4" />
-                        Back
-                    </Button>
-                )}
-
                 <div hidden={currentStep !== 'review'} className="space-y-5">
-                    <Card>
+                    <Card className="gap-0 py-0 shadow-none">
                         <CardHeader className="flex-row items-center justify-between gap-3">
                             <CardTitle className="flex items-center gap-2 text-base">
                                 Profile summary
@@ -450,7 +440,7 @@ export default function PublicProfileIndex({
                                 </div>
                             </dl>
                             <Button
-                                className="mt-4"
+                                className="mt-5 min-h-11"
                                 type="button"
                                 size="sm"
                                 variant="outline"
@@ -460,8 +450,8 @@ export default function PublicProfileIndex({
                             </Button>
                         </CardContent>
                     </Card>
-                    <Collapsible className="space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+                    <Collapsible className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4 sm:p-5">
                             <div className="space-y-1">
                                 <p className="text-sm font-medium">
                                     {business
@@ -478,7 +468,7 @@ export default function PublicProfileIndex({
                                 </p>
                             </div>
                             <CollapsibleTrigger asChild>
-                                <Button variant="outline" size="sm">
+                                <Button variant="outline" className="min-h-11">
                                     {profile.verification_status ===
                                         'pending' ||
                                     profile.verification_status === 'verified'
@@ -505,6 +495,25 @@ export default function PublicProfileIndex({
                             />
                         </CollapsibleContent>
                     </Collapsible>
+                    <footer className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className="min-h-11"
+                            onClick={() =>
+                                goTo(profile.provides_transport ? 'carrier' : 'contact')
+                            }
+                        >
+                            <ArrowLeft className="size-4" aria-hidden="true" />
+                            Back
+                        </Button>
+                        <Button variant="outline" className="min-h-11" asChild>
+                            <Link href={`/p/${profile.slug}`}>
+                                <Eye className="size-4" aria-hidden="true" />
+                                View public profile
+                            </Link>
+                        </Button>
+                    </footer>
                 </div>
             </div>
         </AppLayout>
