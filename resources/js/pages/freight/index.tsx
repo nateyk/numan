@@ -18,6 +18,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -25,13 +26,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from '@/components/ui/sheet';
 import {
     Table,
     TableBody,
@@ -53,7 +47,6 @@ import {
     ExternalLink,
     Eye,
     MapPin,
-    Menu,
     MoreHorizontal,
     Package,
     Pencil,
@@ -255,151 +248,92 @@ export default function FreightIndex({
                         </Button>
                     </div>
                 )}
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                        <h1 className="text-2xl font-bold tracking-tight">
-                            My Freight
-                        </h1>
-                        <Sheet>
-                            <SheetTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="md:hidden"
-                                >
-                                    <Menu className="size-4" />
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="w-72">
-                                <SheetHeader>
-                                    <SheetTitle>My Freight Menu</SheetTitle>
-                                </SheetHeader>
-                                <div className="mt-6 space-y-4">
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium">
-                                            Filter by Status
-                                        </p>
-                                        <div className="grid gap-1">
-                                            {STATUSES.map((s) => (
-                                                <Button
-                                                    key={s.value}
-                                                    variant={
-                                                        filters.status ===
-                                                        s.value
-                                                            ? 'default'
-                                                            : 'ghost'
-                                                    }
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        filterBy(s.value)
-                                                    }
-                                                    className="justify-between"
-                                                >
-                                                    {s.label}{' '}
-                                                    <Badge variant="secondary">
-                                                        {counts[s.value] ?? 0}
-                                                    </Badge>
-                                                </Button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <PostFreightButton
-                                        onBeforePost={allowPost}
-                                        className="w-full"
-                                    />
-                                </div>
-                            </SheetContent>
-                        </Sheet>
-                    </div>
-                    <p className="text-muted-foreground">
-                        Manage your freight posts — track by status, search, and
-                        act via dropdown.
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                        My Freight
+                    </h1>
+                    <p className="text-sm text-muted-foreground sm:text-base">
+                        Search, track, and manage your freight posts in one place.
                     </p>
                 </div>
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="relative max-w-sm flex-1">
-                        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Search cargo, towns, ULID…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && doSearch()}
-                            className="pl-9"
-                        />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Select
-                            value={filters.status}
-                            onValueChange={(v) => filterBy(v)}
+                {/* Use one status dropdown on mobile and desktop. */}
+                <div className="rounded-lg border bg-card p-3 shadow-xs sm:p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
+                        <form
+                            role="search"
+                            aria-label="Search my freight posts"
+                            className="min-w-0 flex-1 lg:max-w-lg"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                doSearch();
+                            }}
                         >
-                            <SelectTrigger className="hidden w-40 sm:flex">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {STATUSES.map((s) => (
-                                    <SelectItem key={s.value} value={s.value}>
-                                        {s.label} ({counts[s.value] ?? 0})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <PostFreightButton
-                            onBeforePost={allowPost}
-                            className="hidden sm:flex"
-                        />
-                        <PostFreightButton
-                            onBeforePost={allowPost}
-                            size="icon"
-                            className="sm:hidden"
-                            label="Post Freight"
-                        />
-                    </div>
-                </div>
-
-                <div className="hidden flex-wrap gap-2 sm:flex">
-                    {STATUSES.map((s) => (
-                        <Button
-                            key={s.value}
-                            variant={
-                                filters.status === s.value
-                                    ? 'default'
-                                    : 'outline'
-                            }
-                            size="sm"
-                            onClick={() => filterBy(s.value)}
-                            className="h-7 px-2.5 text-xs"
-                        >
-                            {s.label}{' '}
-                            <Badge
-                                variant="secondary"
-                                className="ml-1 px-1.5 py-0 text-[10px]"
+                            <Label
+                                htmlFor="my-freight-search"
+                                className="mb-1.5 block text-xs font-medium"
                             >
-                                {counts[s.value] ?? 0}
-                            </Badge>
-                        </Button>
-                    ))}
-                </div>
-                <div className="-mx-4 px-4 sm:hidden">
-                    <div className="flex snap-x snap-mandatory scrollbar-none gap-2 overflow-x-auto pb-2">
-                        {STATUSES.map((s) => (
-                            <Button
-                                key={s.value}
-                                variant={
-                                    filters.status === s.value
-                                        ? 'default'
-                                        : 'outline'
-                                }
-                                size="sm"
-                                onClick={() => filterBy(s.value)}
-                                className="h-7 shrink-0 snap-start px-3 text-xs"
-                            >
-                                {s.label}{' '}
-                                <span className="ml-1 text-[10px]">
-                                    ({counts[s.value] ?? 0})
-                                </span>
-                            </Button>
-                        ))}
+                                Search freight
+                            </Label>
+                            <div className="relative">
+                                <Input
+                                    id="my-freight-search"
+                                    type="search"
+                                    placeholder="Search cargo, towns, or post ID"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="h-11 pr-12"
+                                />
+                                <Button
+                                    type="submit"
+                                    size="icon"
+                                    className="absolute top-1/2 right-1 size-9 -translate-y-1/2"
+                                    aria-label="Search freight posts"
+                                >
+                                    <Search className="size-4" aria-hidden="true" />
+                                </Button>
+                            </div>
+                        </form>
+                        <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[minmax(11rem,13rem)_auto] sm:self-end lg:shrink-0">
+                            <div className="min-w-0 space-y-1.5">
+                                <Label
+                                    htmlFor="my-freight-status"
+                                    className="text-xs font-medium"
+                                >
+                                    Status
+                                </Label>
+                                <Select
+                                    value={filters.status || 'all'}
+                                    onValueChange={filterBy}
+                                >
+                                    <SelectTrigger
+                                        id="my-freight-status"
+                                        aria-label="Filter freight by status"
+                                        className="h-11 w-full min-w-0 bg-background"
+                                    >
+                                        <SelectValue placeholder="All statuses" />
+                                    </SelectTrigger>
+                                    <SelectContent align="end" className="min-w-[12rem]">
+                                        {STATUSES.map((status) => (
+                                            <SelectItem
+                                                key={status.value}
+                                                value={status.value}
+                                                className="min-h-10"
+                                            >
+                                                {status.value === 'all'
+                                                    ? 'All statuses'
+                                                    : status.label}{' '}
+                                                ({counts[status.value] ?? 0})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <PostFreightButton
+                                onBeforePost={allowPost}
+                                className="h-11 w-full whitespace-nowrap px-3 sm:w-auto sm:min-w-36"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -551,10 +485,11 @@ export default function FreightIndex({
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="size-7"
+                                                                className="size-9"
                                                                 asChild
                                                             >
                                                                 <Link
+                                                                    aria-label={`View ${routeLabel(p)}`}
                                                                     href={
                                                                         isDraft
                                                                             ? `/my-freight/${p.ulid}/route`
@@ -571,7 +506,8 @@ export default function FreightIndex({
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="icon"
-                                                                        className="size-7"
+                                                                        className="size-9"
+                                                                         aria-label={`More actions for ${routeLabel(p)}`}
                                                                     >
                                                                         <MoreHorizontal className="size-4" />
                                                                     </Button>
@@ -723,8 +659,8 @@ export default function FreightIndex({
                             ].includes(p.status);
                             return (
                                 <Card key={p.ulid} className="p-4">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-center gap-2 font-medium">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
                                             <MapPin className="size-4 text-primary" />
                                             <span>{origin?.name ?? '—'}</span>
                                             <ArrowRight className="size-3 text-muted-foreground" />
@@ -770,7 +706,7 @@ export default function FreightIndex({
                                         <Button
                                             asChild
                                             size="sm"
-                                            className="h-8 flex-1"
+                                            className="min-h-11 flex-1 text-sm"
                                         >
                                             <Link
                                                 href={
@@ -786,8 +722,9 @@ export default function FreightIndex({
                                             <DropdownMenuTrigger asChild>
                                                 <Button
                                                     variant="outline"
-                                                    size="sm"
-                                                    className="h-8"
+                                                    size="icon"
+                                                    className="size-11"
+                                                    aria-label={`More actions for ${routeLabel(p)}`}
                                                 >
                                                     <MoreHorizontal className="size-4" />
                                                 </Button>
