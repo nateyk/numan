@@ -1,7 +1,14 @@
 import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { PublicAccountMenu } from '@/components/public-account-menu';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from '@/components/ui/sheet';
 import { login, register } from '@/routes';
 import { discovery, myInterests } from '@/routes/freight';
 import { type SharedData } from '@/types';
@@ -30,25 +37,41 @@ const postLinkClass =
 function AccountLinks({
     canRegister = true,
     onNavigate,
+    inline = false,
 }: {
     canRegister?: boolean;
     onNavigate?: () => void;
+    inline?: boolean;
 }) {
     const { auth } = usePage<SharedData>().props;
 
     if (auth.user) {
-        return <PublicAccountMenu onNavigate={onNavigate} />;
+        return (
+            <PublicAccountMenu
+                onNavigate={onNavigate}
+                display={inline ? 'inline' : 'dropdown'}
+            />
+        );
     }
 
     return (
         <>
-            <Button variant="ghost" size="sm" asChild>
+            <Button
+                variant="ghost"
+                size="sm"
+                className={inline ? 'min-h-11 w-full justify-start' : undefined}
+                asChild
+            >
                 <Link href={login()} onClick={onNavigate}>
                     Sign in
                 </Link>
             </Button>
             {canRegister && (
-                <Button size="sm" asChild>
+                <Button
+                    size="sm"
+                    className={inline ? 'min-h-11 w-full' : undefined}
+                    asChild
+                >
                     <Link href={register()} onClick={onNavigate}>
                         Register
                     </Link>
@@ -131,10 +154,20 @@ export function DiscoveryHeader({
                             <Menu className="size-5" />
                         </Button>
                     </SheetTrigger>
-                    <SheetContent side="right" className="flex flex-col gap-4">
+                    <SheetContent
+                        side="right"
+                        className="w-[calc(100%-2rem)] max-w-sm gap-0 overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-sm [&>button]:right-1 [&>button]:top-1 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center"
+                    >
+                        <SheetHeader className="border-b px-1 pb-4">
+                            <SheetTitle className="text-base">Menu</SheetTitle>
+                            <SheetDescription className="sr-only">
+                                Browse freight pages and manage your account.
+                            </SheetDescription>
+                        </SheetHeader>
+
                         <nav
-                            aria-label="Freight"
-                            className="flex flex-col gap-1"
+                            aria-label="Freight pages"
+                            className="flex flex-col gap-1 py-4"
                         >
                             {links.map((link) => (
                                 <Link
@@ -146,10 +179,10 @@ export function DiscoveryHeader({
                                             : undefined
                                     }
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className={`rounded-md px-3 py-2 text-sm font-medium ${
+                                    className={`flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                         currentUrl === link.href.url
-                                            ? 'text-foreground'
-                                            : 'text-muted-foreground hover:text-foreground'
+                                            ? 'bg-muted text-foreground'
+                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                     }`}
                                 >
                                     {link.label}
@@ -157,17 +190,19 @@ export function DiscoveryHeader({
                             ))}
                             <PostFreightButton
                                 label="Post a Load"
-                                className={`${postLinkClass} justify-start px-3 py-2`}
+                                className="mt-2 min-h-11 w-full justify-center text-sm"
                                 onBeforePost={() => {
                                     setMobileMenuOpen(false);
                                     return true;
                                 }}
                             />
                         </nav>
-                        <div className="flex flex-col gap-2 border-t pt-4">
+
+                        <div className="mt-auto border-t pt-4">
                             <AccountLinks
                                 canRegister={canRegister}
                                 onNavigate={() => setMobileMenuOpen(false)}
+                                inline
                             />
                         </div>
                     </SheetContent>
