@@ -8,6 +8,7 @@ use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -303,7 +304,7 @@ it('keeps the payment attempt pending when Chapa checkout times out', function (
     $this->mock(ChapaService::class, function ($mock): void {
         $mock->shouldReceive('generateReference')->andReturn('NF-timeout-preserve-ref');
         $mock->shouldReceive('initializePayment')->andThrow(
-            new \Illuminate\Http\Client\ConnectionException('Connection timed out'),
+            new ConnectionException('Connection timed out'),
         );
     });
 
@@ -360,7 +361,7 @@ it('requests a webhook retry when provider verification is unavailable', functio
     {
         public function verifyTransaction(string $txRef): array
         {
-            throw new \Illuminate\Http\Client\ConnectionException('Provider timed out');
+            throw new ConnectionException('Provider timed out');
         }
     });
 
