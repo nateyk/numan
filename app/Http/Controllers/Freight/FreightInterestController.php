@@ -16,6 +16,7 @@ use App\Services\ContactRevealService;
 use App\Services\MarketplaceEntitlementService;
 use App\Services\MarketplaceReadiness;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
@@ -130,43 +131,62 @@ class FreightInterestController extends Controller
             return back()->withErrors(['interest' => 'This freight is no longer listed publicly.']);
         }
 
-        $exists = FreightInterest::where('freight_post_id', $post->id)
-            ->where('user_id', $user->id)
-            ->whereNotIn('status', [FreightInterestStatus::Rejected->value, FreightInterestStatus::Withdrawn->value])
-            ->exists();
-
-        if ($exists) {
-            return back()->withErrors(['interest' => 'You have already expressed interest on this freight.']);
-        }
-
         $workspace = $user->currentWorkspace;
-        if ($workspace) {
-            $entitlement = app(MarketplaceEntitlementService::class);
-            if (! $entitlement->canExpressInterest($workspace)) {
-                return back()->withErrors(['interest' => 'Monthly interest limit reached for your workspace. Please upgrade your plan.']);
+
+        // Serialize quota checks on the personal workspace, and duplicate
+        // interests on the post itself. The notification follows commit.
+        $result = DB::transaction(function () use ($request, $user, $post, $workspace): array {
+            if ($workspace) {
+                $workspace->newQuery()->whereKey($workspace->id)->lockForUpdate()->firstOrFail();
+            } else {
+                $user->newQuery()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             }
+
+            $lockedPost = FreightPost::whereKey($post->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedPost->status !== FreightPostStatus::Active->value || $lockedPost->isHidden()) {
+                return ['error' => 'This freight is no longer accepting interests.'];
+            }
+
+            $exists = FreightInterest::where('freight_post_id', $lockedPost->id)
+                ->where('user_id', $user->id)
+                ->whereNotIn('status', [FreightInterestStatus::Rejected->value, FreightInterestStatus::Withdrawn->value])
+                ->exists();
+
+            if ($exists) {
+                return ['error' => 'You have already expressed interest on this freight.'];
+            }
+
+            if ($workspace && ! app(MarketplaceEntitlementService::class)->canExpressInterest($workspace)) {
+                return ['error' => 'Your interest limit has been reached. Upgrade your plan to express more interests.'];
+            }
+
+            if (! (new FreightInterestPolicy)->create($user, $lockedPost)) {
+                return ['error' => 'You are not authorized to express interest on this freight.'];
+            }
+
+            $interest = FreightInterest::create([
+                'freight_post_id' => $lockedPost->id,
+                'user_id' => $user->id,
+                'status' => FreightInterestStatus::Submitted->value,
+                'message' => $request->input('message'),
+                // No legacy contact or bank fields in the interest payload.
+            ]);
+
+            $interest->statusHistories()->create([
+                'from_status' => null,
+                'to_status' => FreightInterestStatus::Submitted->value,
+                'changed_by' => $user->id,
+            ]);
+
+            return ['interest' => $interest];
+        });
+
+        if (isset($result['error'])) {
+            return back()->withErrors(['interest' => $result['error']]);
         }
 
-        $policy = new FreightInterestPolicy;
-        if (! $policy->create($user, $post)) {
-            return back()->withErrors(['interest' => 'You are not authorized to express interest on this freight.']);
-        }
-
-        $interest = FreightInterest::create([
-            'freight_post_id' => $post->id,
-            'user_id' => $user->id,
-            'status' => FreightInterestStatus::Submitted->value,
-            'message' => $request->input('message'),
-            // No per-interest contact or bank fields. The columns remain in the
-            // database but are never written or shown. NumanFreight handles no
-            // payments, so bank details have no place on an interest.
-        ]);
-
-        $interest->statusHistories()->create([
-            'from_status' => null,
-            'to_status' => FreightInterestStatus::Submitted->value,
-            'changed_by' => $user->id,
-        ]);
+        $interest = $result['interest'];
 
         // Notify consignor
         Notification::send($post->user, new FreightInterestSubmitted($interest, $post->load('user')));
