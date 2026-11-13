@@ -37,7 +37,7 @@ class FreightInterestAcceptanceController extends Controller
             // transporter must never receive a second connection.
             $existing = MarketplaceConnection::where('freight_post_id', $post->id)->first();
             if ($existing) {
-                return $existing->freight_interest_id === $interest->id
+                return (int) $existing->freight_interest_id === (int) $interest->id
                     ? ['connection' => $existing, 'created' => false]
                     : ['error' => 'Another transporter has already been selected for this freight.'];
             }
