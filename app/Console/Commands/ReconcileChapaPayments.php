@@ -58,12 +58,8 @@ class ReconcileChapaPayments extends Command
                     continue;
                 }
 
-                $expected = (string) $tx->amount_etb;
-                $got = (string) ($data['amount'] ?? '');
-                $currency = $data['currency'] ?? 'ETB';
-
-                if ($currency !== 'ETB' || ($got !== '' && $got !== $expected && (float) $got !== (float) $expected)) {
-                    $this->error("  [{$tx->tx_ref}] Amount mismatch: expected {$expected}, got {$got}.");
+                if (! $this->chapa->verifiedPaymentMatches($verified, $tx)) {
+                    $this->error("  [{$tx->tx_ref}] Verified payment details missing or mismatched.");
                     $failed++;
 
                     continue;

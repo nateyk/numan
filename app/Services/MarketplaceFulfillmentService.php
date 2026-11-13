@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplaceSubscription;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -13,6 +14,10 @@ class MarketplaceFulfillmentService
     public function fulfill(MarketplacePaymentTransaction $transaction, array $verified): void
     {
         DB::transaction(function () use ($transaction, $verified) {
+            // Different successful payments can arrive simultaneously. Lock the
+            // common subscription owner before examining either transaction so
+            // both renewals extend from the latest committed period.
+            $workspace = Workspace::whereKey($transaction->workspace_id)->lockForUpdate()->first();
             $transaction = MarketplacePaymentTransaction::where('id', $transaction->id)->lockForUpdate()->first();
 
             if (! $transaction) {
@@ -21,6 +26,11 @@ class MarketplaceFulfillmentService
 
             if ($transaction->status === 'verified' && $transaction->verified_at) {
                 return;
+            }
+
+            $plan = $transaction->plan;
+            if (! $workspace || ! $plan) {
+                throw new \RuntimeException('Cannot fulfill a payment without its subscription owner and plan.');
             }
 
             $data = $verified['data'] ?? $verified;
@@ -32,12 +42,6 @@ class MarketplaceFulfillmentService
                 'chapa_ref' => $chapaRef ?? $transaction->chapa_ref,
                 'provider_response' => $verified,
             ]);
-
-            $workspace = $transaction->workspace;
-            $plan = $transaction->plan;
-            if (! $workspace || ! $plan) {
-                return;
-            }
 
             $billingInterval = $transaction->billing_interval ?? 'monthly';
             if (! in_array($billingInterval, ['weekly', 'monthly', 'yearly'], true)) {

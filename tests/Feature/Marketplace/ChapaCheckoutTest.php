@@ -3,6 +3,7 @@
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
+use App\Models\User;
 use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
@@ -237,4 +238,61 @@ it('fulfilling all three durations gives 7, 30 and 365 day periods', function ()
         expect((int) $sub->current_period_start->diffInDays($sub->current_period_ends_at))->toBe($days);
         expect((int) $sub->ends_at->diffInSeconds($sub->current_period_ends_at, false))->toBe(0);
     }
+});
+
+it('does not activate a paid plan from Chapa verification missing an amount', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+
+    MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-verified-no-amount',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => 'initialized',
+        'mode' => 'test',
+    ]);
+
+    // Keep ChapaService's real, initialized webhook secret and signature
+    // check while overriding only the remote verification response.
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return [
+                'status' => 'success',
+                'data' => ['status' => 'paid', 'currency' => 'ETB', 'reference' => 'chapa-ref'],
+            ];
+        }
+    });
+
+    $payload = json_encode([
+        'event' => 'charge.success',
+        'tx_ref' => 'NF-verified-no-amount',
+        'status' => 'success',
+    ]);
+    $signature = hash_hmac('sha256', $payload, config('chapa.webhookSecret'));
+
+    $this->postJson('/webhooks/chapa', json_decode($payload, true), ['x-chapa-signature' => $signature])
+        ->assertSuccessful();
+
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(0);
+    expect(MarketplacePaymentTransaction::where('tx_ref', 'NF-verified-no-amount')->value('verified_at'))->toBeNull();
+});
+
+it('refuses a freight plan checkout by a profile without billing permission', function () {
+    [$owner, $workspace] = marketplaceTestUserWithWorkspace();
+    $member = User::factory()->create();
+    $workspace->users()->attach($member->id, ['role' => 'member']);
+    $member->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($member)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])->assertForbidden();
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(0);
 });

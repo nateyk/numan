@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MarketplacePaymentTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -44,6 +45,8 @@ class ChapaService
     public function initializePayment(array $data): array
     {
         $response = Http::withToken((string) $this->secretKey)
+            ->connectTimeout(5)
+            ->timeout(15)
             ->acceptJson()
             ->post(rtrim((string) $this->baseUrl, '/').'/transaction/initialize', $data);
 
@@ -56,20 +59,69 @@ class ChapaService
     public function verifyTransaction(string $txRef): array
     {
         $response = Http::withToken((string) $this->secretKey)
+            ->connectTimeout(5)
+            ->timeout(15)
             ->acceptJson()
             ->get(rtrim((string) $this->baseUrl, '/').'/transaction/verify/'.$txRef);
 
         return $response->json() ?? ['status' => 'failed'];
     }
 
+    /**
+     * All Chapa fulfillment paths must require a complete provider-verification
+     * response. A missing amount/currency is not evidence of payment.
+     */
+    public function verifiedPaymentMatches(array $verified, MarketplacePaymentTransaction $transaction): bool
+    {
+        $data = $verified['data'] ?? null;
+
+        if (! is_array($data)
+            || ($verified['status'] ?? null) !== 'success'
+            || ! in_array($data['status'] ?? null, ['success', 'paid'], true)
+            || ($data['currency'] ?? null) !== $transaction->currency) {
+            return false;
+        }
+
+        if (isset($data['tx_ref']) && (string) $data['tx_ref'] !== $transaction->tx_ref) {
+            return false;
+        }
+
+        $amount = $data['amount'] ?? $data['amount_etb'] ?? null;
+        if (! is_string($amount) && ! is_int($amount) && ! is_float($amount)) {
+            return false;
+        }
+
+        $received = $this->canonicalAmount((string) $amount);
+        $expected = $this->canonicalAmount((string) $transaction->amount_etb);
+
+        return $received !== null && $expected !== null && $received === $expected;
+    }
+
+    /**
+     * Compare money as decimal strings, without float equality or rounding.
+     */
+    private function canonicalAmount(string $amount): ?string
+    {
+        if (! preg_match('/^\\d+(?:\\.\\d{1,2})?$/D', $amount)) {
+            return null;
+        }
+
+        [$units, $cents] = array_pad(explode('.', $amount, 2), 2, '');
+
+        return (ltrim($units, '0') ?: '0').'.'.str_pad($cents, 2, '0');
+    }
+
     public function validateWebhook(Request $request): bool
     {
         $signature = $request->header('x-chapa-signature') ?? $request->header('chapa-signature');
-        $expected = hash_hmac('sha256', $request->getContent(), (string) $this->webhookSecret);
 
-        if (! $signature) {
+        // Never treat an unset secret as the empty HMAC key. Anyone could
+        // calculate that signature and forge a successful payment event.
+        if (! is_string($this->webhookSecret) || trim($this->webhookSecret) === '' || ! $signature) {
             return false;
         }
+
+        $expected = hash_hmac('sha256', $request->getContent(), $this->webhookSecret);
 
         return hash_equals($expected, $signature);
     }

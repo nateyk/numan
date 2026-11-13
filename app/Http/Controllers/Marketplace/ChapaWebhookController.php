@@ -95,14 +95,13 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Transaction not found'], 200);
         }
 
-        $expected = (string) $transaction->amount_etb;
-        $got = (string) ($data['amount'] ?? '');
-        $currency = $data['currency'] ?? 'ETB';
-        if ($currency !== 'ETB' || ($got !== '' && $got !== $expected && (float) $got !== (float) $expected)) {
-            Log::warning('Chapa webhook amount mismatch', ['tx_ref' => $txRef, 'expected' => $expected, 'got' => $got]);
+        if (! $this->chapa->verifiedPaymentMatches($verified, $transaction)) {
+            Log::warning('Chapa webhook verified payment details incomplete or mismatched', [
+                'tx_ref' => $txRef,
+            ]);
             $webhookEvent->update(['status' => 'failed']);
 
-            return response()->json(['message' => 'Amount mismatch'], 200);
+            return response()->json(['message' => 'Payment verification mismatch'], 200);
         }
 
         try {
