@@ -31,18 +31,21 @@ class ChapaCallbackController extends Controller
             return redirect()->route('billing.index')->withErrors(['payment' => 'Transaction not found.']);
         }
 
+        // Payment callbacks may only be inspected by the payer who started them.
+        if ((int) $transaction->user_id !== (int) $request->user()->id) {
+            abort(404);
+        }
+
         $verified = $this->chapa->verifyTransaction($txRef);
 
         $data = $verified['data'] ?? $verified;
         $isSuccess = ($verified['status'] ?? null) === 'success' && (($data['status'] ?? null) === 'success' || ($data['status'] ?? null) === 'paid');
 
         if ($isSuccess) {
-            $expectedAmount = (string) $transaction->amount_etb;
-            $returnedAmount = (string) ($data['amount'] ?? $data['amount_etb'] ?? '');
-            $currency = $data['currency'] ?? 'ETB';
-
-            if ($currency !== 'ETB' || ($returnedAmount !== '' && $returnedAmount !== $expectedAmount && (float) $returnedAmount !== (float) $expectedAmount)) {
-                return redirect()->route('billing.index')->withErrors(['payment' => 'Amount mismatch. Contact support.']);
+            if (! $this->chapa->verifiedPaymentMatches($verified, $transaction)) {
+                return redirect()->route('billing.index')->withErrors([
+                    'payment' => 'Payment details could not be verified. Contact support.',
+                ]);
             }
 
             $this->fulfillment->fulfill($transaction, $verified);
