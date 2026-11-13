@@ -3,6 +3,7 @@
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
+use App\Models\User;
 use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
@@ -255,13 +256,17 @@ it('does not activate a paid plan from Chapa verification missing an amount', fu
         'mode' => 'test',
     ]);
 
-    // Override the normal successful provider verification from beforeEach,
-    // while retaining the real signature and verifiedPaymentMatches methods.
-    $this->partialMock(ChapaService::class, function ($mock): void {
-        $mock->shouldReceive('verifyTransaction')->andReturn([
-            'status' => 'success',
-            'data' => ['status' => 'paid', 'currency' => 'ETB', 'reference' => 'chapa-ref'],
-        ]);
+    // Keep ChapaService's real, initialized webhook secret and signature
+    // check while overriding only the remote verification response.
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return [
+                'status' => 'success',
+                'data' => ['status' => 'paid', 'currency' => 'ETB', 'reference' => 'chapa-ref'],
+            ];
+        }
     });
 
     $payload = json_encode([
@@ -280,7 +285,7 @@ it('does not activate a paid plan from Chapa verification missing an amount', fu
 
 it('refuses a freight plan checkout by a profile without billing permission', function () {
     [$owner, $workspace] = marketplaceTestUserWithWorkspace();
-    $member = \App\Models\User::factory()->create();
+    $member = User::factory()->create();
     $workspace->users()->attach($member->id, ['role' => 'member']);
     $member->update(['current_workspace_id' => $workspace->id]);
 
