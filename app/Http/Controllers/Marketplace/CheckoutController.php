@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Services\ChapaService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -103,15 +105,39 @@ class CheckoutController extends Controller
             ],
         ];
 
-        $response = $this->chapa->initializePayment($payload);
+        try {
+            $response = $this->chapa->initializePayment($payload);
+        } catch (ConnectionException|RequestException $e) {
+            // Keep the attempt pending: Chapa may have received the request
+            // before the network failed. Reconciliation can verify the ref.
+            // Never grant access or erase the pending transaction on a timeout.
+            report($e);
+
+            $message = 'The payment provider is temporarily unavailable. Check your payment status before retrying. No plan has been activated yet.';
+
+            if ($request->wantsJson() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $message,
+                    'retryable' => true,
+                ], 503);
+            }
+
+            return back()->withErrors(['plan' => $message]);
+        }
+
+        $checkoutUrl = $response['data']['checkout_url'] ?? null;
+        $initialized = ($response['status'] ?? null) === 'success'
+            && is_string($checkoutUrl)
+            && str_starts_with($checkoutUrl, 'https://');
 
         $transaction->update([
             'provider_response' => $response,
-            'status' => 'initialized',
+            'status' => $initialized ? 'initialized' : 'failed',
             'chapa_ref' => $response['data']['tx_ref'] ?? $response['data']['reference'] ?? null,
         ]);
 
-        if (($response['status'] ?? null) === 'success' && isset($response['data']['checkout_url'])) {
+        if ($initialized) {
             if ($request->wantsJson() || $request->header('X-Inertia')) {
                 return response()->json(['checkout_url' => $response['data']['checkout_url']]);
             }
