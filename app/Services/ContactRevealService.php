@@ -311,6 +311,10 @@ class ContactRevealService
      */
     public function contactIfAlreadyRevealed(User $viewer, User $counterparty, ?Model $context = null): ?array
     {
+        if (! $this->canReveal($viewer, $counterparty, $context)) {
+            return null;
+        }
+
         if ($viewer->id === $counterparty->id) {
             return $this->contactDetailsFor($viewer, $counterparty, $context);
         }
