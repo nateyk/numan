@@ -992,7 +992,7 @@ it('does not serve a previously revealed contact after the counterparty deletes 
 
     expect(app(ContactRevealService::class)->contactIfAlreadyRevealed(
         $viewer,
-        $transporter->fresh(['profile']),
+        $transporter,
         $interest,
     ))->toBeNull();
 });
