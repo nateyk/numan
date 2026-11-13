@@ -561,3 +561,56 @@ it('the real pass flips status and hides', function () {
     expect(MarketplaceSubscription::find($sub->id)->status)->toBe('expired');
     expect($old->fresh()->hidden_at)->not->toBeNull();
 });
+
+it('downgrades expired plans to free limits and restores listings after paid renewal', function () {
+    [$user, $workspace] = ownerWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+
+    $subscription = MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'status' => 'active',
+        'billing_interval' => 'weekly',
+        'current_period_start' => now()->subDays(6),
+        'current_period_ends_at' => now()->addDay(),
+        'ends_at' => now()->addDay(),
+        'provider' => 'chapa',
+    ]);
+
+    $oldest = makeLivePost($workspace, $user);
+    $oldest->update(['created_at' => now()->subDays(3)]);
+    makeLivePost($workspace, $user);
+
+    expect(app(MarketplaceEntitlementService::class)->hasPaidSubscription($workspace))->toBeTrue();
+
+    $this->travel(2)->days();
+
+    expect(app(MarketplaceEntitlementService::class)->hasPaidSubscription($workspace))->toBeFalse();
+    expect($this->visibility->expireLapsedSubscriptions())->toBe(1);
+
+    $this->visibility->hideExcessPosts();
+    expect($subscription->fresh()->status)->toBe('expired');
+    expect($oldest->fresh()->hidden_at)->not->toBeNull();
+
+    $transaction = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-renew-after-expiration',
+        'amount_etb' => 149,
+        'currency' => 'ETB',
+        'billing_interval' => 'weekly',
+        'status' => 'initialized',
+        'mode' => 'test',
+        'provider' => 'chapa',
+    ]);
+
+    app(MarketplaceFulfillmentService::class)->fulfill($transaction, [
+        'status' => 'success',
+        'data' => ['status' => 'paid', 'currency' => 'ETB', 'amount' => 149],
+    ]);
+
+    expect(app(MarketplaceEntitlementService::class)->hasPaidSubscription($workspace))->toBeTrue();
+    expect($oldest->fresh()->hidden_at)->toBeNull();
+});
