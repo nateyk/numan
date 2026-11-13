@@ -54,3 +54,13 @@ it('rejects incorrect amounts, currencies, references and incomplete payment sta
     expect($service->verifiedPaymentMatches(verifiedChapaPayload(['tx_ref' => 'someone-else']), $transaction))->toBeFalse();
     expect($service->verifiedPaymentMatches(verifiedChapaPayload(['status' => 'pending']), $transaction))->toBeFalse();
 });
+
+it('rejects a forged webhook when the signing secret is not configured', function () {
+    $body = json_encode(['event' => 'charge.success', 'tx_ref' => 'NF-forged']);
+    $request = \Illuminate\Http\Request::create('/webhooks/chapa', 'POST', [], [], [], [], $body);
+    $request->headers->set('x-chapa-signature', hash_hmac('sha256', $body, ''));
+
+    $service = new ChapaService(webhookSecret: '');
+
+    expect($service->validateWebhook($request))->toBeFalse();
+});
