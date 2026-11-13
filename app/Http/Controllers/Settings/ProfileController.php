@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Http\Requests\Settings\UpdateLocaleRequest;
 use App\Models\FreightPost;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplaceSubscription;
-use App\Http\Requests\Settings\ProfileUpdateRequest;
-use App\Http\Requests\Settings\UpdateLocaleRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
