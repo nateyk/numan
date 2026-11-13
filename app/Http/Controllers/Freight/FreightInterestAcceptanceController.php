@@ -6,6 +6,7 @@ use App\Enums\FreightInterestStatus;
 use App\Enums\FreightPostStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FreightInterest;
+use App\Models\FreightPost;
 use App\Models\MarketplaceConnection;
 use App\Notifications\MarketplaceConnectionCreated;
 use Illuminate\Http\RedirectResponse;
@@ -19,48 +20,53 @@ class FreightInterestAcceptanceController extends Controller
 {
     public function accept(Request $request, int $id): RedirectResponse
     {
-        $interest = FreightInterest::with('freightPost')->findOrFail($id);
-        $user = $request->user();
-
+        $interest = FreightInterest::findOrFail($id);
         Gate::authorize('updateStatus', $interest);
 
-        if ($interest->status !== FreightInterestStatus::Submitted->value && $interest->status !== FreightInterestStatus::Shortlisted->value) {
-            return back()->withErrors(['status' => 'Interest cannot be accepted at this stage.']);
-        }
+        $result = DB::transaction(function () use ($id, $request): array {
+            // Both competing interests share one freight row. Lock that row
+            // first so only one acceptance can transition the listing to closed.
+            $post = FreightPost::whereKey(
+                FreightInterest::whereKey($id)->value('freight_post_id')
+            )->lockForUpdate()->firstOrFail();
 
-        $post = $interest->freightPost;
+            $interest = FreightInterest::whereKey($id)->lockForUpdate()->firstOrFail();
+            Gate::authorize('updateStatus', $interest);
 
-        if ($post->status !== FreightPostStatus::Active->value) {
-            return back()->withErrors(['post' => 'Freight post is not active.']);
-        }
-
-        $wasRecentlyCreated = false;
-
-        $connection = DB::transaction(function () use ($interest, $post, $user, &$wasRecentlyCreated) {
-            // Idempotency: if connection exists, return existing without changing status
-            $existing = MarketplaceConnection::where('freight_interest_id', $interest->id)->first();
+            // Accept is idempotent for the winning interest, but a different
+            // transporter must never receive a second connection.
+            $existing = MarketplaceConnection::where('freight_post_id', $post->id)->first();
             if ($existing) {
-                return $existing;
+                return $existing->freight_interest_id === $interest->id
+                    ? ['connection' => $existing, 'created' => false]
+                    : ['error' => 'Another transporter has already been selected for this freight.'];
             }
 
-            $wasRecentlyCreated = true;
+            if (! in_array($interest->status, [
+                FreightInterestStatus::Submitted->value,
+                FreightInterestStatus::Shortlisted->value,
+            ], true)) {
+                return ['error' => 'Interest cannot be accepted at this stage.'];
+            }
+
+            if ($post->status !== FreightPostStatus::Active->value) {
+                return ['error' => 'Freight post is not active.'];
+            }
 
             $fromStatus = $interest->status;
-
             $interest->update(['status' => FreightInterestStatus::Selected->value]);
             $interest->statusHistories()->create([
                 'from_status' => $fromStatus,
                 'to_status' => FreightInterestStatus::Selected->value,
-                'changed_by' => $user->id,
+                'changed_by' => $request->user()->id,
             ]);
 
-            // Close the freight post
             $post->update(['status' => FreightPostStatus::Closed->value]);
             $post->moderationLogs()->create([
                 'from_status' => FreightPostStatus::Active->value,
                 'to_status' => FreightPostStatus::Closed->value,
                 'reason' => 'Accepted by consignor',
-                'moderator_id' => $user->id,
+                'moderator_id' => $request->user()->id,
             ]);
 
             $connection = MarketplaceConnection::create([
@@ -73,19 +79,27 @@ class FreightInterestAcceptanceController extends Controller
 
             $connection->auditLogs()->create([
                 'action' => 'connection_created',
-                'actor_id' => $user->id,
+                'actor_id' => $request->user()->id,
                 'metadata' => ['interest_id' => $interest->id],
             ]);
 
-            return $connection;
+            return ['connection' => $connection, 'created' => true];
         });
 
-        if ($wasRecentlyCreated) {
-            Notification::send([$post->user, $interest->user], new MarketplaceConnectionCreated($connection));
+        if (isset($result['error'])) {
+            return back()->withErrors(['status' => $result['error']]);
         }
 
-        // Accepting creates the connection but does NOT reveal contact details.
-        // Reveal is a separate, explicit action the user takes afterwards.
+        $connection = $result['connection'];
+
+        if ($result['created']) {
+            Notification::send(
+                [$connection->consignor, $connection->transporter],
+                new MarketplaceConnectionCreated($connection),
+            );
+        }
+
+        // A connection never reveals contact details on its own.
         return redirect()->route('connections.show', ['public_id' => $connection->public_id])
             ->with('success', 'Interest accepted. You can now reveal contact details if you need them.');
     }
