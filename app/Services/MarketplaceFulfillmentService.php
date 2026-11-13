@@ -28,6 +28,12 @@ class MarketplaceFulfillmentService
                 return;
             }
 
+            // A deleted profile or canceled attempt cannot be reactivated by
+            // a late provider webhook after account deletion.
+            if ($transaction->status === 'canceled' || $transaction->user === null) {
+                return;
+            }
+
             $plan = $transaction->plan;
             if (! $workspace || ! $plan) {
                 throw new \RuntimeException('Cannot fulfill a payment without its subscription owner and plan.');
