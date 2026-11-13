@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\FreightPost;
+use App\Models\MarketplacePaymentTransaction;
+use App\Models\MarketplaceSubscription;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Http\Requests\Settings\UpdateLocaleRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -102,20 +106,53 @@ class ProfileController extends Controller
             }
         }
 
-        // logout before deleting to avoid session issues
-        Auth::logout();
-
-        // Delete personal/solely-owned workspaces
+        // Cancel recurring Stripe billing before deactivating the account.
+        // If the provider refuses, do not delete the account while charges
+        // could continue; let the user retry or contact support.
         foreach ($ownedWorkspaces as $workspace) {
-            // Cancel subscriptions if any
             if ($workspace->subscribed()) {
                 $workspace->subscription()->cancelNow();
             }
-
-            $workspace->delete();
         }
 
-        $user->delete();
+        DB::transaction(function () use ($ownedWorkspaces, $user): void {
+            // Retain paid receipts and transactions for reconciliation, but
+            // never leave active entitlements, pending payments or publicly
+            // visible freight associated with a deleted single profile.
+            MarketplacePaymentTransaction::query()
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'initialized', 'pending_confirmation'])
+                ->update([
+                    'status' => 'canceled',
+                    'open_manual_workspace_id' => null,
+                ]);
+
+            MarketplaceSubscription::query()
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['active', 'trialing'])
+                ->update(['status' => 'canceled', 'ends_at' => now()]);
+
+            foreach ($ownedWorkspaces as $workspace) {
+                MarketplaceSubscription::query()
+                    ->where('workspace_id', $workspace->id)
+                    ->whereIn('status', ['active', 'trialing'])
+                    ->update(['status' => 'canceled', 'ends_at' => now()]);
+
+                $workspace->delete();
+            }
+
+            FreightPost::query()
+                ->where('user_id', $user->id)
+                ->whereNull('hidden_at')
+                ->update(['hidden_at' => now()]);
+
+            // Revoke API tokens immediately; soft deletion preserves financial
+            // history and audit evidence rather than deleting accounting rows.
+            $user->tokens()->delete();
+            $user->delete();
+        });
+
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
