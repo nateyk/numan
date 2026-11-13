@@ -188,7 +188,7 @@ export default function WorkspaceLayout({
     fullWidth = false,
 }: WorkspaceLayoutProps) {
     const { t, i18n } = useTranslations();
-    const { currentWorkspace, is_individual } = usePage<SharedData>().props;
+    const { currentWorkspace, is_individual, workspace_ui_enabled } = usePage<SharedData>().props;
     const userRole = currentWorkspace?.role;
     const navSections = useMemo(
         () => getNavSections(t, currentWorkspace, userRole, is_individual),
@@ -208,6 +208,20 @@ export default function WorkspaceLayout({
     const currentPath = window.location.pathname;
     const RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur'];
     const isRTL = RTL_LANGUAGES.includes(i18n.language);
+
+    // Billing is a personal-account page in freight mode. Do not render an
+    // empty sidebar or the team/analytics/API navigation alongside it.
+    if (!workspace_ui_enabled) {
+        return (
+            <div
+                className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8"
+                dir={isRTL ? 'rtl' : 'ltr'}
+            >
+                <Heading title={defaultTitle} description={defaultDescription} />
+                <section className="mt-6 min-w-0 space-y-8">{children}</section>
+            </div>
+        );
+    }
 
     return (
         <div className="px-4 py-6" dir={isRTL ? 'rtl' : 'ltr'}>

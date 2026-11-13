@@ -104,6 +104,7 @@ use App\Http\Controllers\WorkspaceRetentionController;
 use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceTrashController;
 use App\Http\Middleware\EnsureInterestsEnabled;
+use App\Http\Middleware\EnsureWorkspaceUiEnabled;
 use App\Http\Middleware\RequireAdminTwoFactor;
 use App\Models\MarketplacePlan;
 use App\Models\Profile;
@@ -241,7 +242,7 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     })->name('dashboard');
 
     // Workspace routes
-    Route::prefix('workspaces')->name('workspaces.')->group(function () {
+    Route::prefix('workspaces')->name('workspaces.')->middleware(EnsureWorkspaceUiEnabled::class)->group(function () {
         Route::get('/', [WorkspaceController::class, 'index'])->name('index');
         Route::get('/create', [WorkspaceController::class, 'create'])->name('create');
         Route::post('/', [WorkspaceController::class, 'store'])->name('store');
@@ -286,7 +287,7 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     });
 
     // Team routes
-    Route::prefix('team')->name('team.')->group(function () {
+    Route::prefix('team')->name('team.')->middleware(EnsureWorkspaceUiEnabled::class)->group(function () {
         Route::get('/', [TeamController::class, 'index'])->name('index');
         Route::post('/invite', [TeamController::class, 'invite'])->middleware('throttle:invitations')->name('invite');
         Route::delete('/members/{user}', [TeamController::class, 'removeMember'])->name('remove');
@@ -338,12 +339,12 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     Route::get('/marketplace/manual/{transaction}', [ManualPaymentController::class, 'show'])->name('marketplace.manual.show');
     Route::get('/chapa/callback/{tx_ref}', [ChapaCallbackController::class, 'show'])->name('chapa.callback');
     // Workspace Security Settings
-    Route::get('/settings/workspace-security', [WorkspaceSecurityController::class, 'index'])->name('workspace.security');
-    Route::put('/settings/workspace-security', [WorkspaceSecurityController::class, 'update'])->name('workspace.security.update');
+    Route::get('/settings/workspace-security', [WorkspaceSecurityController::class, 'index'])->middleware(EnsureWorkspaceUiEnabled::class)->name('workspace.security');
+    Route::put('/settings/workspace-security', [WorkspaceSecurityController::class, 'update'])->middleware(EnsureWorkspaceUiEnabled::class)->name('workspace.security.update');
 
     // Workspace Danger Zone
-    Route::get('/settings/workspace-danger-zone', [WorkspaceController::class, 'dangerZone'])->name('workspace.danger-zone');
-    Route::delete('/workspaces/leave', [WorkspaceController::class, 'leave'])->name('workspaces.leave');
+    Route::get('/settings/workspace-danger-zone', [WorkspaceController::class, 'dangerZone'])->middleware(EnsureWorkspaceUiEnabled::class)->name('workspace.danger-zone');
+    Route::delete('/workspaces/leave', [WorkspaceController::class, 'leave'])->middleware(EnsureWorkspaceUiEnabled::class)->name('workspaces.leave');
 
     // Onboarding Checklist
     Route::get('/onboarding-checklist', [OnboardingChecklistController::class, 'index'])->name('onboarding-checklist.index');
@@ -356,38 +357,42 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     Route::get('/changelog-widget', [ChangelogWidgetController::class, 'index'])->name('changelog-widget.index');
     Route::post('/changelog-widget/mark-read', [ChangelogWidgetController::class, 'markRead'])->name('changelog-widget.mark-read');
 
-    // Workspace Activity Feed Widget
-    Route::get('/workspace-activity-feed', [WorkspaceActivityController::class, 'feed'])->name('workspace-activity-feed');
+    // Workspace-only collaboration/analytics routes remain registered for a
+    // future team launch, but are unavailable in personal account mode.
+    Route::middleware(EnsureWorkspaceUiEnabled::class)->group(function () {
+        // Workspace Activity Feed Widget
+        Route::get('/workspace-activity-feed', [WorkspaceActivityController::class, 'feed'])->name('workspace-activity-feed');
 
-    // Workspace Retention Insights Widget
-    Route::get('/workspace-retention-insights', [WorkspaceRetentionController::class, 'index'])->name('workspace-retention-insights');
+        // Workspace Retention Insights Widget
+        Route::get('/workspace-retention-insights', [WorkspaceRetentionController::class, 'index'])->name('workspace-retention-insights');
 
-    // Workspace Comments
-    Route::get('/workspaces/{workspace}/comments', [WorkspaceCommentController::class, 'index'])->name('workspaces.comments.index');
-    Route::post('/workspaces/{workspace}/comments', [WorkspaceCommentController::class, 'store'])->name('workspaces.comments.store');
-    Route::put('/workspaces/{workspace}/comments/{comment}', [WorkspaceCommentController::class, 'update'])->name('workspaces.comments.update');
-    Route::delete('/workspaces/{workspace}/comments/{comment}', [WorkspaceCommentController::class, 'destroy'])->name('workspaces.comments.destroy');
-    Route::post('/workspaces/{workspace}/comments/{comment}/resolve', [WorkspaceCommentController::class, 'resolve'])->name('workspaces.comments.resolve');
-    Route::get('/workspaces/{workspace}/comments/{comment}/replies', [WorkspaceCommentController::class, 'replies'])->name('workspaces.comments.replies');
+        // Workspace Comments
+        Route::get('/workspaces/{workspace}/comments', [WorkspaceCommentController::class, 'index'])->name('workspaces.comments.index');
+        Route::post('/workspaces/{workspace}/comments', [WorkspaceCommentController::class, 'store'])->name('workspaces.comments.store');
+        Route::put('/workspaces/{workspace}/comments/{comment}', [WorkspaceCommentController::class, 'update'])->name('workspaces.comments.update');
+        Route::delete('/workspaces/{workspace}/comments/{comment}', [WorkspaceCommentController::class, 'destroy'])->name('workspaces.comments.destroy');
+        Route::post('/workspaces/{workspace}/comments/{comment}/resolve', [WorkspaceCommentController::class, 'resolve'])->name('workspaces.comments.resolve');
+        Route::get('/workspaces/{workspace}/comments/{comment}/replies', [WorkspaceCommentController::class, 'replies'])->name('workspaces.comments.replies');
 
-    // Workspace Announcements
-    Route::get('/workspaces/{workspace}/announcements', [WorkspaceAnnouncementController::class, 'index'])->name('workspaces.announcements.index');
-    Route::post('/workspaces/{workspace}/announcements', [WorkspaceAnnouncementController::class, 'store'])->name('workspaces.announcements.store');
-    Route::get('/workspaces/{workspace}/announcements/{announcement}', [WorkspaceAnnouncementController::class, 'show'])->name('workspaces.announcements.show');
-    Route::put('/workspaces/{workspace}/announcements/{announcement}', [WorkspaceAnnouncementController::class, 'update'])->name('workspaces.announcements.update');
-    Route::delete('/workspaces/{workspace}/announcements/{announcement}', [WorkspaceAnnouncementController::class, 'destroy'])->name('workspaces.announcements.destroy');
-    Route::post('/workspaces/{workspace}/announcements/{announcement}/dismiss', [WorkspaceAnnouncementController::class, 'dismiss'])->name('workspaces.announcements.dismiss');
-    Route::post('/workspaces/{workspace}/announcements/{announcement}/pin', [WorkspaceAnnouncementController::class, 'pin'])->name('workspaces.announcements.pin');
-    Route::get('/workspaces/{workspace}/announcements/banners/active', [WorkspaceAnnouncementController::class, 'activeBanners'])->name('workspaces.announcements.banners');
+        // Workspace Announcements
+        Route::get('/workspaces/{workspace}/announcements', [WorkspaceAnnouncementController::class, 'index'])->name('workspaces.announcements.index');
+        Route::post('/workspaces/{workspace}/announcements', [WorkspaceAnnouncementController::class, 'store'])->name('workspaces.announcements.store');
+        Route::get('/workspaces/{workspace}/announcements/{announcement}', [WorkspaceAnnouncementController::class, 'show'])->name('workspaces.announcements.show');
+        Route::put('/workspaces/{workspace}/announcements/{announcement}', [WorkspaceAnnouncementController::class, 'update'])->name('workspaces.announcements.update');
+        Route::delete('/workspaces/{workspace}/announcements/{announcement}', [WorkspaceAnnouncementController::class, 'destroy'])->name('workspaces.announcements.destroy');
+        Route::post('/workspaces/{workspace}/announcements/{announcement}/dismiss', [WorkspaceAnnouncementController::class, 'dismiss'])->name('workspaces.announcements.dismiss');
+        Route::post('/workspaces/{workspace}/announcements/{announcement}/pin', [WorkspaceAnnouncementController::class, 'pin'])->name('workspaces.announcements.pin');
+        Route::get('/workspaces/{workspace}/announcements/banners/active', [WorkspaceAnnouncementController::class, 'activeBanners'])->name('workspaces.announcements.banners');
 
-    // Activity Reactions
-    Route::get('/workspaces/{workspace}/reactions', [ActivityReactionController::class, 'index'])->name('workspaces.reactions.index');
-    Route::post('/workspaces/{workspace}/reactions', [ActivityReactionController::class, 'store'])->name('workspaces.reactions.store');
-    Route::delete('/workspaces/{workspace}/activities/{activity}/reactions', [ActivityReactionController::class, 'destroy'])->name('workspaces.reactions.destroy');
+        // Activity Reactions
+        Route::get('/workspaces/{workspace}/reactions', [ActivityReactionController::class, 'index'])->name('workspaces.reactions.index');
+        Route::post('/workspaces/{workspace}/reactions', [ActivityReactionController::class, 'store'])->name('workspaces.reactions.store');
+        Route::delete('/workspaces/{workspace}/activities/{activity}/reactions', [ActivityReactionController::class, 'destroy'])->name('workspaces.reactions.destroy');
 
-    // Workspace Search
-    Route::get('/workspaces/{workspace}/search', [WorkspaceSearchController::class, 'search'])->name('workspaces.search');
-    Route::get('/workspaces/{workspace}/search/suggestions', [WorkspaceSearchController::class, 'suggestions'])->name('workspaces.search.suggestions');
+        // Workspace Search
+        Route::get('/workspaces/{workspace}/search', [WorkspaceSearchController::class, 'search'])->name('workspaces.search');
+        Route::get('/workspaces/{workspace}/search/suggestions', [WorkspaceSearchController::class, 'suggestions'])->name('workspaces.search.suggestions');
+    });
 
     // Usage Dashboard
     Route::get('/usage', [UsageController::class, 'index'])->name('usage.index');
