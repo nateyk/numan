@@ -114,11 +114,14 @@ class ChapaService
     public function validateWebhook(Request $request): bool
     {
         $signature = $request->header('x-chapa-signature') ?? $request->header('chapa-signature');
-        $expected = hash_hmac('sha256', $request->getContent(), (string) $this->webhookSecret);
 
-        if (! $signature) {
+        // Never treat an unset secret as the empty HMAC key. Anyone could
+        // calculate that signature and forge a successful payment event.
+        if (! is_string($this->webhookSecret) || trim($this->webhookSecret) === '' || ! $signature) {
             return false;
         }
+
+        $expected = hash_hmac('sha256', $request->getContent(), $this->webhookSecret);
 
         return hash_equals($expected, $signature);
     }
