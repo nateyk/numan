@@ -2,6 +2,7 @@
 
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\ChapaService;
+use Illuminate\Http\Request;
 
 function verificationTransaction(): MarketplacePaymentTransaction
 {
@@ -57,7 +58,7 @@ it('rejects incorrect amounts, currencies, references and incomplete payment sta
 
 it('rejects a forged webhook when the signing secret is not configured', function () {
     $body = json_encode(['event' => 'charge.success', 'tx_ref' => 'NF-forged']);
-    $request = \Illuminate\Http\Request::create('/webhooks/chapa', 'POST', [], [], [], [], $body);
+    $request = Request::create('/webhooks/chapa', 'POST', [], [], [], [], $body);
     $request->headers->set('x-chapa-signature', hash_hmac('sha256', $body, ''));
 
     $service = new ChapaService(webhookSecret: '');
