@@ -2,7 +2,9 @@
 
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\ChapaService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 function verificationTransaction(): MarketplacePaymentTransaction
 {
@@ -64,4 +66,22 @@ it('rejects a forged webhook when the signing secret is not configured', functio
     $service = new ChapaService(webhookSecret: '');
 
     expect($service->validateWebhook($request))->toBeFalse();
+});
+
+it('treats a Chapa server error during initialization as a retryable provider outage', function () {
+    Http::fake([
+        'api.chapa.co/v1/transaction/initialize' => Http::response(['message' => 'Temporarily unavailable'], 503),
+    ]);
+
+    expect(fn () => app(ChapaService::class)->initializePayment(['tx_ref' => 'NF-retry-503']))
+        ->toThrow(RequestException::class);
+});
+
+it('treats a Chapa server error during verification as a retryable provider outage', function () {
+    Http::fake([
+        'api.chapa.co/v1/transaction/verify/*' => Http::response(['message' => 'Temporarily unavailable'], 503),
+    ]);
+
+    expect(fn () => app(ChapaService::class)->verifyTransaction('NF-retry-503'))
+        ->toThrow(RequestException::class);
 });
