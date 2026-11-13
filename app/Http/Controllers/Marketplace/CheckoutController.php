@@ -7,6 +7,7 @@ use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Services\ChapaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
@@ -26,6 +27,10 @@ class CheckoutController extends Controller
         if (! $workspace) {
             return back()->withErrors(['plan' => 'No active workspace.']);
         }
+
+        // Individual profiles own the underlying billing account. Never allow
+        // a participant without billing authority to initiate a purchase.
+        Gate::authorize('manageBilling', $workspace);
 
         $plan = MarketplacePlan::where('slug', $data['plan'])->where('is_active', true)->firstOrFail();
 
