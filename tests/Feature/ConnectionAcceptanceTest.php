@@ -9,7 +9,9 @@ use App\Models\MarketplaceConnection;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -107,10 +109,10 @@ it('enforces the single-accepted-transporter rule at the database level', functi
     $this->actingAs($consignor)->post("/interests/{$first->id}/accept")->assertRedirect();
 
     expect(fn () => MarketplaceConnection::create([
-        'public_id' => (string) \Illuminate\Support\Str::ulid(),
+        'public_id' => (string) Str::ulid(),
         'freight_post_id' => $post->id,
         'freight_interest_id' => $second->id,
         'consignor_user_id' => $consignor->id,
         'transporter_user_id' => $secondTransporter->id,
-    ]))->toThrow(\Illuminate\Database\QueryException::class);
+    ]))->toThrow(QueryException::class);
 });
