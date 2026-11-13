@@ -182,7 +182,9 @@ Route::get('/transporters/{slug}', function (string $slug) {
 // Magic Link Auth Routes
 Route::middleware('guest')->group(function () {
     Route::get('/magic-login', [MagicLinkController::class, 'create'])->name('magic-link.create');
-    Route::post('/magic-login', [MagicLinkController::class, 'store'])->name('magic-link.store');
+    Route::post('/magic-login', [MagicLinkController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('magic-link.store');
     Route::get('/magic-login/{user}', [MagicLinkController::class, 'authenticate'])
         ->middleware('signed')
         ->name('magic-link.authenticate');
