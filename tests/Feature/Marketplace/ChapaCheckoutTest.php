@@ -255,12 +255,14 @@ it('does not activate a paid plan from Chapa verification missing an amount', fu
         'mode' => 'test',
     ]);
 
-    Http::fake([
-        'api.chapa.co/v1/transaction/verify/*' => Http::response([
+    // Override the normal successful provider verification from beforeEach,
+    // while retaining the real signature and verifiedPaymentMatches methods.
+    $this->partialMock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('verifyTransaction')->andReturn([
             'status' => 'success',
             'data' => ['status' => 'paid', 'currency' => 'ETB', 'reference' => 'chapa-ref'],
-        ], 200),
-    ]);
+        ]);
+    });
 
     $payload = json_encode([
         'event' => 'charge.success',
