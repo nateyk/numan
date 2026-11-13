@@ -203,3 +203,23 @@ it('still refuses someone who does not provide transport', function () {
 
     expect(FreightInterest::where('user_id', $user->id)->exists())->toBeFalse();
 });
+
+it('does not create duplicate live interests or duplicate history on a retry', function () {
+    $transporter = transporterAt('pending');
+    $post = activePost();
+
+    $this->actingAs($transporter)
+        ->post("/my-freight/{$post->ulid}/interests", ['message' => 'Available'])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($transporter)
+        ->post("/my-freight/{$post->ulid}/interests", ['message' => 'Available'])
+        ->assertSessionHasErrors('interest');
+
+    $interests = FreightInterest::where('user_id', $transporter->id)
+        ->where('freight_post_id', $post->id)
+        ->get();
+
+    expect($interests)->toHaveCount(1);
+    expect($interests->first()->statusHistories()->count())->toBe(1);
+});
