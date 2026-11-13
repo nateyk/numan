@@ -50,6 +50,12 @@ class ChapaService
             ->acceptJson()
             ->post(rtrim((string) $this->baseUrl, '/').'/transaction/initialize', $data);
 
+        // An HTTP 5xx does not prove Chapa rejected the transaction. Treat it
+        // as indeterminate so checkout retains the ref for reconciliation.
+        if ($response->serverError()) {
+            $response->throw();
+        }
+
         return $response->json() ?? ['status' => 'failed', 'message' => 'No response'];
     }
 
@@ -63,6 +69,12 @@ class ChapaService
             ->timeout(15)
             ->acceptJson()
             ->get(rtrim((string) $this->baseUrl, '/').'/transaction/verify/'.$txRef);
+
+        // A temporary provider outage is retryable; neither callbacks nor
+        // webhooks may turn it into a terminal failed payment.
+        if ($response->serverError()) {
+            $response->throw();
+        }
 
         return $response->json() ?? ['status' => 'failed'];
     }

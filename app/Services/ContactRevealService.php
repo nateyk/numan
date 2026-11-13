@@ -97,12 +97,44 @@ class ContactRevealService
      */
     public function canReveal(User $viewer, User $counterparty, ?Model $context = null): bool
     {
+        // A deleted profile must not remain contactable through a ledger entry.
+        if ($viewer->trashed() || $counterparty->trashed()) {
+            return false;
+        }
+
         if ($viewer->id === $counterparty->id) {
             return true;
         }
 
-        if ($context instanceof FreightPost && (int) $context->user_id === (int) $counterparty->id) {
-            return true;
+        if ($context instanceof FreightPost) {
+            return (int) $context->user_id === (int) $counterparty->id
+                && $context->isHidden() === false;
+        }
+
+        if ($context instanceof FreightInterest) {
+            // A relationship on a different post does not authorize this
+            // interest; both parties must belong to this exact context.
+            $ownerId = $context->freightPost?->user_id;
+
+            if ($ownerId === null || in_array($context->status, self::BLOCKED_INTEREST_STATUSES, true)) {
+                return false;
+            }
+
+            $viewerIsTransporter = (int) $viewer->id === (int) $context->user_id
+                && (int) $counterparty->id === (int) $ownerId;
+            $viewerIsConsignor = (int) $viewer->id === (int) $ownerId
+                && (int) $counterparty->id === (int) $context->user_id;
+
+            return $viewerIsTransporter || $viewerIsConsignor;
+        }
+
+        if ($context instanceof MarketplaceConnection) {
+            $viewerIsConsignor = (int) $viewer->id === (int) $context->consignor_user_id
+                && (int) $counterparty->id === (int) $context->transporter_user_id;
+            $viewerIsTransporter = (int) $viewer->id === (int) $context->transporter_user_id
+                && (int) $counterparty->id === (int) $context->consignor_user_id;
+
+            return $viewerIsConsignor || $viewerIsTransporter;
         }
 
         return $this->hasConnection($viewer->id, $counterparty->id)
@@ -280,6 +312,10 @@ class ContactRevealService
      */
     public function contactIfAlreadyRevealed(User $viewer, User $counterparty, ?Model $context = null): ?array
     {
+        if (! $this->canReveal($viewer, $counterparty, $context)) {
+            return null;
+        }
+
         if ($viewer->id === $counterparty->id) {
             return $this->contactDetailsFor($viewer, $counterparty, $context);
         }

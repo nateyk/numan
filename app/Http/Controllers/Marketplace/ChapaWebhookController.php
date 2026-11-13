@@ -7,6 +7,8 @@ use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -69,7 +71,16 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Event ignored'], 200);
         }
 
-        $verified = $this->chapa->verifyTransaction($txRef);
+        try {
+            $verified = $this->chapa->verifyTransaction($txRef);
+        } catch (ConnectionException|RequestException $e) {
+            // Ask the provider to retry. The transaction remains unfulfilled,
+            // and our scheduled reconciliation will verify it separately.
+            report($e);
+            $webhookEvent->update(['status' => 'pending']);
+
+            return response()->json(['message' => 'Temporary verification failure'], 503);
+        }
         $data = $verified['data'] ?? $verified;
         $verifiedSuccess = ($verified['status'] ?? null) === 'success' && (($data['status'] ?? null) === 'success' || ($data['status'] ?? null) === 'paid');
 

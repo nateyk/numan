@@ -9,7 +9,9 @@ use App\Models\MarketplaceConnection;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -69,4 +71,48 @@ it('is idempotent on double accept', function () {
     $this->actingAs($consignor)->post("/interests/{$interest->id}/accept");
 
     expect(MarketplaceConnection::count())->toBe(1);
+});
+
+it('selects only one transporter for a freight with competing interests', function () {
+    $consignor = createConsignorForAcceptance();
+    $firstTransporter = createApprovedTransporterForAcceptance();
+    $secondTransporter = createApprovedTransporterForAcceptance();
+    $post = FreightPost::factory()->for($consignor)->create(['status' => FreightPostStatus::Active->value]);
+
+    $first = FreightInterest::factory()->for($post)->for($firstTransporter)->create([
+        'status' => FreightInterestStatus::Submitted->value,
+    ]);
+    $second = FreightInterest::factory()->for($post)->for($secondTransporter)->create([
+        'status' => FreightInterestStatus::Shortlisted->value,
+    ]);
+
+    $this->actingAs($consignor)->post("/interests/{$first->id}/accept")->assertRedirect();
+    $this->actingAs($consignor)->post("/interests/{$second->id}/accept")->assertSessionHasErrors('status');
+    $this->actingAs($consignor)->post("/interests/{$first->id}/accept")->assertRedirect();
+
+    expect(MarketplaceConnection::where('freight_post_id', $post->id)->count())->toBe(1);
+    expect(MarketplaceConnection::first()->freight_interest_id)->toBe($first->id);
+    expect($first->fresh()->status)->toBe(FreightInterestStatus::Selected->value);
+    expect($second->fresh()->status)->toBe(FreightInterestStatus::Shortlisted->value);
+    expect($post->fresh()->status)->toBe(FreightPostStatus::Closed->value);
+    expect($post->moderationLogs()->where('reason', 'Accepted by consignor')->count())->toBe(1);
+});
+
+it('enforces the single-accepted-transporter rule at the database level', function () {
+    $consignor = createConsignorForAcceptance();
+    $firstTransporter = createApprovedTransporterForAcceptance();
+    $secondTransporter = createApprovedTransporterForAcceptance();
+    $post = FreightPost::factory()->for($consignor)->create(['status' => FreightPostStatus::Active->value]);
+    $first = FreightInterest::factory()->for($post)->for($firstTransporter)->create();
+    $second = FreightInterest::factory()->for($post)->for($secondTransporter)->create();
+
+    $this->actingAs($consignor)->post("/interests/{$first->id}/accept")->assertRedirect();
+
+    expect(fn () => MarketplaceConnection::create([
+        'public_id' => (string) Str::ulid(),
+        'freight_post_id' => $post->id,
+        'freight_interest_id' => $second->id,
+        'consignor_user_id' => $consignor->id,
+        'transporter_user_id' => $secondTransporter->id,
+    ]))->toThrow(QueryException::class);
 });

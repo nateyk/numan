@@ -956,3 +956,43 @@ it('a direct duplicate insert is rejected by the unique key', function () {
         'revealed_id' => $consignor->id,
     ]))->toThrow(UniqueConstraintViolationException::class);
 });
+
+it('does not let an existing revealed relationship expose a different interest', function () {
+    [$viewer] = meterUser();
+    [$transporter] = meterUser(true);
+    [$differentConsignor] = meterUser();
+
+    $ownInterest = meterInterest($viewer, $transporter);
+    meterReveal($this, $viewer, $ownInterest)->assertOk();
+
+    // The viewer knows this transporter through one of their own posts, but
+    // is a complete stranger to this separate freight interest.
+    $unrelatedInterest = meterInterest($differentConsignor, $transporter);
+
+    expect(app(ContactRevealService::class)->contactIfAlreadyRevealed(
+        $viewer,
+        $transporter,
+        $unrelatedInterest,
+    ))->toBeNull();
+
+    $this->actingAs($viewer)
+        ->postJson(route('freight.interests.reveal', ['interest' => $unrelatedInterest->id]))
+        ->assertForbidden();
+});
+
+it('does not serve a previously revealed contact after the counterparty deletes their profile', function () {
+    [$viewer] = meterUser();
+    [$transporter] = meterUser(true);
+
+    $interest = meterInterest($viewer, $transporter);
+    meterReveal($this, $viewer, $interest)->assertOk();
+    expect(ContactReveal::where('revealer_id', $viewer->id)->exists())->toBeTrue();
+
+    $transporter->delete();
+
+    expect(app(ContactRevealService::class)->contactIfAlreadyRevealed(
+        $viewer,
+        $transporter,
+        $interest,
+    ))->toBeNull();
+});

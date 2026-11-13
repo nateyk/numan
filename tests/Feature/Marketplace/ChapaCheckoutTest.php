@@ -8,6 +8,7 @@ use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -295,4 +296,86 @@ it('refuses a freight plan checkout by a profile without billing permission', fu
     ])->assertForbidden();
 
     expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(0);
+});
+
+it('keeps the payment attempt pending when Chapa checkout times out', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->mock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('generateReference')->andReturn('NF-timeout-preserve-ref');
+        $mock->shouldReceive('initializePayment')->andThrow(
+            new ConnectionException('Connection timed out'),
+        );
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])->assertStatus(503)
+        ->assertJsonPath('retryable', true);
+
+    $attempt = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->first();
+    expect($attempt)->not->toBeNull()
+        ->and($attempt->status)->toBe('pending')
+        ->and($attempt->verified_at)->toBeNull();
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('marks a rejected checkout initialization failed instead of initialized', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->mock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('generateReference')->andReturn('NF-rejected-init');
+        $mock->shouldReceive('initializePayment')->andReturn([
+            'status' => 'failed',
+            'message' => 'Provider unavailable.',
+        ]);
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'weekly',
+    ])->assertStatus(422);
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->value('status'))->toBe('failed');
+});
+
+it('requests a webhook retry when provider verification is unavailable', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+
+    $transaction = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-webhook-verification-outage',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => 'initialized',
+        'mode' => 'test',
+        'provider' => 'chapa',
+    ]);
+
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            throw new ConnectionException('Provider timed out');
+        }
+    });
+
+    $payload = json_encode([
+        'event' => 'charge.success',
+        'tx_ref' => $transaction->tx_ref,
+        'status' => 'success',
+    ]);
+    $signature = hash_hmac('sha256', $payload, config('chapa.webhookSecret'));
+
+    $this->postJson('/webhooks/chapa', json_decode($payload, true), [
+        'x-chapa-signature' => $signature,
+    ])->assertStatus(503);
+
+    expect($transaction->fresh()->status)->toBe('initialized');
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
 });
