@@ -1,9 +1,15 @@
 <?php
 
+use App\Models\FreightPost;
+use App\Models\MarketplacePaymentTransaction;
+use App\Models\MarketplacePlan;
+use App\Models\MarketplaceSubscription;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use App\Services\MarketplaceFulfillmentService;
+use Database\Seeders\MarketplacePlanSeeder;
 
 uses(RefreshDatabase::class);
 
@@ -84,4 +90,85 @@ it('prevents deletion if user owns a shared workspace with other members', funct
         'id' => $this->user->id,
         'deleted_at' => null,
     ]);
+});
+
+it('closes freight listings, local paid access and pending payments when a profile is deleted', function () {
+    $this->seed(MarketplacePlanSeeder::class);
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $this->user->id,
+        'personal_workspace' => true,
+    ]);
+    $workspace->users()->attach($this->user->id, ['role' => 'owner']);
+    $this->user->update(['current_workspace_id' => $workspace->id]);
+
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+
+    $subscription = MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $this->user->id,
+        'status' => 'active',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now(),
+        'current_period_ends_at' => now()->addMonth(),
+        'ends_at' => now()->addMonth(),
+        'provider' => 'chapa',
+    ]);
+
+    $chapa = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $this->user->id,
+        'tx_ref' => 'NF-delete-chapa-pending',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => 'initialized',
+        'mode' => 'test',
+        'provider' => 'chapa',
+    ]);
+
+    $manual = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $this->user->id,
+        'tx_ref' => 'NF-delete-manual-pending',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => 'pending_confirmation',
+        'mode' => 'test',
+        'provider' => 'manual',
+        'open_manual_workspace_id' => $workspace->id,
+    ]);
+
+    $post = FreightPost::factory()->create([
+        'user_id' => $this->user->id,
+        'workspace_id' => $workspace->id,
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($this->user)->delete(route('profile.destroy'), [
+        'password' => 'password123',
+    ])->assertRedirect('/');
+
+    $this->assertSoftDeleted('users', ['id' => $this->user->id]);
+    $this->assertSoftDeleted('workspaces', ['id' => $workspace->id]);
+    expect($subscription->fresh()->status)->toBe('canceled');
+    expect($subscription->fresh()->ends_at->lte(now()))->toBeTrue();
+    expect($chapa->fresh()->status)->toBe('canceled');
+    expect($manual->fresh()->status)->toBe('canceled');
+    expect($manual->fresh()->open_manual_workspace_id)->toBeNull();
+    expect($post->fresh()->hidden_at)->not->toBeNull();
+
+    // A delayed success webhook must never resurrect an account that has
+    // already requested deletion. Preserve the transaction for support.
+    app(MarketplaceFulfillmentService::class)->fulfill($chapa->fresh(), [
+        'status' => 'success',
+        'data' => ['status' => 'paid', 'amount' => 449, 'currency' => 'ETB'],
+    ]);
+
+    expect($chapa->fresh()->status)->toBe('canceled');
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(1);
 });
