@@ -97,8 +97,7 @@ class ContactRevealService
      */
     public function canReveal(User $viewer, User $counterparty, ?Model $context = null): bool
     {
-        // A soft-deleted account is no longer a contactable marketplace user,
-        // even if a permanent reveal ledger row exists for the pair.
+        // A deleted profile must not remain contactable through a ledger entry.
         if ($viewer->trashed() || $counterparty->trashed()) {
             return false;
         }
@@ -109,31 +108,33 @@ class ContactRevealService
 
         if ($context instanceof FreightPost) {
             return (int) $context->user_id === (int) $counterparty->id
-                && ! $context->isHidden();
+                && $context->isHidden() === false;
         }
 
         if ($context instanceof FreightInterest) {
-            // A valid relationship with someone elsewhere must not authorize
-            // opening a *different* interest that the viewer is not party to.
+            // A relationship on a different post does not authorize this
+            // interest; both parties must belong to this exact context.
             $ownerId = $context->freightPost?->user_id;
 
-            return ! in_array($context->status, self::BLOCKED_INTEREST_STATUSES, true)
-                && $ownerId !== null
-                && (
-                    ((int) $viewer->id === (int) $context->user_id
-                        && (int) $counterparty->id === (int) $ownerId)
-                    || ((int) $viewer->id === (int) $ownerId
-                        && (int) $counterparty->id === (int) $context->user_id)
-                );
+            if ($ownerId === null || in_array($context->status, self::BLOCKED_INTEREST_STATUSES, true)) {
+                return false;
+            }
+
+            $viewerIsTransporter = (int) $viewer->id === (int) $context->user_id
+                && (int) $counterparty->id === (int) $ownerId;
+            $viewerIsConsignor = (int) $viewer->id === (int) $ownerId
+                && (int) $counterparty->id === (int) $context->user_id;
+
+            return $viewerIsTransporter || $viewerIsConsignor;
         }
 
         if ($context instanceof MarketplaceConnection) {
-            return (
-                ((int) $viewer->id === (int) $context->consignor_user_id
-                    && (int) $counterparty->id === (int) $context->transporter_user_id)
-                || ((int) $viewer->id === (int) $context->transporter_user_id
-                    && (int) $counterparty->id === (int) $context->consignor_user_id)
-            );
+            $viewerIsConsignor = (int) $viewer->id === (int) $context->consignor_user_id
+                && (int) $counterparty->id === (int) $context->transporter_user_id;
+            $viewerIsTransporter = (int) $viewer->id === (int) $context->transporter_user_id
+                && (int) $counterparty->id === (int) $context->consignor_user_id;
+
+            return $viewerIsConsignor || $viewerIsTransporter;
         }
 
         return $this->hasConnection($viewer->id, $counterparty->id)
