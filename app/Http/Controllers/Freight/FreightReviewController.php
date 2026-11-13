@@ -48,7 +48,7 @@ class FreightReviewController extends Controller
             $post = FreightPost::whereKey($draft->id)->lockForUpdate()->firstOrFail();
             Gate::authorize('submit', $post);
 
-            if ($workspace && ! app(MarketplaceEntitlementService::class)->canCreateFreightPost($workspace)) {
+            if ($workspace && app(MarketplaceEntitlementService::class)->canCreateFreightPost($workspace) === false) {
                 return back()->withErrors([
                     'freight' => 'Your live freight post limit has been reached. Close an active post, wait for it to expire, or upgrade before submitting this draft.',
                 ]);
