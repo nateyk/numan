@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -106,6 +107,21 @@ class ProfileController extends Controller
             }
         }
 
+        // A submitted bank/wallet transfer can already have moved real money.
+        // Do not silently drop it from the administrator's review queue when
+        // the payer deletes their profile. They must resolve it first.
+        $hasUnsettledTransfer = MarketplacePaymentTransaction::query()
+            ->where('user_id', $user->id)
+            ->where('provider', MarketplacePaymentTransaction::PROVIDER_MANUAL)
+            ->where('status', MarketplacePaymentTransaction::MANUAL_OPEN_STATUS)
+            ->exists();
+
+        if ($hasUnsettledTransfer) {
+            return back()->withErrors([
+                'account' => 'A manual payment request is awaiting review. Contact support to confirm or reject the transfer before deleting your profile.',
+            ]);
+        }
+
         // Cancel recurring Stripe billing before deactivating the account.
         // If the provider refuses, do not delete the account while charges
         // could continue; let the user retry or contact support.
@@ -116,6 +132,24 @@ class ProfileController extends Controller
         }
 
         DB::transaction(function () use ($ownedWorkspaces, $user): void {
+            // Coordinate deletion with manual payment review and Chapa
+            // fulfillment, both of which lock the account owner first.
+            foreach ($ownedWorkspaces as $workspace) {
+                $workspace->newQuery()->whereKey($workspace->id)->lockForUpdate()->firstOrFail();
+            }
+
+            // Recheck after the lock in case a transfer was submitted while
+            // the deletion request was being processed.
+            if (MarketplacePaymentTransaction::query()
+                ->where('user_id', $user->id)
+                ->where('provider', MarketplacePaymentTransaction::PROVIDER_MANUAL)
+                ->where('status', MarketplacePaymentTransaction::MANUAL_OPEN_STATUS)
+                ->exists()) {
+                throw ValidationException::withMessages([
+                    'account' => 'Your manual payment is still awaiting review. Please contact support before deleting your profile.',
+                ]);
+            }
+
             // Retain paid receipts and transactions for reconciliation, but
             // never leave active entitlements, pending payments or publicly
             // visible freight associated with a deleted single profile.
