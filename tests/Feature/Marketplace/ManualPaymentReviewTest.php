@@ -12,10 +12,12 @@ use App\Notifications\ManualPaymentConfirmed;
 use App\Notifications\ManualPaymentRejected;
 use App\Services\ManualPaymentExpiryService;
 use App\Services\ManualPaymentReviewService;
+use App\Services\MarketplaceFulfillmentService;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -785,4 +787,45 @@ it('records the provider on the granted subscription', function () {
     $subscription = MarketplaceSubscription::where('chapa_tx_ref', $transaction->tx_ref)->first();
 
     expect($subscription->provider)->toBe('manual');
+});
+
+it('keeps review changes uncommitted until fulfillment succeeds and rolls back on failure', function () {
+    [$transaction, , $workspace, $admin] = reviewFixture();
+
+    $this->mock(MarketplaceFulfillmentService::class, function ($mock): void {
+        $mock->shouldReceive('fulfill')
+            ->once()
+            ->andReturnUsing(function (): void {
+                // This was zero before the locking fix: the row lock was
+                // released before the actual grant attempt.
+                expect(DB::transactionLevel())->toBeGreaterThan(0);
+
+                throw new RuntimeException('Payment fulfillment failed');
+            });
+    });
+
+    expect(fn () => app(ManualPaymentReviewService::class)->confirm($transaction, $admin))
+        ->toThrow(RuntimeException::class, 'Payment fulfillment failed');
+
+    $fresh = $transaction->fresh();
+    expect($fresh->status)->toBe(MarketplacePaymentTransaction::MANUAL_OPEN_STATUS);
+    expect($fresh->manual_reviewed_by)->toBeNull();
+    expect($fresh->manual_reviewed_at)->toBeNull();
+    expect($fresh->open_manual_workspace_id)->toBe($workspace->id);
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+
+    Notification::assertNothingSent();
+});
+
+it('refuses manual fulfillment after the payer has deleted the profile', function () {
+    [$transaction, $payer, $workspace, $admin] = reviewFixture();
+
+    $payer->delete();
+
+    $result = app(ManualPaymentReviewService::class)->confirm($transaction, $admin);
+
+    expect($result['result'])->toBe('refused');
+    expect($transaction->fresh()->status)->toBe(MarketplacePaymentTransaction::MANUAL_OPEN_STATUS);
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+    Notification::assertNothingSent();
 });
