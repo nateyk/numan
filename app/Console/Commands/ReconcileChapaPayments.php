@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class ReconcileChapaPayments extends Command
 {
-    protected $signature = 'chapa:reconcile';
+    protected $signature = 'chapa:reconcile
+                            {--all : Include older pending attempts for manual financial reconciliation}';
 
     protected $description = 'Verify pending Chapa payments and fulfill subscriptions';
 
@@ -27,9 +28,11 @@ class ReconcileChapaPayments extends Command
         // payment sitting in pending_confirmation with an NF reference would be
         // sent to Chapa's verify API, which either fails noisily or, worse,
         // matches something it should not.
-        $pendingTxs = MarketplacePaymentTransaction::where('provider', 'chapa')
+        $pendingTxs = MarketplacePaymentTransaction::query()
+            ->where('provider', MarketplacePaymentTransaction::PROVIDER_CHAPA)
             ->whereIn('status', ['pending', 'initialized'])
-            ->where('created_at', '>', now()->subDays(2))
+            ->when(! $this->option('all'), fn ($query) => $query->where('created_at', '>', now()->subDays(2)))
+            ->orderBy('id')
             ->get();
 
         if ($pendingTxs->isEmpty()) {
