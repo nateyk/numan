@@ -137,10 +137,10 @@ it('closes freight listings, local paid access and pending payments when a profi
         'amount_etb' => 449,
         'currency' => 'ETB',
         'billing_interval' => 'monthly',
-        'status' => 'pending_confirmation',
+        'status' => MarketplacePaymentTransaction::MANUAL_REJECTED,
         'mode' => 'test',
         'provider' => 'manual',
-        'open_manual_workspace_id' => $workspace->id,
+        'open_manual_workspace_id' => null,
     ]);
 
     $post = FreightPost::factory()->create([
@@ -158,7 +158,7 @@ it('closes freight listings, local paid access and pending payments when a profi
     expect($subscription->fresh()->status)->toBe('canceled');
     expect($subscription->fresh()->ends_at->lte(now()))->toBeTrue();
     expect($chapa->fresh()->status)->toBe('canceled');
-    expect($manual->fresh()->status)->toBe('canceled');
+    expect($manual->fresh()->status)->toBe(MarketplacePaymentTransaction::MANUAL_REJECTED);
     expect($manual->fresh()->open_manual_workspace_id)->toBeNull();
     expect($post->fresh()->hidden_at)->not->toBeNull();
 
