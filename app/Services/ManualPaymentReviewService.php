@@ -111,15 +111,15 @@ class ManualPaymentReviewService
             }
 
             // An archived/deleted payer or account must never receive a grant.
-        if ($locked->user === null || $locked->workspace === null) {
-            return [
-                'result' => 'refused',
-                'transaction' => $locked,
-                'reason' => 'The payer account is no longer active.',
-            ];
-        }
+            if ($locked->user === null || $locked->workspace === null) {
+                return [
+                    'result' => 'refused',
+                    'transaction' => $locked,
+                    'reason' => 'The payer account is no longer active.',
+                ];
+            }
 
-        // An admin must not approve their own payment. A workspace owner with
+            // An admin must not approve their own payment. A workspace owner with
             // admin rights could otherwise grant themselves a plan.
             if ($locked->user_id === $admin->id) {
                 return [
