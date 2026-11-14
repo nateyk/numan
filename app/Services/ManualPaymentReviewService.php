@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Notifications\ManualPaymentConfirmed;
 use App\Notifications\ManualPaymentRejected;
 use Illuminate\Support\Facades\DB;
@@ -93,64 +94,78 @@ class ManualPaymentReviewService
      */
     public function confirm(MarketplacePaymentTransaction $transaction, User $admin): array
     {
-        $locked = $this->lockAndCheck($transaction);
+        $outcome = DB::transaction(function () use ($transaction, $admin): array {
+            $locked = $this->lockAndCheck($transaction);
 
-        if ($locked->isConfirmedManual()) {
-            // Double-click. Already done.
-            return ['result' => 'already', 'transaction' => $locked];
-        }
+            if ($locked->isConfirmedManual()) {
+                // Double-click. Already done.
+                return ['result' => 'already', 'transaction' => $locked];
+            }
 
-        if (! $locked->isOpenManual()) {
+            if (! $locked->isOpenManual()) {
+                return [
+                    'result' => 'refused',
+                    'transaction' => $locked,
+                    'reason' => 'Only a request awaiting confirmation can be confirmed.',
+                ];
+            }
+
+            // An archived/deleted payer or account must never receive a grant.
+        if ($locked->user === null || $locked->workspace === null) {
             return [
                 'result' => 'refused',
                 'transaction' => $locked,
-                'reason' => 'Only a request awaiting confirmation can be confirmed.',
+                'reason' => 'The payer account is no longer active.',
             ];
         }
 
         // An admin must not approve their own payment. A workspace owner with
-        // admin rights could otherwise grant themselves a plan.
-        if ($locked->user_id === $admin->id) {
-            return [
-                'result' => 'refused',
-                'transaction' => $locked,
-                'reason' => 'You cannot confirm your own payment request.',
-            ];
-        }
+            // admin rights could otherwise grant themselves a plan.
+            if ($locked->user_id === $admin->id) {
+                return [
+                    'result' => 'refused',
+                    'transaction' => $locked,
+                    'reason' => 'You cannot confirm your own payment request.',
+                ];
+            }
 
-        $locked->update([
-            'manual_reviewed_by' => $admin->id,
-            'manual_reviewed_at' => now(),
-        ]);
+            $locked->update([
+                'manual_reviewed_by' => $admin->id,
+                'manual_reviewed_at' => now(),
+            ]);
 
-        // The single fulfilment path, shared with Chapa. The synthetic payload
-        // carries the reference fulfil() records; the amount, plan and interval
-        // are read from the row, not from here, so a price change cannot alter
-        // what was agreed.
-        $this->fulfill->fulfill($locked->fresh(), [
-            'status' => 'success',
-            'data' => [
+            // The single fulfilment path, shared with Chapa. The synthetic payload
+            // carries the reference fulfil() records; the amount, plan and interval
+            // are read from the row, not from here, so a price change cannot alter
+            // what was agreed.
+            $this->fulfill->fulfill($locked->fresh(), [
                 'status' => 'success',
-                'reference' => $locked->manual_reference,
-                'amount' => (string) $locked->amount_etb,
-                'currency' => $locked->currency,
-                'provider' => MarketplacePaymentTransaction::PROVIDER_MANUAL,
-            ],
-        ]);
+                'data' => [
+                    'status' => 'success',
+                    'reference' => $locked->manual_reference,
+                    'amount' => (string) $locked->amount_etb,
+                    'currency' => $locked->currency,
+                    'provider' => MarketplacePaymentTransaction::PROVIDER_MANUAL,
+                ],
+            ]);
 
-        $settled = $locked->fresh();
+            $settled = $locked->fresh();
 
-        // Close the open slot. Idempotent if expiry or something else already
-        // did it.
-        if ($settled->open_manual_workspace_id !== null) {
-            $settled->update(['open_manual_workspace_id' => null]);
+            // Close the open slot. Idempotent if expiry or something else already
+            // did it.
+            if ($settled->open_manual_workspace_id !== null) {
+                $settled->update(['open_manual_workspace_id' => null]);
+            }
+
+            return ['result' => 'confirmed', 'transaction' => $settled->fresh()];
+        });
+
+        if ($outcome['result'] === 'confirmed') {
+            $this->notifyPayerConfirmed($outcome['transaction']);
         }
 
-        $this->notifyPayerConfirmed($settled);
-
-        return ['result' => 'confirmed', 'transaction' => $settled->fresh()];
+        return $outcome;
     }
-
     /**
      * Reject a request. A reason is mandatory.
      *
@@ -158,43 +173,48 @@ class ManualPaymentReviewService
      */
     public function reject(MarketplacePaymentTransaction $transaction, User $admin, string $reason): array
     {
-        if (blank($reason)) {
-            throw ValidationException::withMessages([
-                'manual_rejection_reason' => 'Give a reason. The payer sees it.',
+        $outcome = DB::transaction(function () use ($transaction, $admin, $reason): array {
+            if (blank($reason)) {
+                throw ValidationException::withMessages([
+                    'manual_rejection_reason' => 'Give a reason. The payer sees it.',
+                ]);
+            }
+
+            $locked = $this->lockAndCheck($transaction);
+
+            if ($locked->status === MarketplacePaymentTransaction::MANUAL_REJECTED) {
+                return ['result' => 'already', 'transaction' => $locked];
+            }
+
+            if (! $locked->isOpenManual()) {
+                return [
+                    'result' => 'refused',
+                    'transaction' => $locked,
+                    'reason' => 'Only a request awaiting confirmation can be rejected.',
+                ];
+            }
+
+            $locked->update([
+                'status' => MarketplacePaymentTransaction::MANUAL_REJECTED,
+                'manual_rejection_reason' => $reason,
+                'manual_reviewed_by' => $admin->id,
+                'manual_reviewed_at' => now(),
+                // Frees the workspace's single open slot.
+                'open_manual_workspace_id' => null,
             ]);
+
+            $settled = $locked->fresh();
+
+            return ['result' => 'rejected', 'transaction' => $settled];
+        });
+
+        if ($outcome['result'] === 'rejected') {
+            $this->deleteProof($outcome['transaction']);
+            $this->notifyPayerRejected($outcome['transaction']);
         }
 
-        $locked = $this->lockAndCheck($transaction);
-
-        if ($locked->status === MarketplacePaymentTransaction::MANUAL_REJECTED) {
-            return ['result' => 'already', 'transaction' => $locked];
-        }
-
-        if (! $locked->isOpenManual()) {
-            return [
-                'result' => 'refused',
-                'transaction' => $locked,
-                'reason' => 'Only a request awaiting confirmation can be rejected.',
-            ];
-        }
-
-        $locked->update([
-            'status' => MarketplacePaymentTransaction::MANUAL_REJECTED,
-            'manual_rejection_reason' => $reason,
-            'manual_reviewed_by' => $admin->id,
-            'manual_reviewed_at' => now(),
-            // Frees the workspace's single open slot.
-            'open_manual_workspace_id' => null,
-        ]);
-
-        $settled = $locked->fresh();
-
-        $this->deleteProof($settled);
-        $this->notifyPayerRejected($settled);
-
-        return ['result' => 'rejected', 'transaction' => $settled];
+        return $outcome;
     }
-
     /**
      * Put an expired request back in the queue.
      *
@@ -205,57 +225,68 @@ class ManualPaymentReviewService
      */
     public function reopen(MarketplacePaymentTransaction $transaction, User $admin): array
     {
-        $locked = $this->lockAndCheck($transaction);
+        $outcome = DB::transaction(function () use ($transaction, $admin): array {
+            $locked = $this->lockAndCheck($transaction);
 
-        if ($locked->isOpenManual()) {
-            return ['result' => 'already', 'transaction' => $locked];
-        }
+            if ($locked->isOpenManual()) {
+                return ['result' => 'already', 'transaction' => $locked];
+            }
 
-        if ($locked->status !== MarketplacePaymentTransaction::MANUAL_EXPIRED) {
-            return [
-                'result' => 'refused',
-                'transaction' => $locked,
-                'reason' => 'Only an expired request can be reopened.',
-            ];
-        }
+            if ($locked->status !== MarketplacePaymentTransaction::MANUAL_EXPIRED) {
+                return [
+                    'result' => 'refused',
+                    'transaction' => $locked,
+                    'reason' => 'Only an expired request can be reopened.',
+                ];
+            }
 
-        $workspaceId = $locked->workspace_id;
+            $workspaceId = $locked->workspace_id;
 
-        // Reopening must not collide with a request the workspace opened since.
-        $conflict = MarketplacePaymentTransaction::query()
-            ->where('open_manual_workspace_id', $workspaceId)
-            ->whereKeyNot($locked->id)
-            ->exists();
+            // Reopening must not collide with a request the workspace opened since.
+            $conflict = MarketplacePaymentTransaction::query()
+                ->where('open_manual_workspace_id', $workspaceId)
+                ->whereKeyNot($locked->id)
+                ->exists();
 
-        if ($conflict) {
-            return [
-                'result' => 'refused',
-                'transaction' => $locked,
-                'reason' => 'This workspace already has another request awaiting confirmation.',
-            ];
-        }
+            if ($conflict) {
+                return [
+                    'result' => 'refused',
+                    'transaction' => $locked,
+                    'reason' => 'This workspace already has another request awaiting confirmation.',
+                ];
+            }
 
-        $locked->update([
-            'status' => MarketplacePaymentTransaction::MANUAL_OPEN_STATUS,
-            'open_manual_workspace_id' => $workspaceId,
-            // A fresh window: the old one has already run out.
-            'manual_expires_at' => app(ManualPaymentExpiryService::class)->expiryFromNow(),
-            'manual_reviewed_by' => $admin->id,
-            'manual_reviewed_at' => now(),
-        ]);
+            $locked->update([
+                'status' => MarketplacePaymentTransaction::MANUAL_OPEN_STATUS,
+                'open_manual_workspace_id' => $workspaceId,
+                // A fresh window: the old one has already run out.
+                'manual_expires_at' => app(ManualPaymentExpiryService::class)->expiryFromNow(),
+                'manual_reviewed_by' => $admin->id,
+                'manual_reviewed_at' => now(),
+            ]);
 
-        return ['result' => 'reopened', 'transaction' => $locked->fresh()];
+            return ['result' => 'reopened', 'transaction' => $locked->fresh()];
+        });
+
+        return $outcome;
     }
-
     /**
      * Lock the row and hand it back.
      */
     private function lockAndCheck(MarketplacePaymentTransaction $transaction): MarketplacePaymentTransaction
     {
-        return DB::transaction(fn () => MarketplacePaymentTransaction::query()
+        // All callers hold a transaction for their entire decision. Lock the
+        // owning account first, matching fulfilment's lock order, then the
+        // payment row so confirm/reject/reopen cannot race expiry or deletion.
+        Workspace::query()
+            ->whereKey($transaction->workspace_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return MarketplacePaymentTransaction::query()
             ->whereKey($transaction->id)
             ->lockForUpdate()
-            ->firstOrFail());
+            ->firstOrFail();
     }
 
     /**
