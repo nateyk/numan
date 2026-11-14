@@ -792,13 +792,15 @@ it('records the provider on the granted subscription', function () {
 it('keeps review changes uncommitted until fulfillment succeeds and rolls back on failure', function () {
     [$transaction, , $workspace, $admin] = reviewFixture();
 
-    $this->mock(MarketplaceFulfillmentService::class, function ($mock): void {
+    $baselineTransactionLevel = DB::transactionLevel();
+
+    $this->mock(MarketplaceFulfillmentService::class, function ($mock) use ($baselineTransactionLevel): void {
         $mock->shouldReceive('fulfill')
             ->once()
-            ->andReturnUsing(function (): void {
-                // This was zero before the locking fix: the row lock was
-                // released before the actual grant attempt.
-                expect(DB::transactionLevel())->toBeGreaterThan(0);
+            ->andReturnUsing(function () use ($baselineTransactionLevel): void {
+                // RefreshDatabase already holds a test transaction. The
+                // review itself must add another level through fulfillment.
+                expect(DB::transactionLevel())->toBeGreaterThan($baselineTransactionLevel);
 
                 throw new RuntimeException('Payment fulfillment failed');
             });
