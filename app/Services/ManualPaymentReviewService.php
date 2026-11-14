@@ -166,6 +166,7 @@ class ManualPaymentReviewService
 
         return $outcome;
     }
+
     /**
      * Reject a request. A reason is mandatory.
      *
@@ -215,6 +216,7 @@ class ManualPaymentReviewService
 
         return $outcome;
     }
+
     /**
      * Put an expired request back in the queue.
      *
@@ -270,6 +272,7 @@ class ManualPaymentReviewService
 
         return $outcome;
     }
+
     /**
      * Lock the row and hand it back.
      */
