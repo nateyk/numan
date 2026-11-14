@@ -19,7 +19,7 @@ class CheckFreightConnectionIntegrity extends Command
 
     public function handle(): int
     {
-        if (! Schema::hasTable('marketplace_connections')) {
+        if (Schema::hasTable('marketplace_connections') === false) {
             $this->info('No connection records exist yet. The integrity check passed.');
 
             return self::SUCCESS;
@@ -60,7 +60,7 @@ class CheckFreightConnectionIntegrity extends Command
         $this->table(['Freight post ID', 'Connections', 'Connection row IDs'], $rows);
 
         if ($truncated) {
-            $this->warn("More conflicting posts exist. Rerun with --limit=100.");
+            $this->warn('More conflicting posts exist. Rerun with --limit=100.');
         }
 
         $this->warn('Review the real freight agreements and their audit histories; resolve conflicts manually before migrating.');
