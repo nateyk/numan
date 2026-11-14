@@ -137,10 +137,10 @@ it('closes freight listings, local paid access and pending payments when a profi
         'amount_etb' => 449,
         'currency' => 'ETB',
         'billing_interval' => 'monthly',
-        'status' => 'pending_confirmation',
+        'status' => MarketplacePaymentTransaction::MANUAL_REJECTED,
         'mode' => 'test',
         'provider' => 'manual',
-        'open_manual_workspace_id' => $workspace->id,
+        'open_manual_workspace_id' => null,
     ]);
 
     $post = FreightPost::factory()->create([
@@ -158,7 +158,7 @@ it('closes freight listings, local paid access and pending payments when a profi
     expect($subscription->fresh()->status)->toBe('canceled');
     expect($subscription->fresh()->ends_at->lte(now()))->toBeTrue();
     expect($chapa->fresh()->status)->toBe('canceled');
-    expect($manual->fresh()->status)->toBe('canceled');
+    expect($manual->fresh()->status)->toBe(MarketplacePaymentTransaction::MANUAL_REJECTED);
     expect($manual->fresh()->open_manual_workspace_id)->toBeNull();
     expect($post->fresh()->hidden_at)->not->toBeNull();
 
@@ -171,4 +171,73 @@ it('closes freight listings, local paid access and pending payments when a profi
 
     expect($chapa->fresh()->status)->toBe('canceled');
     expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
+it('does not delete a single profile while a submitted manual transfer awaits review', function () {
+    $this->seed(MarketplacePlanSeeder::class);
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $this->user->id,
+        'personal_workspace' => true,
+    ]);
+    $workspace->users()->attach($this->user->id, ['role' => 'owner']);
+    $this->user->update(['current_workspace_id' => $workspace->id]);
+
+    $payment = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => MarketplacePlan::where('slug', 'standard')->first()->id,
+        'user_id' => $this->user->id,
+        'tx_ref' => 'NF-deletion-block-pending-transfer',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => MarketplacePaymentTransaction::MANUAL_OPEN_STATUS,
+        'mode' => 'manual',
+        'provider' => MarketplacePaymentTransaction::PROVIDER_MANUAL,
+        'manual_method' => 'telebirr',
+        'manual_reference' => 'TRANSFER-12345',
+        'manual_submitted_at' => now(),
+        'manual_expires_at' => now()->addWeek(),
+        'open_manual_workspace_id' => $workspace->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('profile.edit'))
+        ->delete(route('profile.destroy'), ['password' => 'password123'])
+        ->assertRedirect(route('profile.edit'))
+        ->assertSessionHasErrors('account');
+
+    $this->assertDatabaseHas('users', ['id' => $this->user->id, 'deleted_at' => null]);
+    expect($workspace->fresh()->deleted_at)->toBeNull();
+    expect($payment->fresh()->status)->toBe(MarketplacePaymentTransaction::MANUAL_OPEN_STATUS);
+    expect($payment->fresh()->open_manual_workspace_id)->toBe($workspace->id);
+});
+
+it('allows account deletion after a manual transfer is explicitly rejected', function () {
+    $this->seed(MarketplacePlanSeeder::class);
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $this->user->id,
+        'personal_workspace' => true,
+    ]);
+    $workspace->users()->attach($this->user->id, ['role' => 'owner']);
+
+    MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => MarketplacePlan::where('slug', 'standard')->first()->id,
+        'user_id' => $this->user->id,
+        'tx_ref' => 'NF-deletion-rejected-transfer',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => MarketplacePaymentTransaction::MANUAL_REJECTED,
+        'mode' => 'manual',
+        'provider' => MarketplacePaymentTransaction::PROVIDER_MANUAL,
+    ]);
+
+    $this->actingAs($this->user)
+        ->delete(route('profile.destroy'), ['password' => 'password123'])
+        ->assertRedirect('/');
+
+    $this->assertSoftDeleted('users', ['id' => $this->user->id]);
 });
