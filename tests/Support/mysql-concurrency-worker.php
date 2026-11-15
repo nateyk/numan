@@ -1,5 +1,12 @@
 <?php
 
+use App\Http\Controllers\Freight\FreightInterestAcceptanceController;
+use App\Models\MarketplacePaymentTransaction;
+use App\Services\MarketplaceFulfillmentService;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
 /**
  * CLI worker for the dedicated MySQL concurrency tests.
  *
@@ -11,7 +18,7 @@
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
-$app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 try {
     $mode = $argv[1] ?? '';
@@ -24,7 +31,7 @@ try {
     }
 
     if ($mode === 'accept') {
-        \Illuminate\Support\Facades\Auth::loginUsingId($actorId);
+        Auth::loginUsingId($actorId);
     }
 
     if (file_put_contents($readyFile, (string) getmypid()) === false) {
@@ -32,15 +39,15 @@ try {
     }
 
     if ($mode === 'accept') {
-        $request = \Illuminate\Http\Request::create('/interests/'.$id.'/accept', 'POST');
-        $request->setUserResolver(fn () => \Illuminate\Support\Facades\Auth::user());
+        $request = Request::create('/interests/'.$id.'/accept', 'POST');
+        $request->setUserResolver(fn () => Auth::user());
 
-        app(\App\Http\Controllers\Freight\FreightInterestAcceptanceController::class)
+        app(FreightInterestAcceptanceController::class)
             ->accept($request, $id);
     } else {
-        $transaction = \App\Models\MarketplacePaymentTransaction::findOrFail($id);
+        $transaction = MarketplacePaymentTransaction::findOrFail($id);
 
-        app(\App\Services\MarketplaceFulfillmentService::class)->fulfill(
+        app(MarketplaceFulfillmentService::class)->fulfill(
             $transaction,
             [
                 'status' => 'success',
