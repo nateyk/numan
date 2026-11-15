@@ -61,7 +61,8 @@ jobs:
       - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
       - run: pnpm run format:check
-      - run: pnpm exec eslint .
+      # Lint application-owned React/TypeScript, not bundled .opencode tools.
+      - run: pnpm exec eslint resources/js vite.config.ts
 
   audit:
     runs-on: ubuntu-latest
