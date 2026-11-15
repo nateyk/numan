@@ -1,5 +1,7 @@
 name: CI
 
+# Formatting, ESLint and dependency audits are required checks.
+
 on:
   push:
     branches: [main, develop]
