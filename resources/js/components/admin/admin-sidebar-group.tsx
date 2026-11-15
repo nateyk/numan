@@ -130,7 +130,7 @@ export function AdminSidebarGroup({
                                 )}
                                 <span className="flex-1">{item.title}</span>
                                 {item.badge !== undefined && item.badge > 0 && (
-                                    <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                                    <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums">
                                         {item.badge}
                                     </span>
                                 )}

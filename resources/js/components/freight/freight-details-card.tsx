@@ -108,10 +108,10 @@ function Fact({
             <dt className="text-sm leading-relaxed text-muted-foreground">
                 {label}
             </dt>
-            <dd className="min-w-0 break-words whitespace-pre-line text-sm font-medium leading-relaxed">
+            <dd className="min-w-0 text-sm leading-relaxed font-medium break-words whitespace-pre-line">
                 {value}
                 {detail && (
-                    <span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">
+                    <span className="mt-1 block text-xs leading-relaxed font-normal text-muted-foreground">
                         {detail}
                     </span>
                 )}
@@ -224,7 +224,10 @@ export default function FreightDetailsCard({
                     </div>
                     <dl className="divide-y divide-border/50">
                         <Fact label="Origin" value={placeLabel(origin)} />
-                        <Fact label="Destination" value={placeLabel(destination)} />
+                        <Fact
+                            label="Destination"
+                            value={placeLabel(destination)}
+                        />
                         <Fact
                             label="Offer type"
                             value={scheduleLabel}
@@ -270,7 +273,9 @@ export default function FreightDetailsCard({
                             label="Actual weight"
                             value={
                                 post.actual_weight
-                                    ? post.actual_weight + ' ' + (post.weight_unit ?? 'ton')
+                                    ? post.actual_weight +
+                                      ' ' +
+                                      (post.weight_unit ?? 'ton')
                                     : 'Not stated'
                             }
                         />
@@ -278,7 +283,8 @@ export default function FreightDetailsCard({
                             <Fact
                                 label="Tariff weight"
                                 value={
-                                    post.tariff_weight + ' ' +
+                                    post.tariff_weight +
+                                    ' ' +
                                     (post.tariff_weight_unit ?? 'ton')
                                 }
                             />
@@ -295,7 +301,9 @@ export default function FreightDetailsCard({
                             label="Truck"
                             value={
                                 (post.truck_type?.name ?? 'Any truck') +
-                                (post.truck_count ? ' × ' + post.truck_count : '')
+                                (post.truck_count
+                                    ? ' × ' + post.truck_count
+                                    : '')
                             }
                         />
                         {description && (
@@ -306,7 +314,9 @@ export default function FreightDetailsCard({
                                 label="Insurance"
                                 value={
                                     post.insurance_value
-                                        ? (post.tariff_currency ?? 'ETB') + ' ' + post.insurance_value
+                                        ? (post.tariff_currency ?? 'ETB') +
+                                          ' ' +
+                                          post.insurance_value
                                         : 'Required, value not set'
                                 }
                             />
@@ -342,7 +352,7 @@ export default function FreightDetailsCard({
                                 <dt className="text-xs text-muted-foreground">
                                     Pickup note
                                 </dt>
-                                <dd className="break-words whitespace-pre-line text-sm font-medium">
+                                <dd className="text-sm font-medium break-words whitespace-pre-line">
                                     {post.origin_site_note}
                                 </dd>
                             </div>
@@ -352,7 +362,7 @@ export default function FreightDetailsCard({
                                 <dt className="text-xs text-muted-foreground">
                                     Delivery note
                                 </dt>
-                                <dd className="break-words whitespace-pre-line text-sm font-medium">
+                                <dd className="text-sm font-medium break-words whitespace-pre-line">
                                     {post.destination_site_note}
                                 </dd>
                             </div>
@@ -362,7 +372,10 @@ export default function FreightDetailsCard({
             )}
 
             <p className="flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
-                <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
+                <CalendarDays
+                    className="size-3.5 shrink-0"
+                    aria-hidden="true"
+                />
                 Posted {createdValue}
             </p>
         </section>

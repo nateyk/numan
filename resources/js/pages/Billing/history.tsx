@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
@@ -54,7 +54,10 @@ export default function BillingHistory({
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: t('billing.title', 'Billing'), href: '/billing' },
-        { title: t('billing.history', 'Payment History'), href: '/billing/history' },
+        {
+            title: t('billing.history', 'Payment History'),
+            href: '/billing/history',
+        },
     ];
 
     const filteredInvoices = useMemo(() => {
@@ -117,57 +120,78 @@ export default function BillingHistory({
                                 </CardTitle>
                                 <CardDescription>
                                     {marketplacePayments.length} payment
-                                    {marketplacePayments.length === 1 ? '' : 's'} totalling{' '}
-                                    {etbTotal.toLocaleString()} ETB.
+                                    {marketplacePayments.length === 1
+                                        ? ''
+                                        : 's'}{' '}
+                                    totalling {etbTotal.toLocaleString()} ETB.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
-                                            <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                                                <th className="py-2 pr-4">Date</th>
-                                                <th className="py-2 pr-4">Plan</th>
-                                                <th className="py-2 pr-4">Method</th>
-                                                <th className="py-2 pr-4">Reference</th>
+                                            <tr className="border-b text-left text-xs text-muted-foreground uppercase">
+                                                <th className="py-2 pr-4">
+                                                    Date
+                                                </th>
+                                                <th className="py-2 pr-4">
+                                                    Plan
+                                                </th>
+                                                <th className="py-2 pr-4">
+                                                    Method
+                                                </th>
+                                                <th className="py-2 pr-4">
+                                                    Reference
+                                                </th>
                                                 <th className="py-2 pr-4 text-right">
                                                     Amount
                                                 </th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {marketplacePayments.map((payment) => (
-                                                <tr
-                                                    key={payment.id}
-                                                    className="border-b last:border-0"
-                                                >
-                                                    <td className="py-2 pr-4">
-                                                        {payment.date ?? '—'}
-                                                    </td>
-                                                    <td className="py-2 pr-4">
-                                                        {payment.plan_name ?? '—'}
-                                                        {payment.billing_interval && (
-                                                            <span className="ml-1 text-xs text-muted-foreground">
-                                                                ({payment.billing_interval})
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-2 pr-4">
-                                                        <Badge variant="outline">
-                                                            {PROVIDER_LABEL[
-                                                                payment.provider
-                                                            ] ?? payment.provider}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="py-2 pr-4 font-mono text-xs">
-                                                        {payment.reference ?? '—'}
-                                                    </td>
-                                                    <td className="py-2 pr-4 text-right tabular-nums">
-                                                        {payment.amount_etb}{' '}
-                                                        {payment.currency}
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {marketplacePayments.map(
+                                                (payment) => (
+                                                    <tr
+                                                        key={payment.id}
+                                                        className="border-b last:border-0"
+                                                    >
+                                                        <td className="py-2 pr-4">
+                                                            {payment.date ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="py-2 pr-4">
+                                                            {payment.plan_name ??
+                                                                '—'}
+                                                            {payment.billing_interval && (
+                                                                <span className="ml-1 text-xs text-muted-foreground">
+                                                                    (
+                                                                    {
+                                                                        payment.billing_interval
+                                                                    }
+                                                                    )
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-2 pr-4">
+                                                            <Badge variant="outline">
+                                                                {PROVIDER_LABEL[
+                                                                    payment
+                                                                        .provider
+                                                                ] ??
+                                                                    payment.provider}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="py-2 pr-4 font-mono text-xs">
+                                                            {payment.reference ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="py-2 pr-4 text-right tabular-nums">
+                                                            {payment.amount_etb}{' '}
+                                                            {payment.currency}
+                                                        </td>
+                                                    </tr>
+                                                ),
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -178,8 +202,8 @@ export default function BillingHistory({
                                             href={manualPaymentIndex}
                                             className="underline"
                                         >
-                                            See pending and rejected manual payment
-                                            requests
+                                            See pending and rejected manual
+                                            payment requests
                                         </Link>
                                         .
                                     </p>
@@ -203,8 +227,8 @@ export default function BillingHistory({
                         </CardHeader>
                         <CardContent>
                             <div className="mb-4 flex flex-wrap gap-2">
-                                <div className="relative flex-1 min-w-[200px]">
-                                    <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+                                <div className="relative min-w-[200px] flex-1">
+                                    <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
                                     <Input
                                         value={searchQuery}
                                         onChange={(e) =>
@@ -219,7 +243,7 @@ export default function BillingHistory({
                                     {searchQuery && (
                                         <button
                                             onClick={() => setSearchQuery('')}
-                                            className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                                            className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground"
                                         >
                                             <X className="size-4" />
                                         </button>

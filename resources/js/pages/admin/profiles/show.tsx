@@ -116,11 +116,15 @@ const LISTING_CONFIG: Record<string, { label: string; className: string }> = {
     },
     rejected: {
         label: 'Rejected',
-        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+        className:
+            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
 };
 
-const VERIFICATION_CONFIG: Record<string, { label: string; className: string }> = {
+const VERIFICATION_CONFIG: Record<
+    string,
+    { label: string; className: string }
+> = {
     unverified: {
         label: 'Unverified',
         className: 'bg-muted text-muted-foreground',
@@ -137,7 +141,8 @@ const VERIFICATION_CONFIG: Record<string, { label: string; className: string }> 
     },
     rejected: {
         label: 'Rejected',
-        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+        className:
+            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
 };
 
@@ -247,11 +252,7 @@ export default function AdminProfileShow({ profile, public_url }: Props) {
                     </div>
 
                     <Button variant="outline" size="sm" asChild>
-                        <a
-                            href={public_url}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
+                        <a href={public_url} target="_blank" rel="noreferrer">
                             <ExternalLink className="mr-1.5 size-4" />
                             Open public page
                         </a>
@@ -413,8 +414,8 @@ export default function AdminProfileShow({ profile, public_url }: Props) {
                                 <CardHeader>
                                     <CardTitle>Carrier details</CardTitle>
                                     <CardDescription>
-                                        What the directory shows once the listing
-                                        is approved.
+                                        What the directory shows once the
+                                        listing is approved.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -618,7 +619,9 @@ export default function AdminProfileShow({ profile, public_url }: Props) {
                                                             {moderation.from_status ??
                                                                 'none'}{' '}
                                                             →{' '}
-                                                            {moderation.to_status}
+                                                            {
+                                                                moderation.to_status
+                                                            }
                                                         </span>
                                                         <span className="text-xs text-muted-foreground">
                                                             {formatDate(
@@ -678,9 +681,7 @@ export default function AdminProfileShow({ profile, public_url }: Props) {
                                             }
                                             placeholder="Reason for rejection"
                                         />
-                                        <InputError
-                                            message={errors.reason}
-                                        />
+                                        <InputError message={errors.reason} />
                                         <Button
                                             variant="outline"
                                             className="w-full"

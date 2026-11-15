@@ -348,7 +348,10 @@ export default function DiscoverIndex({
             <div className="min-h-screen bg-background text-foreground">
                 <DiscoveryHeader canRegister={canRegister} />
                 <main id="main-content">
-                    <section aria-labelledby="freight-heading" className="pt-6 pb-3 sm:pt-8 sm:pb-4">
+                    <section
+                        aria-labelledby="freight-heading"
+                        className="pt-6 pb-3 sm:pt-8 sm:pb-4"
+                    >
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="mb-4">
                                 <h1
@@ -485,191 +488,214 @@ export default function DiscoverIndex({
                                                 type="button"
                                                 aria-expanded={showMoreFilters}
                                                 aria-controls="freight-advanced-filters"
-                                                onClick={() => setShowMoreFilters((current) => !current)}
-                                                className="flex min-h-11 w-full items-center justify-between rounded-md border bg-muted/40 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+                                                onClick={() =>
+                                                    setShowMoreFilters(
+                                                        (current) => !current,
+                                                    )
+                                                }
+                                                className="flex min-h-11 w-full items-center justify-between rounded-md border bg-muted/40 px-3 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:hidden"
                                             >
                                                 <span className="inline-flex items-center gap-2">
-                                                    <SlidersHorizontal className="size-4" aria-hidden="true" />
+                                                    <SlidersHorizontal
+                                                        className="size-4"
+                                                        aria-hidden="true"
+                                                    />
                                                     Route & cargo filters
                                                 </span>
-                                                <ChevronDown className={showMoreFilters ? 'size-4 rotate-180 text-muted-foreground transition-transform' : 'size-4 text-muted-foreground transition-transform'} aria-hidden="true" />
+                                                <ChevronDown
+                                                    className={
+                                                        showMoreFilters
+                                                            ? 'size-4 rotate-180 text-muted-foreground transition-transform'
+                                                            : 'size-4 text-muted-foreground transition-transform'
+                                                    }
+                                                    aria-hidden="true"
+                                                />
                                             </button>
                                             <fieldset
                                                 id="freight-advanced-filters"
-                                                className={showMoreFilters ? 'mt-3 block border-0 p-0 sm:mt-0 sm:block' : 'mt-3 hidden border-0 p-0 sm:mt-0 sm:block'}
+                                                className={
+                                                    showMoreFilters
+                                                        ? 'mt-3 block border-0 p-0 sm:mt-0 sm:block'
+                                                        : 'mt-3 hidden border-0 p-0 sm:mt-0 sm:block'
+                                                }
                                             >
-                                            <legend className="sr-only">
-                                                Location and cargo filters
-                                            </legend>
-                                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(16rem,1fr)]">
-                                                <div className="min-w-0 space-y-1.5">
-                                                    <Label
-                                                        htmlFor="origin-filter"
-                                                        className="text-xs font-medium"
-                                                    >
-                                                        Origin
-                                                    </Label>
-                                                    <LocationSearchInput
-                                                        id="origin-filter"
-                                                        ariaLabel="Origin location"
-                                                        initialName={
-                                                            originName ||
-                                                            undefined
-                                                        }
-                                                        onSelectLocation={(
-                                                            loc,
-                                                        ) => {
-                                                            setOrigin(
-                                                                loc
-                                                                    ? String(
-                                                                          loc.id,
-                                                                      )
-                                                                    : '',
-                                                            );
-                                                            setOriginName(
-                                                                loc
-                                                                    ? `${loc.name}, ${loc.region_name}`
-                                                                    : '',
-                                                            );
-                                                        }}
-                                                        placeholder="Addis Ababa…"
-                                                        className="w-full [&_input]:h-11"
-                                                        localOnly
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 space-y-1.5">
-                                                    <Label
-                                                        htmlFor="destination-filter"
-                                                        className="text-xs font-medium"
-                                                    >
-                                                        Destination
-                                                    </Label>
-                                                    <LocationSearchInput
-                                                        id="destination-filter"
-                                                        ariaLabel="Destination location"
-                                                        initialName={
-                                                            destinationName ||
-                                                            undefined
-                                                        }
-                                                        onSelectLocation={(
-                                                            loc,
-                                                        ) => {
-                                                            setDestination(
-                                                                loc
-                                                                    ? String(
-                                                                          loc.id,
-                                                                      )
-                                                                    : '',
-                                                            );
-                                                            setDestinationName(
-                                                                loc
-                                                                    ? `${loc.name}, ${loc.region_name}`
-                                                                    : '',
-                                                            );
-                                                        }}
-                                                        placeholder="Hawassa…"
-                                                        className="w-full [&_input]:h-11"
-                                                        localOnly
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 space-y-1.5">
-                                                    <Label
-                                                        className="text-xs font-medium"
-                                                        id="cargo-label"
-                                                    >
-                                                        Cargo
-                                                    </Label>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger
-                                                            asChild
+                                                <legend className="sr-only">
+                                                    Location and cargo filters
+                                                </legend>
+                                                <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(16rem,1fr)]">
+                                                    <div className="min-w-0 space-y-1.5">
+                                                        <Label
+                                                            htmlFor="origin-filter"
+                                                            className="text-xs font-medium"
                                                         >
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-11 w-full justify-between gap-2 px-3 text-sm"
-                                                                aria-labelledby="cargo-label"
-                                                            >
-                                                                {selectedCargo ===
-                                                                'all'
-                                                                    ? 'All Cargo'
-                                                                    : selectedCargo}
-                                                                <ChevronDown
-                                                                    className="size-3 opacity-50"
-                                                                    aria-hidden="true"
-                                                                />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent className="w-56">
-                                                            {[
-                                                                'all',
-                                                                'General',
-                                                                'Cereals',
-                                                                'Construction',
-                                                                'Refrigerated',
-                                                            ].map((c) => (
-                                                                <DropdownMenuItem
-                                                                    key={c}
-                                                                    onClick={() => {
-                                                                        setSelectedCargo(
-                                                                            c,
-                                                                        );
-                                                                        doSearch(
-                                                                            {
-                                                                                cargo: c,
-                                                                            },
-                                                                        );
-                                                                    }}
-                                                                    className={
-                                                                        selectedCargo ===
-                                                                        c
-                                                                            ? 'bg-accent'
-                                                                            : ''
-                                                                    }
-                                                                    aria-current={
-                                                                        selectedCargo ===
-                                                                        c
-                                                                            ? 'true'
-                                                                            : undefined
-                                                                    }
-                                                                >
-                                                                    {c === 'all'
-                                                                        ? 'All Cargo'
-                                                                        : c}
-                                                                </DropdownMenuItem>
-                                                            ))}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                                <div
-                                                    role="group"
-                                                    aria-label="Filter actions"
-                                                    className="flex min-w-0 items-center gap-2 self-end"
-                                                >
-                                                    <Button
-                                                        type="submit"
-                                                        className="h-11 min-w-0 flex-1 px-3 text-sm"
-                                                        disabled={updatingResults}
-                                                    >
-                                                        <Search
-                                                            className="size-4"
-                                                            aria-hidden="true"
+                                                            Origin
+                                                        </Label>
+                                                        <LocationSearchInput
+                                                            id="origin-filter"
+                                                            ariaLabel="Origin location"
+                                                            initialName={
+                                                                originName ||
+                                                                undefined
+                                                            }
+                                                            onSelectLocation={(
+                                                                loc,
+                                                            ) => {
+                                                                setOrigin(
+                                                                    loc
+                                                                        ? String(
+                                                                              loc.id,
+                                                                          )
+                                                                        : '',
+                                                                );
+                                                                setOriginName(
+                                                                    loc
+                                                                        ? `${loc.name}, ${loc.region_name}`
+                                                                        : '',
+                                                                );
+                                                            }}
+                                                            placeholder="Addis Ababa…"
+                                                            className="w-full [&_input]:h-11"
+                                                            localOnly
                                                         />
-                                                        {updatingResults
-                                                            ? 'Applying…'
-                                                            : 'Apply filters'}
-                                                    </Button>
-                                                    {hasActiveFilters && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            onClick={clearAll}
-                                                            className="h-11 shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                                    </div>
+                                                    <div className="min-w-0 space-y-1.5">
+                                                        <Label
+                                                            htmlFor="destination-filter"
+                                                            className="text-xs font-medium"
                                                         >
-                                                            Clear all
+                                                            Destination
+                                                        </Label>
+                                                        <LocationSearchInput
+                                                            id="destination-filter"
+                                                            ariaLabel="Destination location"
+                                                            initialName={
+                                                                destinationName ||
+                                                                undefined
+                                                            }
+                                                            onSelectLocation={(
+                                                                loc,
+                                                            ) => {
+                                                                setDestination(
+                                                                    loc
+                                                                        ? String(
+                                                                              loc.id,
+                                                                          )
+                                                                        : '',
+                                                                );
+                                                                setDestinationName(
+                                                                    loc
+                                                                        ? `${loc.name}, ${loc.region_name}`
+                                                                        : '',
+                                                                );
+                                                            }}
+                                                            placeholder="Hawassa…"
+                                                            className="w-full [&_input]:h-11"
+                                                            localOnly
+                                                        />
+                                                    </div>
+                                                    <div className="min-w-0 space-y-1.5">
+                                                        <Label
+                                                            className="text-xs font-medium"
+                                                            id="cargo-label"
+                                                        >
+                                                            Cargo
+                                                        </Label>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger
+                                                                asChild
+                                                            >
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-11 w-full justify-between gap-2 px-3 text-sm"
+                                                                    aria-labelledby="cargo-label"
+                                                                >
+                                                                    {selectedCargo ===
+                                                                    'all'
+                                                                        ? 'All Cargo'
+                                                                        : selectedCargo}
+                                                                    <ChevronDown
+                                                                        className="size-3 opacity-50"
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent className="w-56">
+                                                                {[
+                                                                    'all',
+                                                                    'General',
+                                                                    'Cereals',
+                                                                    'Construction',
+                                                                    'Refrigerated',
+                                                                ].map((c) => (
+                                                                    <DropdownMenuItem
+                                                                        key={c}
+                                                                        onClick={() => {
+                                                                            setSelectedCargo(
+                                                                                c,
+                                                                            );
+                                                                            doSearch(
+                                                                                {
+                                                                                    cargo: c,
+                                                                                },
+                                                                            );
+                                                                        }}
+                                                                        className={
+                                                                            selectedCargo ===
+                                                                            c
+                                                                                ? 'bg-accent'
+                                                                                : ''
+                                                                        }
+                                                                        aria-current={
+                                                                            selectedCargo ===
+                                                                            c
+                                                                                ? 'true'
+                                                                                : undefined
+                                                                        }
+                                                                    >
+                                                                        {c ===
+                                                                        'all'
+                                                                            ? 'All Cargo'
+                                                                            : c}
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                    <div
+                                                        role="group"
+                                                        aria-label="Filter actions"
+                                                        className="flex min-w-0 items-center gap-2 self-end"
+                                                    >
+                                                        <Button
+                                                            type="submit"
+                                                            className="h-11 min-w-0 flex-1 px-3 text-sm"
+                                                            disabled={
+                                                                updatingResults
+                                                            }
+                                                        >
+                                                            <Search
+                                                                className="size-4"
+                                                                aria-hidden="true"
+                                                            />
+                                                            {updatingResults
+                                                                ? 'Applying…'
+                                                                : 'Apply filters'}
                                                         </Button>
-                                                    )}
+                                                        {hasActiveFilters && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                onClick={
+                                                                    clearAll
+                                                                }
+                                                                className="h-11 shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                Clear all
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
                                             </fieldset>
                                         </div>
                                     </form>
@@ -723,15 +749,28 @@ export default function DiscoverIndex({
                                             <div>
                                                 <p className="text-sm font-medium">
                                                     Posting limit reached on{' '}
-                                                    {marketplaceEntitlement.plan.name}
+                                                    {
+                                                        marketplaceEntitlement
+                                                            .plan.name
+                                                    }
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    You can still browse loads. Upgrade to post more freight, billed in ETB via Chapa.
+                                                    You can still browse loads.
+                                                    Upgrade to post more
+                                                    freight, billed in ETB via
+                                                    Chapa.
                                                 </p>
                                             </div>
                                         </div>
-                                        <Button size="sm" variant="outline" className="min-h-9" asChild>
-                                            <Link href="/billing/plans">View plans</Link>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="min-h-9"
+                                            asChild
+                                        >
+                                            <Link href="/billing/plans">
+                                                View plans
+                                            </Link>
                                         </Button>
                                     </aside>
                                 )}
@@ -1006,7 +1045,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Item
                                                             </span>
-                                                            <span className="break-words text-sm font-medium">
+                                                            <span className="text-sm font-medium break-words">
                                                                 {(
                                                                     f as unknown as {
                                                                         item_name?: string;
@@ -1024,7 +1063,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Pickup
                                                             </span>
-                                                            <span className="break-words text-sm font-medium">
+                                                            <span className="text-sm font-medium break-words">
                                                                 {f.pickup_date
                                                                     ? String(
                                                                           f.pickup_date,
@@ -1052,7 +1091,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Weight
                                                             </span>
-                                                            <span className="break-words text-sm font-semibold">
+                                                            <span className="text-sm font-semibold break-words">
                                                                 {(
                                                                     f as unknown as {
                                                                         actual_weight?: string;
@@ -1070,7 +1109,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Tariff
                                                             </span>
-                                                            <span className="break-words text-sm font-semibold">
+                                                            <span className="text-sm font-semibold break-words">
                                                                 {(
                                                                     f as unknown as {
                                                                         tariff_amount?: string;
@@ -1088,7 +1127,7 @@ export default function DiscoverIndex({
                                                                 />{' '}
                                                                 Trucks
                                                             </span>
-                                                            <span className="break-words text-sm font-semibold">
+                                                            <span className="text-sm font-semibold break-words">
                                                                 {truckType?.name ??
                                                                     'Any'}{' '}
                                                                 {f.truck_count

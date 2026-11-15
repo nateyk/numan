@@ -1,11 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { Badge } from '@/components/ui/badge';
-import {
-    freightRoute,
-    postUlid,
-    type FreightRow,
-} from '@/lib/freight-route';
+import { freightRoute, postUlid, type FreightRow } from '@/lib/freight-route';
+import { Head, Link } from '@inertiajs/react';
 
 interface Connection {
     public_id: string;
@@ -31,13 +26,14 @@ export default function ConnectionsIndex({ connections }: Props) {
             <div className="mx-auto max-w-4xl space-y-4 p-6">
                 <h1 className="text-xl font-bold">Connections</h1>
                 {connections.data.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No connections yet.</p>
+                    <p className="text-sm text-muted-foreground">
+                        No connections yet.
+                    </p>
                 ) : (
                     <div className="space-y-2">
                         {connections.data.map((c) => {
                             const post = c.freight_post ?? c.freightPost;
-                            const { origin, destination } =
-                                freightRoute(post);
+                            const { origin, destination } = freightRoute(post);
                             const ulid = postUlid(post);
 
                             return (

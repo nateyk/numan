@@ -46,7 +46,10 @@ export function LandingFeatures() {
         },
         {
             icon: CreditCard,
-            title: t('landing.features.items.billing.title', 'Chapa ETB Payments'),
+            title: t(
+                'landing.features.items.billing.title',
+                'Chapa ETB Payments',
+            ),
             description: t(
                 'landing.features.items.billing.description',
                 'Secure payments in Ethiopian Birr via Chapa — cards, mobile money, and bank transfer. Transparent fees, instant confirmations.',
@@ -66,7 +69,10 @@ export function LandingFeatures() {
         },
         {
             icon: ShieldCheck,
-            title: t('landing.features.items.flags.title', 'Verification & KYC'),
+            title: t(
+                'landing.features.items.flags.title',
+                'Verification & KYC',
+            ),
             description: t(
                 'landing.features.items.flags.description',
                 'KYC-verified carriers, truck plates, and driver documents. BadgeCheck system so shippers book with confidence.',
@@ -109,7 +115,10 @@ export function LandingFeatures() {
         },
         {
             icon: Building2,
-            title: t('landing.features.items.dark_mode.title', 'Fleet Workspaces'),
+            title: t(
+                'landing.features.items.dark_mode.title',
+                'Fleet Workspaces',
+            ),
             description: t(
                 'landing.features.items.dark_mode.description',
                 'Manage fleets, drivers, and trucks under one workspace. Assign roles, track loads, and centralize ETB payouts.',
@@ -119,7 +128,10 @@ export function LandingFeatures() {
         },
         {
             icon: Users,
-            title: t('landing.features.items.stack.title', 'Roles & Permissions'),
+            title: t(
+                'landing.features.items.stack.title',
+                'Roles & Permissions',
+            ),
             description: t(
                 'landing.features.items.stack.description',
                 'Owner, admin, and member roles for shippers and transporters. Control who posts loads, accepts bids, and releases ETB.',
@@ -129,7 +141,10 @@ export function LandingFeatures() {
         },
         {
             icon: Star,
-            title: t('landing.features.items.ui.title', 'Ethiopia-First Experience'),
+            title: t(
+                'landing.features.items.ui.title',
+                'Ethiopia-First Experience',
+            ),
             description: t(
                 'landing.features.items.ui.description',
                 'Built for Ethiopia — ETB by default, Amharic-ready, lightweight for low-bandwidth, and support for local corridors.',

@@ -65,8 +65,10 @@ export default function CapabilityFields({ values, errors, onChange }: Props) {
                         <Package className="size-5" aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1 space-y-0.5">
-                        <span className="block font-semibold">Post freight</span>
-                        <span className="block text-xs font-normal leading-relaxed text-muted-foreground">
+                        <span className="block font-semibold">
+                            Post freight
+                        </span>
+                        <span className="block text-xs leading-relaxed font-normal text-muted-foreground">
                             Find transport for your loads
                         </span>
                     </span>
@@ -97,8 +99,10 @@ export default function CapabilityFields({ values, errors, onChange }: Props) {
                         <Truck className="size-5" aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1 space-y-0.5">
-                        <span className="block font-semibold">Provide transport</span>
-                        <span className="block text-xs font-normal leading-relaxed text-muted-foreground">
+                        <span className="block font-semibold">
+                            Provide transport
+                        </span>
+                        <span className="block text-xs leading-relaxed font-normal text-muted-foreground">
                             Offer trucks and routes to shippers
                         </span>
                     </span>
@@ -111,7 +115,9 @@ export default function CapabilityFields({ values, errors, onChange }: Props) {
                         )}
                         aria-hidden="true"
                     >
-                        {values.provides_transport && <Check className="size-3" />}
+                        {values.provides_transport && (
+                            <Check className="size-3" />
+                        )}
                     </span>
                 </Toggle>
             </div>

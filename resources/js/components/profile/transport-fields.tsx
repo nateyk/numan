@@ -363,7 +363,7 @@ export default function TransportFields({
                                                 className={cn(
                                                     'min-h-10 px-3 text-sm',
                                                     selected &&
-                                                        'border-primary/60 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground hover:bg-primary/10',
+                                                        'border-primary/60 hover:bg-primary/10 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground',
                                                 )}
                                             >
                                                 {type.name}
@@ -531,7 +531,9 @@ export default function TransportFields({
 
                             <div className="space-y-3 border-t pt-5">
                                 <p className="text-xs leading-relaxed text-muted-foreground">
-                                    Saving sends your carrier details for review. An approved listing stays approved when edited.
+                                    Saving sends your carrier details for
+                                    review. An approved listing stays approved
+                                    when edited.
                                 </p>
                                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     {onBack ? (
@@ -542,7 +544,10 @@ export default function TransportFields({
                                             disabled={form.processing}
                                             onClick={onBack}
                                         >
-                                            <ArrowLeft className="size-4" aria-hidden="true" />
+                                            <ArrowLeft
+                                                className="size-4"
+                                                aria-hidden="true"
+                                            />
                                             Back
                                         </Button>
                                     ) : (
@@ -557,7 +562,10 @@ export default function TransportFields({
                                         {form.processing ? (
                                             <Spinner />
                                         ) : (
-                                            <ArrowRight className="size-4" aria-hidden="true" />
+                                            <ArrowRight
+                                                className="size-4"
+                                                aria-hidden="true"
+                                            />
                                         )}
                                         Save and submit for review
                                     </Button>

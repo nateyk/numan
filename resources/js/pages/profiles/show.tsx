@@ -247,7 +247,9 @@ export default function ProfileShow({
                                                         {profile.truck_types.map(
                                                             (type) => (
                                                                 <Badge
-                                                                    key={type.id}
+                                                                    key={
+                                                                        type.id
+                                                                    }
                                                                     variant="outline"
                                                                 >
                                                                     {type.name}

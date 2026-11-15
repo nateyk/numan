@@ -136,7 +136,9 @@ function ContactBlock({
             >
                 <p className="flex items-center gap-2 font-semibold">
                     <AlertCircle className="size-4 shrink-0" />
-                    {postLimitReached ? 'Freight post limit reached' : 'Contact reveal limit reached'}
+                    {postLimitReached
+                        ? 'Freight post limit reached'
+                        : 'Contact reveal limit reached'}
                 </p>
                 <p className="text-muted-foreground">
                     {postLimitReached

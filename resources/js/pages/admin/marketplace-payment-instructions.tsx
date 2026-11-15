@@ -1,13 +1,18 @@
-import { Head } from '@inertiajs/react';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { useForm } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Head, useForm } from '@inertiajs/react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface Setting {
     value: string | null;
@@ -20,7 +25,10 @@ interface Props {
     settings: Record<string, Setting>;
     /** method -> the keys it needs before it can be offered. */
     methods: Record<string, string[]>;
-    available: Record<string, { label: string; fields: Record<string, string> }>;
+    available: Record<
+        string,
+        { label: string; fields: Record<string, string> }
+    >;
     enabled: boolean;
     expiryDays: number;
 }
@@ -45,12 +53,17 @@ export default function MarketplacePaymentInstructions({
     enabled,
     expiryDays,
 }: Props) {
-    const { data, setData, post, processing, errors } = useForm<Record<string, string | boolean>>(
-        Object.entries(settings).reduce<Record<string, string | boolean>>((acc, [key, row]) => {
-            acc[key] = row.value ?? '';
-            acc[`${key}_enabled`] = row.is_enabled;
-            return acc;
-        }, {}),
+    const { data, setData, post, processing, errors } = useForm<
+        Record<string, string | boolean>
+    >(
+        Object.entries(settings).reduce<Record<string, string | boolean>>(
+            (acc, [key, row]) => {
+                acc[key] = row.value ?? '';
+                acc[`${key}_enabled`] = row.is_enabled;
+                return acc;
+            },
+            {},
+        ),
     );
 
     const save = (e: React.FormEvent) => {
@@ -63,10 +76,13 @@ export default function MarketplacePaymentInstructions({
             <Head title="Payment instructions" />
 
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">Payment instructions</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Payment instructions
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                    The account details a payer is shown before transferring money. A method is
-                    offered only when every field below it is filled in and enabled.
+                    The account details a payer is shown before transferring
+                    money. A method is offered only when every field below it is
+                    filled in and enabled.
                 </p>
             </div>
 
@@ -95,7 +111,9 @@ export default function MarketplacePaymentInstructions({
                         {enabled
                             ? `Offered methods: ${Object.values(available)
                                   .map((m) => m.label)
-                                  .join(', ')}. Requests lapse after ${expiryDays} day(s) if nobody reviews them.`
+                                  .join(
+                                      ', ',
+                                  )}. Requests lapse after ${expiryDays} day(s) if nobody reviews them.`
                             : 'No method is fully configured, so the "Pay manually" button does not appear on the plans page.'}
                     </CardDescription>
                 </CardHeader>
@@ -115,19 +133,24 @@ export default function MarketplacePaymentInstructions({
                                             offered
                                         </Badge>
                                     ) : (
-                                        <Badge variant="secondary">not offered</Badge>
+                                        <Badge variant="secondary">
+                                            not offered
+                                        </Badge>
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    All fields below must be filled in and enabled before this
-                                    method appears to payers.
+                                    All fields below must be filled in and
+                                    enabled before this method appears to
+                                    payers.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {keys.map((key) => {
                                     const row = settings[key];
                                     const value = String(data[key] ?? '');
-                                    const isOn = Boolean(data[`${key}_enabled`]);
+                                    const isOn = Boolean(
+                                        data[`${key}_enabled`],
+                                    );
 
                                     return (
                                         <div
@@ -136,19 +159,27 @@ export default function MarketplacePaymentInstructions({
                                         >
                                             <div className="min-w-[220px] flex-1 space-y-1">
                                                 <Label htmlFor={key}>
-                                                    {row?.label ?? humanise(key)}
+                                                    {row?.label ??
+                                                        humanise(key)}
                                                 </Label>
                                                 <Input
                                                     id={key}
                                                     value={value}
                                                     onChange={(e) =>
-                                                        setData(key, e.target.value)
+                                                        setData(
+                                                            key,
+                                                            e.target.value,
+                                                        )
                                                     }
-                                                    placeholder={key.includes('number')
-                                                        ? '1000234567894'
-                                                        : key.includes('name')
-                                                          ? 'XCO Agency'
-                                                          : 'Commercial Bank of Ethiopia'}
+                                                    placeholder={
+                                                        key.includes('number')
+                                                            ? '1000234567894'
+                                                            : key.includes(
+                                                                    'name',
+                                                                )
+                                                              ? 'XCO Agency'
+                                                              : 'Commercial Bank of Ethiopia'
+                                                    }
                                                 />
                                                 {errors[key] && (
                                                     <p className="text-xs text-destructive">
@@ -160,8 +191,13 @@ export default function MarketplacePaymentInstructions({
                                                 <Switch
                                                     id={`${key}_enabled`}
                                                     checked={isOn}
-                                                    onCheckedChange={(checked) =>
-                                                        setData(`${key}_enabled`, checked)
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setData(
+                                                            `${key}_enabled`,
+                                                            checked,
+                                                        )
                                                     }
                                                 />
                                                 <Label
@@ -183,14 +219,20 @@ export default function MarketplacePaymentInstructions({
                     <CardHeader>
                         <CardTitle>General instructions</CardTitle>
                         <CardDescription>
-                            Shown above the account details, e.g. how long a transfer takes.
+                            Shown above the account details, e.g. how long a
+                            transfer takes.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <Textarea
-                            value={String(data.manual_payment_instructions ?? '')}
+                            value={String(
+                                data.manual_payment_instructions ?? '',
+                            )}
                             onChange={(e) =>
-                                setData('manual_payment_instructions', e.target.value)
+                                setData(
+                                    'manual_payment_instructions',
+                                    e.target.value,
+                                )
                             }
                             rows={4}
                             placeholder="Transfer using your banking app, then enter the reference in the note. Transfers usually settle within an hour."

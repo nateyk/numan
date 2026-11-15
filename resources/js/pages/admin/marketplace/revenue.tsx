@@ -1,6 +1,12 @@
-import { Head } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Head } from '@inertiajs/react';
 
 interface Day {
     date: string;
@@ -45,9 +51,12 @@ export default function MarketplaceRevenue({ summary }: Props) {
             <Head title="Marketplace revenue" />
 
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">Marketplace revenue</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Marketplace revenue
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                    Verified payments only. A pending request is not revenue and grants nothing.
+                    Verified payments only. A pending request is not revenue and
+                    grants nothing.
                 </p>
             </div>
 
@@ -105,12 +114,21 @@ export default function MarketplaceRevenue({ summary }: Props) {
                     <CardTitle>By duration</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-3 sm:grid-cols-3">
-                    {Object.entries(totals.by_interval).map(([interval, total]) => (
-                        <div key={interval} className="rounded-md border p-3">
-                            <p className="text-xs capitalize text-muted-foreground">{interval}</p>
-                            <p className="tabular-nums text-lg font-semibold">{etb(total)}</p>
-                        </div>
-                    ))}
+                    {Object.entries(totals.by_interval).map(
+                        ([interval, total]) => (
+                            <div
+                                key={interval}
+                                className="rounded-md border p-3"
+                            >
+                                <p className="text-xs text-muted-foreground capitalize">
+                                    {interval}
+                                </p>
+                                <p className="text-lg font-semibold tabular-nums">
+                                    {etb(total)}
+                                </p>
+                            </div>
+                        ),
+                    )}
                 </CardContent>
             </Card>
 
@@ -118,11 +136,16 @@ export default function MarketplaceRevenue({ summary }: Props) {
                 <CardHeader>
                     <CardTitle>Verified revenue per day</CardTitle>
                     <CardDescription>
-                        Zero-filled, so a quiet day reads as a zero rather than a gap.
+                        Zero-filled, so a quiet day reads as a zero rather than
+                        a gap.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex h-40 items-end gap-[2px]" role="img" aria-label="Daily verified revenue">
+                    <div
+                        className="flex h-40 items-end gap-[2px]"
+                        role="img"
+                        aria-label="Daily verified revenue"
+                    >
                         {summary.daily.map((day) => (
                             <div
                                 key={day.date}
@@ -131,13 +154,16 @@ export default function MarketplaceRevenue({ summary }: Props) {
                             >
                                 <div
                                     className="rounded-t-sm bg-primary/70"
-                                    style={{ height: `${(day.total / peak) * 100}%` }}
+                                    style={{
+                                        height: `${(day.total / peak) * 100}%`,
+                                    }}
                                 />
                             </div>
                         ))}
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">
-                        {summary.daily[0]?.date} to {summary.daily[summary.daily.length - 1]?.date}
+                        {summary.daily[0]?.date} to{' '}
+                        {summary.daily[summary.daily.length - 1]?.date}
                     </p>
                 </CardContent>
             </Card>
@@ -159,7 +185,8 @@ export default function MarketplaceRevenue({ summary }: Props) {
                                 <div className="flex items-center gap-3">
                                     {m.count > 0 && (
                                         <span className="text-xs text-muted-foreground">
-                                            {m.count} payment{m.count === 1 ? '' : 's'}
+                                            {m.count} payment
+                                            {m.count === 1 ? '' : 's'}
                                         </span>
                                     )}
                                     {m.chapa > 0 && (
@@ -172,7 +199,7 @@ export default function MarketplaceRevenue({ summary }: Props) {
                                             manual {etb(m.manual)}
                                         </Badge>
                                     )}
-                                    <span className="tabular-nums font-semibold">
+                                    <span className="font-semibold tabular-nums">
                                         {etb(m.total)}
                                     </span>
                                 </div>
@@ -186,7 +213,8 @@ export default function MarketplaceRevenue({ summary }: Props) {
                     <CardHeader>
                         <CardTitle>By plan</CardTitle>
                         <CardDescription>
-                            What was sold, at the price that was in force at the time.
+                            What was sold, at the price that was in force at the
+                            time.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">

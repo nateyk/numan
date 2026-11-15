@@ -280,12 +280,17 @@ export default function FreightShow({
                                     />
                                     <span className="sr-only">to</span>
                                     <span className="min-w-0 break-words">
-                                        {post.destination?.name ?? 'Destination'}
+                                        {post.destination?.name ??
+                                            'Destination'}
                                     </span>
                                 </h1>
                                 {post.status && (
                                     <Badge
-                                        variant={post.status === 'active' ? 'default' : 'secondary'}
+                                        variant={
+                                            post.status === 'active'
+                                                ? 'default'
+                                                : 'secondary'
+                                        }
                                         className="shrink-0 capitalize"
                                     >
                                         {post.status.replaceAll('_', ' ')}

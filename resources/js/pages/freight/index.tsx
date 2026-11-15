@@ -253,7 +253,8 @@ export default function FreightIndex({
                         My Freight
                     </h1>
                     <p className="text-sm text-muted-foreground sm:text-base">
-                        Search, track, and manage your freight posts in one place.
+                        Search, track, and manage your freight posts in one
+                        place.
                     </p>
                 </div>
 
@@ -290,7 +291,10 @@ export default function FreightIndex({
                                     className="absolute top-0 right-0 size-11 rounded-l-none"
                                     aria-label="Search freight posts"
                                 >
-                                    <Search className="size-4" aria-hidden="true" />
+                                    <Search
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />
                                 </Button>
                             </div>
                         </form>
@@ -313,7 +317,10 @@ export default function FreightIndex({
                                     >
                                         <SelectValue placeholder="All statuses" />
                                     </SelectTrigger>
-                                    <SelectContent align="end" className="min-w-[12rem]">
+                                    <SelectContent
+                                        align="end"
+                                        className="min-w-[12rem]"
+                                    >
                                         {STATUSES.map((status) => (
                                             <SelectItem
                                                 key={status.value}
@@ -331,7 +338,7 @@ export default function FreightIndex({
                             </div>
                             <PostFreightButton
                                 onBeforePost={allowPost}
-                                className="h-11 w-full whitespace-nowrap px-3 sm:w-auto sm:min-w-36"
+                                className="h-11 w-full px-3 whitespace-nowrap sm:w-auto sm:min-w-36"
                             />
                         </div>
                     </div>
@@ -507,7 +514,7 @@ export default function FreightIndex({
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="size-9"
-                                                                         aria-label={`More actions for ${routeLabel(p)}`}
+                                                                        aria-label={`More actions for ${routeLabel(p)}`}
                                                                     >
                                                                         <MoreHorizontal className="size-4" />
                                                                     </Button>

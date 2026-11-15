@@ -1,8 +1,14 @@
-import { Head, Link } from '@inertiajs/react';
-import { CheckCircle2, Clock, FileWarning, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Head, Link } from '@inertiajs/react';
+import { CheckCircle2, Clock, FileWarning, XCircle } from 'lucide-react';
 
 interface Payment {
     id: number;
@@ -31,25 +37,29 @@ const STATUS: Record<
     pending_confirmation: {
         label: 'Awaiting confirmation',
         icon: Clock,
-        className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+        className:
+            'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
         blurb: 'We have your proof. An administrator checks it against the amount in the banking app. Nothing is activated until then.',
     },
     confirmed: {
         label: 'Confirmed',
         icon: CheckCircle2,
-        className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+        className:
+            'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
         blurb: 'Your payment is confirmed and your plan is active.',
     },
     rejected: {
         label: 'Not confirmed',
         icon: XCircle,
-        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+        className:
+            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
         blurb: 'We could not confirm this payment.',
     },
     expired: {
         label: 'Expired',
         icon: FileWarning,
-        className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+        className:
+            'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
         blurb: 'This request was not confirmed in time and has been closed. Nothing was charged.',
     },
 };
@@ -63,9 +73,12 @@ export default function ManualPayStatus({ payment }: Props) {
             <Head title="Payment request" />
 
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">Payment request</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Payment request
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                    Reference <span className="font-mono">{payment.tx_ref}</span>
+                    Reference{' '}
+                    <span className="font-mono">{payment.tx_ref}</span>
                 </p>
             </div>
 
@@ -74,20 +87,42 @@ export default function ManualPayStatus({ payment }: Props) {
                     <CardTitle className="flex items-center gap-2">
                         <Icon className="size-5" />
                         {status.label}
-                        <Badge className={status.className}>{payment.status}</Badge>
+                        <Badge className={status.className}>
+                            {payment.status}
+                        </Badge>
                     </CardTitle>
                     <CardDescription>{status.blurb}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                    <Row label="Plan" value={`${payment.plan_name ?? '—'} · ${payment.billing_interval ?? '—'}`} />
-                    <Row label="Amount" value={`${payment.amount_etb} ${payment.currency}`} />
+                    <Row
+                        label="Plan"
+                        value={`${payment.plan_name ?? '—'} · ${payment.billing_interval ?? '—'}`}
+                    />
+                    <Row
+                        label="Amount"
+                        value={`${payment.amount_etb} ${payment.currency}`}
+                    />
                     <Row label="Method" value={payment.method ?? '—'} />
-                    <Row label="Your transfer reference" value={payment.reference ?? '—'} />
-                    <Row label="Submitted" value={formatDate(payment.submitted_at)} />
+                    <Row
+                        label="Your transfer reference"
+                        value={payment.reference ?? '—'}
+                    />
+                    <Row
+                        label="Submitted"
+                        value={formatDate(payment.submitted_at)}
+                    />
                     {payment.status === 'pending_confirmation' && (
-                        <Row label="Confirm by" value={formatDate(payment.expires_at)} />
+                        <Row
+                            label="Confirm by"
+                            value={formatDate(payment.expires_at)}
+                        />
                     )}
-                    {payment.reviewed_at && <Row label="Reviewed" value={formatDate(payment.reviewed_at)} />}
+                    {payment.reviewed_at && (
+                        <Row
+                            label="Reviewed"
+                            value={formatDate(payment.reviewed_at)}
+                        />
+                    )}
                 </CardContent>
             </Card>
 
@@ -112,9 +147,12 @@ export default function ManualPayStatus({ payment }: Props) {
                 <Button asChild variant="outline">
                     <Link href="/billing/plans">Back to plans</Link>
                 </Button>
-                {(payment.status === 'expired' || payment.status === 'rejected') && (
+                {(payment.status === 'expired' ||
+                    payment.status === 'rejected') && (
                     <Button asChild>
-                        <Link href={`/billing/plans?recommended_plan=standard&recommended_billing_period=${payment.billing_interval ?? 'monthly'}`}>
+                        <Link
+                            href={`/billing/plans?recommended_plan=standard&recommended_billing_period=${payment.billing_interval ?? 'monthly'}`}
+                        >
                             Start a new request
                         </Link>
                     </Button>

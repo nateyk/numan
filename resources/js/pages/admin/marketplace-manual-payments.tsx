@@ -1,9 +1,12 @@
-import { Head } from '@inertiajs/react';
-import { AlertTriangle, CheckCircle2, Eye, RotateCcw, XCircle } from 'lucide-react';
-import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -14,6 +17,15 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Head } from '@inertiajs/react';
+import {
+    AlertTriangle,
+    CheckCircle2,
+    Eye,
+    RotateCcw,
+    XCircle,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
 
 interface Row {
     id: number;
@@ -45,10 +57,19 @@ interface Row {
 interface Props {
     pending: Row[];
     recent: Row[];
-    counts: { pending: number; confirmed: number; rejected: number; expired: number };
+    counts: {
+        pending: number;
+        confirmed: number;
+        rejected: number;
+        expired: number;
+    };
 }
 
-export default function MarketplaceManualPayments({ pending, recent, counts }: Props) {
+export default function MarketplaceManualPayments({
+    pending,
+    recent,
+    counts,
+}: Props) {
     const [confirming, setConfirming] = useState<Row | null>(null);
     const [rejecting, setRejecting] = useState<Row | null>(null);
     const [reason, setReason] = useState('');
@@ -73,7 +94,9 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
         form.method = 'POST';
         form.action = url;
 
-        const token = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+        const token = document.querySelector(
+            'meta[name="csrf-token"]',
+        ) as HTMLMetaElement | null;
         if (token) {
             const field = document.createElement('input');
             field.type = 'hidden';
@@ -117,10 +140,12 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
             <Head title="Manual payments" />
 
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight">Manual payments</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Manual payments
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                    Confirm against the amount in the banking app. A screenshot is whatever the
-                    payer chose to upload.
+                    Confirm against the amount in the banking app. A screenshot
+                    is whatever the payer chose to upload.
                 </p>
             </div>
 
@@ -142,7 +167,9 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {pending.length === 0 ? (
-                        <p className="py-6 text-center text-sm text-muted-foreground">Queue is empty.</p>
+                        <p className="py-6 text-center text-sm text-muted-foreground">
+                            Queue is empty.
+                        </p>
                     ) : (
                         pending.map((row) => (
                             <div key={row.id} className="rounded-md border p-4">
@@ -151,30 +178,48 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                                         <div className="flex items-center gap-2 font-medium">
                                             {row.amount_etb} {row.currency}
                                             <span className="text-sm font-normal text-muted-foreground">
-                                                {row.plan_name} · {row.billing_interval}
+                                                {row.plan_name} ·{' '}
+                                                {row.billing_interval}
                                             </span>
                                         </div>
                                         <div className="font-mono text-xs text-muted-foreground">
                                             {row.tx_ref}
-                                            {row.reference ? ` · bank ref ${row.reference}` : ''}
+                                            {row.reference
+                                                ? ` · bank ref ${row.reference}`
+                                                : ''}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                            {row.workspace?.name} · {row.user?.name}
-                                            {row.payer_phone ? ` · ${row.payer_phone}` : ''}
+                                            {row.workspace?.name} ·{' '}
+                                            {row.user?.name}
+                                            {row.payer_phone
+                                                ? ` · ${row.payer_phone}`
+                                                : ''}
                                         </div>
                                     </div>
 
                                     <div className="flex items-center gap-2">
                                         {row.plan_archived && (
-                                            <Badge variant="outline" className="text-amber-700 dark:text-amber-400">
+                                            <Badge
+                                                variant="outline"
+                                                className="text-amber-700 dark:text-amber-400"
+                                            >
                                                 <AlertTriangle className="mr-1 size-3" />
                                                 Plan archived
                                             </Badge>
                                         )}
                                         {row.has_proof && row.proof_url && (
-                                            <Button asChild size="sm" variant="outline">
-                                                <a href={row.proof_url} target="_blank" rel="noreferrer">
-                                                    <Eye className="size-3.5" /> Proof
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                variant="outline"
+                                            >
+                                                <a
+                                                    href={row.proof_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    <Eye className="size-3.5" />{' '}
+                                                    Proof
                                                 </a>
                                             </Button>
                                         )}
@@ -183,7 +228,8 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                                             disabled={!row.can_confirm || busy}
                                             onClick={() => setConfirming(row)}
                                         >
-                                            <CheckCircle2 className="size-3.5" /> Confirm
+                                            <CheckCircle2 className="size-3.5" />{' '}
+                                            Confirm
                                         </Button>
                                         <Button
                                             size="sm"
@@ -195,21 +241,24 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                                                 setReasonError(null);
                                             }}
                                         >
-                                            <XCircle className="size-3.5" /> Reject
+                                            <XCircle className="size-3.5" />{' '}
+                                            Reject
                                         </Button>
                                     </div>
                                 </div>
 
                                 {!row.can_confirm && row.user && (
                                     <p className="mt-2 text-xs text-muted-foreground">
-                                        You cannot confirm your own payment request.
+                                        You cannot confirm your own payment
+                                        request.
                                     </p>
                                 )}
 
                                 {row.plan_archived && (
                                     <p className="mt-2 text-xs text-muted-foreground">
-                                        The plan was archived after this was submitted. The original
-                                        price and duration will be honoured.
+                                        The plan was archived after this was
+                                        submitted. The original price and
+                                        duration will be honoured.
                                     </p>
                                 )}
                             </div>
@@ -262,10 +311,13 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                                             variant="outline"
                                             disabled={busy}
                                             onClick={() =>
-                                                act(`/admin/marketplace-manual-payments/${row.id}/reopen`)
+                                                act(
+                                                    `/admin/marketplace-manual-payments/${row.id}/reopen`,
+                                                )
                                             }
                                         >
-                                            <RotateCcw className="size-3.5" /> Reopen
+                                            <RotateCcw className="size-3.5" />{' '}
+                                            Reopen
                                         </Button>
                                     )}
                                 </div>
@@ -280,58 +332,98 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                 </CardContent>
             </Card>
 
-            <Dialog open={confirming !== null} onOpenChange={(o) => !o && setConfirming(null)}>
+            <Dialog
+                open={confirming !== null}
+                onOpenChange={(o) => !o && setConfirming(null)}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Confirm this payment</DialogTitle>
                         <DialogDescription>
-                            Verify the amount in the bank or Telebirr app, not the screenshot.
+                            Verify the amount in the bank or Telebirr app, not
+                            the screenshot.
                         </DialogDescription>
                     </DialogHeader>
 
                     {confirming && (
                         <div className="space-y-2 text-sm">
-                            <Line label="Amount to verify" value={`${confirming.amount_etb} ${confirming.currency}`} emphasis />
-                            <Line label="Method" value={confirming.method ?? '—'} />
-                            <Line label="Bank reference" value={confirming.reference ?? '—'} />
-                            <Line label="Reference in transfer note" value={confirming.tx_ref} />
-                            <Line label="Payer phone" value={confirming.payer_phone ?? '—'} />
-                            <Line label="Workspace" value={confirming.workspace?.name ?? '—'} />
-                            <Line label="Submitted" value={formatDate(confirming.submitted_at)} />
+                            <Line
+                                label="Amount to verify"
+                                value={`${confirming.amount_etb} ${confirming.currency}`}
+                                emphasis
+                            />
+                            <Line
+                                label="Method"
+                                value={confirming.method ?? '—'}
+                            />
+                            <Line
+                                label="Bank reference"
+                                value={confirming.reference ?? '—'}
+                            />
+                            <Line
+                                label="Reference in transfer note"
+                                value={confirming.tx_ref}
+                            />
+                            <Line
+                                label="Payer phone"
+                                value={confirming.payer_phone ?? '—'}
+                            />
+                            <Line
+                                label="Workspace"
+                                value={confirming.workspace?.name ?? '—'}
+                            />
+                            <Line
+                                label="Submitted"
+                                value={formatDate(confirming.submitted_at)}
+                            />
 
                             {confirming.plan_archived && (
                                 <p className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs dark:border-amber-800 dark:bg-amber-950/40">
                                     <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                                    The plan was archived after submission. The original price and
-                                    duration will be honoured.
+                                    The plan was archived after submission. The
+                                    original price and duration will be
+                                    honoured.
                                 </p>
                             )}
                         </div>
                     )}
 
                     <DialogFooter>
-                        <Button variant="outline" disabled={busy} onClick={() => setConfirming(null)}>
+                        <Button
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => setConfirming(null)}
+                        >
                             Cancel
                         </Button>
                         <Button
                             disabled={busy}
                             onClick={() => {
                                 if (!confirming) return;
-                                act(`/admin/marketplace-manual-payments/${confirming.id}/confirm`);
+                                act(
+                                    `/admin/marketplace-manual-payments/${confirming.id}/confirm`,
+                                );
                             }}
                         >
                             <CheckCircle2 className="size-4" />
-                            {submitting === confirming?.id ? 'Confirming\u2026' : 'Confirm and activate'}
+                            {submitting === confirming?.id
+                                ? 'Confirming\u2026'
+                                : 'Confirm and activate'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={rejecting !== null} onOpenChange={(o) => !o && setRejecting(null)}>
+            <Dialog
+                open={rejecting !== null}
+                onOpenChange={(o) => !o && setRejecting(null)}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Reject this payment</DialogTitle>
-                        <DialogDescription>The payer sees this reason.</DialogDescription>
+                        <DialogDescription>
+                            The payer sees this reason.
+                        </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-2">
@@ -346,15 +438,29 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
                             placeholder="e.g. No matching transfer found for reference FT123456789."
                             rows={3}
                         />
-                        {reasonError && <p className="text-xs text-destructive">{reasonError}</p>}
+                        {reasonError && (
+                            <p className="text-xs text-destructive">
+                                {reasonError}
+                            </p>
+                        )}
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" disabled={busy} onClick={() => setRejecting(null)}>
+                        <Button
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => setRejecting(null)}
+                        >
                             Cancel
                         </Button>
-                        <Button variant="destructive" disabled={busy} onClick={submitReject}>
-                            {submitting === rejecting?.id ? 'Rejecting\u2026' : 'Reject and notify'}
+                        <Button
+                            variant="destructive"
+                            disabled={busy}
+                            onClick={submitReject}
+                        >
+                            {submitting === rejecting?.id
+                                ? 'Rejecting\u2026'
+                                : 'Reject and notify'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -363,22 +469,50 @@ export default function MarketplaceManualPayments({ pending, recent, counts }: P
     );
 }
 
-function Count({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
+function Count({
+    label,
+    value,
+    emphasis,
+}: {
+    label: string;
+    value: number;
+    emphasis?: boolean;
+}) {
     return (
         <Card>
             <CardHeader>
                 <CardDescription>{label}</CardDescription>
-                <CardTitle className={emphasis ? 'text-3xl text-amber-600' : 'text-3xl'}>{value}</CardTitle>
+                <CardTitle
+                    className={
+                        emphasis ? 'text-3xl text-amber-600' : 'text-3xl'
+                    }
+                >
+                    {value}
+                </CardTitle>
             </CardHeader>
         </Card>
     );
 }
 
-function Line({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
+function Line({
+    label,
+    value,
+    emphasis,
+}: {
+    label: string;
+    value: string;
+    emphasis?: boolean;
+}) {
     return (
         <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">{label}</span>
-            <span className={emphasis ? 'text-right font-mono text-lg font-bold' : 'text-right font-medium'}>
+            <span
+                className={
+                    emphasis
+                        ? 'text-right font-mono text-lg font-bold'
+                        : 'text-right font-medium'
+                }
+            >
                 {value}
             </span>
         </div>
