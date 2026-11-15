@@ -60,6 +60,8 @@ class ChapaWebhookController extends Controller
                 'chapa_ref' => $chapaRef,
                 'payload' => $payload,
                 'signature' => $request->header('x-chapa-signature') ?? $request->header('chapa-signature'),
+                // Digest the exact signed bytes, not JSON re-encoded by Laravel.
+                'payload_hash' => hash('sha256', $request->getContent()),
                 'status' => 'pending',
             ]
         );
