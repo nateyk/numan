@@ -73,6 +73,8 @@ function AdminQuickStatsWidget() {
     }, []);
 
     useEffect(() => {
+        // Initial admin quick-stats fetch also sets its loading state.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchStats();
     }, [fetchStats]);
 
