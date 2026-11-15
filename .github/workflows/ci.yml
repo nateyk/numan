@@ -1,5 +1,7 @@
 name: CI
 
+# Formatting, ESLint and dependency audits are required checks.
+
 on:
   push:
     branches: [main, develop]
@@ -101,9 +103,8 @@ jobs:
       - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
       - run: pnpm run format:check
-        continue-on-error: true
+      # Lint maintained repository files; exclude bundled tools and disabled workspace UI via eslint.config.js.
       - run: pnpm exec eslint .
-        continue-on-error: true
 
   audit:
     runs-on: ubuntu-latest
@@ -120,6 +121,4 @@ jobs:
       - run: composer install --no-interaction --prefer-dist
       - run: pnpm install --frozen-lockfile
       - run: composer audit
-        continue-on-error: true
       - run: pnpm audit --audit-level=high
-        continue-on-error: true
