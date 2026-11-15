@@ -80,6 +80,8 @@ export default function LazyLeafletRoute({
     const [geometry, setGeometry] = useState(initialGeometry ?? null);
     const [loading, setLoading] = useState(!initialGeometry);
 
+    // Existing route-prop synchronization resets stale geometry before fetch.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         setGeometry(initialGeometry ?? null);
         if (initialGeometry) {
@@ -114,6 +116,7 @@ export default function LazyLeafletRoute({
             })
             .catch(() => setLoading(false));
     }, [fromLat, fromLng, toLat, toLng, initialGeometry]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const center: [number, number] = [
         (fromLat + toLat) / 2,
