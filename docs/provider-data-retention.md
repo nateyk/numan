@@ -1,7 +1,8 @@
-# Provider data retention — design, not implemented
+# Provider data retention — pending business decision
 
-Status: **proposal for a decision.** No command exists yet, no migration, no flag.
-Nothing in the running system depends on this document.
+Status: **new-write minimization implemented; historical retention and deletion NOT approved or enabled.** A migration stores SHA-256 fingerprints for new signed webhook deliveries, and model write boundaries strip payer identity and nonessential nested data before persisting new Chapa webhook/verification summaries. Existing rows with old raw payloads remain unchanged.
+
+There is still **no automatic scrub command, purge schedule or enabled retention flag**. The proposed day limits below are recommendations awaiting review, not an active policy.
 
 It settles §12b of `docs/production-runbook.md`, which records the decision as
 still open.
@@ -10,21 +11,19 @@ still open.
 
 ## What is actually being kept
 
-Two columns store raw provider payloads. Both are `longtext` and both are written
-whole, with no filtering at write time:
+Historically, two columns stored raw provider payloads, including personal data. New model writes now store only whitelisted accounting fields, but historical rows may still contain the original full payloads:
 
 | Table | Column | Written by | Contains |
 |---|---|---|---|
-| `chapa_webhook_events` | `payload` | `ChapaWebhookController::handle()` — `json()->all()` | The whole webhook body: event name, tx_ref, Chapa reference, amount, status, and the payer's **first name, last name, email and phone number** |
-| `marketplace_payment_transactions` | `provider_response` | the Chapa verify call inside the same handler | The verify response: status, reference, amount, and again the payer's **name, email and phone number** |
+| `chapa_webhook_events` | `payload` | `ChapaWebhookController::handle()` | Legacy rows may contain the full webhook body, including payer identity. New rows store event/transaction/status/amount/currency summary fields only. |
+| `marketplace_payment_transactions` | `provider_response` | Chapa initialize/verify and fulfillment | Legacy rows may contain payer identity and checkout URLs. New Eloquent writes retain only safe accounting fields. |
 
 The controller is explicit about this. It refuses to log either body, and its
 comments say why: *"A Chapa webhook carries the payer's first name, last name, email
 and phone number"* and *"the payer's name, email and phone number, which have no
 business in a log file that outlives the request."*
 
-So the write path already treats this data as sensitive. It is stored anyway, without
-a stated retention period, indefinitely. That is the gap this closes.
+The write path now minimizes newly stored provider content. A separately approved retention process is still needed to deal with already-stored personal data and implement a maximum lifetime.
 
 ## The important distinction
 
@@ -161,8 +160,7 @@ first — which the rehearsal harness can do without touching production.
 ## What this depends on
 
 - The retention numbers need a business owner's sign-off, not an engineer's.
-- `payload_hash` needs adding at receipt time, so this design is only fully
-  implementable before the scrub exists.
+- `payload_hash` is captured on new signed deliveries. Existing rows cannot be retroactively assigned a verifiable raw-body hash once the exact original bytes are unavailable.
 - The volumes are unknown. The dev database has zero rows in any of these tables, so
   nobody can currently say how much space this reclaims or how long the first run
   takes. The rehearsal against the real dump answers both, and the harness already
