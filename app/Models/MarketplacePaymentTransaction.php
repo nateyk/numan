@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ChapaProviderDataSanitizer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -91,6 +92,20 @@ class MarketplacePaymentTransaction extends Model
             'manual_reviewed_at' => 'datetime',
             'manual_expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Chapa verify/initialize results are inspected in memory, but the stored
+     * copy contains only safe financial status fields. No checkout URL, payer
+     * phone, payer email, or provider-supplied customer metadata is retained.
+     *
+     * @param  array<string, mixed>|null  $value
+     */
+    public function setProviderResponseAttribute(?array $value): void
+    {
+        $this->attributes['provider_response'] = $value === null
+            ? null
+            : json_encode(ChapaProviderDataSanitizer::summarize($value), JSON_THROW_ON_ERROR);
     }
 
     public function workspace(): BelongsTo
