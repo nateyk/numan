@@ -30,8 +30,11 @@ export default function PhoneNumberInlineStep() {
     // A new bounce means a new attempt, so clear whatever was typed before.
     useEffect(() => {
         if (requiresPhone) {
+            // New phone-verification prompts must not reuse previously typed data.
+            /* eslint-disable react-hooks/set-state-in-effect */
             setPhone('');
             setError(null);
+            /* eslint-enable react-hooks/set-state-in-effect */
         }
     }, [requiresPhone]);
 
