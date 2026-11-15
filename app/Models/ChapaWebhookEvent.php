@@ -13,6 +13,7 @@ class ChapaWebhookEvent extends Model
         'chapa_ref',
         'payload',
         'signature',
+        'payload_hash',
         'status',
         'processed_at',
     ];
