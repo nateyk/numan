@@ -49,6 +49,8 @@ export function AdminSidebarGroup({
                 currentPath.startsWith(item.href + '/'),
         );
         if (isActiveInGroup && !isExpanded) {
+            // Existing route-navigation expansion; state must follow the route.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsExpanded(true);
         }
     }, [currentPath, items, isExpanded]);

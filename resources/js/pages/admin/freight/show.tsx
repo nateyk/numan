@@ -89,20 +89,7 @@ export default function AdminFreightShow({ post }: Props) {
         cargoType,
         truckType,
     } = freightRoute(post);
-    const routeSnapshot =
-        ((post as unknown as Record<string, unknown>)
-            .routeSnapshot as Props['post']['route_snapshot']) ??
-        ((post as unknown as Record<string, unknown>)
-            .route_snapshot as Props['post']['route_snapshot']) ??
-        post.routeSnapshot ??
-        post.route_snapshot;
     const hasRoute = !!(originLocation && destinationLocation);
-    const hasExact = !!(
-        post.origin_exact_lat &&
-        post.origin_exact_lng &&
-        post.destination_exact_lat &&
-        post.destination_exact_lng
-    );
 
     return (
         <AdminLayout>

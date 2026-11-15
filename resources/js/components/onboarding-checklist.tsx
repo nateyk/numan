@@ -34,22 +34,6 @@ export function OnboardingChecklist() {
     const [dismissing, setDismissing] = useState(false);
     const [hidden, setHidden] = useState(false);
 
-    const fetchChecklist = async () => {
-        try {
-            const { data: result, response } = await http.get<ChecklistData>(
-                '/onboarding-checklist',
-            );
-            if (response.ok) {
-                setData(result);
-                if (result.dismissed) {
-                    setHidden(true);
-                }
-            }
-        } catch {
-            // Silently fail — checklist is non-critical
-        }
-    };
-
     const dismiss = async () => {
         setDismissing(true);
         try {
@@ -63,7 +47,24 @@ export function OnboardingChecklist() {
     };
 
     useEffect(() => {
-        fetchChecklist();
+        let active = true;
+
+        // Fetch asynchronously and ignore responses after unmount. Avoid
+        // synchronously setting React state from a mounting effect.
+        void http
+            .get<ChecklistData>('/onboarding-checklist')
+            .then(({ data: result, response }) => {
+                if (!active || !response.ok) return;
+                setData(result);
+                if (result.dismissed) setHidden(true);
+            })
+            .catch(() => {
+                // The checklist is non-critical.
+            });
+
+        return () => {
+            active = false;
+        };
     }, []);
 
     if (hidden || !data || data.dismissed || data.steps.length === 0) {

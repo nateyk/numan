@@ -1,4 +1,4 @@
-import { ComponentType, Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useSyncExternalStore } from 'react';
 
 interface Props {
     fromLat: number | null;
@@ -9,19 +9,10 @@ interface Props {
     className?: string;
 }
 
-const LazyLeafletRoute = lazy<
-    ComponentType<{
-        fromLat: number;
-        fromLng: number;
-        toLat: number;
-        toLng: number;
-        geometry?: unknown;
-    }>
->(() =>
-    import('./LazyLeafletRoute').then((m) => ({
-        default: (m as any).default || (m as any),
-    })),
-);
+const LazyLeafletRoute = lazy(() => import('./LazyLeafletRoute'));
+const subscribeToHydration = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 const LazyDefaultEthiopiaMap = lazy(() => import('./DefaultEthiopiaMap'));
 
@@ -33,11 +24,13 @@ export default function RoutePreviewMap({
     geometry,
     className,
 }: Props) {
-    const [isClient, setIsClient] = useState(false);
-
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
+    // Keep the server-rendered placeholder during hydration, without an
+    // effect that immediately updates React state.
+    const isClient = useSyncExternalStore(
+        subscribeToHydration,
+        getClientSnapshot,
+        getServerSnapshot,
+    );
 
     if (!isClient) {
         return (
@@ -87,7 +80,12 @@ export default function RoutePreviewMap({
                     fromLng={fromLng}
                     toLat={toLat}
                     toLng={toLng}
-                    geometry={geometry}
+                    geometry={
+                        geometry as {
+                            type?: string;
+                            coordinates?: number[][];
+                        } | null
+                    }
                 />
             </Suspense>
         </div>
