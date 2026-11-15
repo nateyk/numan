@@ -43,9 +43,13 @@ export default function PersonalDashboard() {
                 <header className="flex flex-col gap-5 border-b pb-6 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 space-y-2">
                         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                            {t('dashboard.welcome_back', 'Welcome back, {{name}}!', {
-                                name: firstName,
-                            })}
+                            {t(
+                                'dashboard.welcome_back',
+                                'Welcome back, {{name}}!',
+                                {
+                                    name: firstName,
+                                },
+                            )}
                         </h1>
                         <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
                             {t(
@@ -60,15 +64,24 @@ export default function PersonalDashboard() {
                     </PostFreightButton>
                 </header>
 
-                <section aria-labelledby="freight-actions-title" className="space-y-3">
-                    <h2 id="freight-actions-title" className="text-base font-semibold">
+                <section
+                    aria-labelledby="freight-actions-title"
+                    className="space-y-3"
+                >
+                    <h2
+                        id="freight-actions-title"
+                        className="text-base font-semibold"
+                    >
                         {t('dashboard.freight_tools', 'Freight')}
                     </h2>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Card className="gap-3 shadow-none">
                             <CardHeader className="space-y-2">
                                 <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                                    <Package className="size-5" aria-hidden="true" />
+                                    <Package
+                                        className="size-5"
+                                        aria-hidden="true"
+                                    />
                                 </div>
                                 <CardTitle className="text-lg">
                                     {t('navigation.my_freight', 'My Freight')}
@@ -83,8 +96,14 @@ export default function PersonalDashboard() {
                             <CardContent>
                                 <Button variant="outline" size="sm" asChild>
                                     <Link href="/my-freight">
-                                        {t('dashboard.view_freight', 'View my freight')}
-                                        <ArrowRight className="size-4" aria-hidden="true" />
+                                        {t(
+                                            'dashboard.view_freight',
+                                            'View my freight',
+                                        )}
+                                        <ArrowRight
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
                                     </Link>
                                 </Button>
                             </CardContent>
@@ -93,10 +112,16 @@ export default function PersonalDashboard() {
                         <Card className="gap-3 shadow-none">
                             <CardHeader className="space-y-2">
                                 <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                                    <Compass className="size-5" aria-hidden="true" />
+                                    <Compass
+                                        className="size-5"
+                                        aria-hidden="true"
+                                    />
                                 </div>
                                 <CardTitle className="text-lg">
-                                    {t('navigation.discover_freight', 'Discover Freight')}
+                                    {t(
+                                        'navigation.discover_freight',
+                                        'Discover Freight',
+                                    )}
                                 </CardTitle>
                                 <CardDescription>
                                     {t(
@@ -108,8 +133,14 @@ export default function PersonalDashboard() {
                             <CardContent>
                                 <Button variant="outline" size="sm" asChild>
                                     <Link href="/freight">
-                                        {t('dashboard.browse_freight', 'Browse freight')}
-                                        <ArrowRight className="size-4" aria-hidden="true" />
+                                        {t(
+                                            'dashboard.browse_freight',
+                                            'Browse freight',
+                                        )}
+                                        <ArrowRight
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
                                     </Link>
                                 </Button>
                             </CardContent>
@@ -125,9 +156,15 @@ export default function PersonalDashboard() {
                         <Card className="gap-3 shadow-none">
                             <CardHeader className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <UserRound className="size-4 text-muted-foreground" aria-hidden="true" />
+                                    <UserRound
+                                        className="size-4 text-muted-foreground"
+                                        aria-hidden="true"
+                                    />
                                     <CardTitle className="text-base">
-                                        {t('navigation.my_profile', 'My Profile')}
+                                        {t(
+                                            'navigation.my_profile',
+                                            'My Profile',
+                                        )}
                                     </CardTitle>
                                 </div>
                                 <CardDescription>
@@ -138,19 +175,34 @@ export default function PersonalDashboard() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {typeof profileScore === 'number' && profileScore < 100 && (
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between gap-2 text-xs text-muted-foreground">
-                                            <span>{t('dashboard.profile_completion', 'Profile completion')}</span>
-                                            <span>{profileScore}%</span>
+                                {typeof profileScore === 'number' &&
+                                    profileScore < 100 && (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between gap-2 text-xs text-muted-foreground">
+                                                <span>
+                                                    {t(
+                                                        'dashboard.profile_completion',
+                                                        'Profile completion',
+                                                    )}
+                                                </span>
+                                                <span>{profileScore}%</span>
+                                            </div>
+                                            <Progress
+                                                value={profileScore}
+                                                className="h-1.5"
+                                            />
                                         </div>
-                                        <Progress value={profileScore} className="h-1.5" />
-                                    </div>
-                                )}
+                                    )}
                                 <Button variant="outline" size="sm" asChild>
                                     <Link href="/public-profile">
-                                        {t('dashboard.edit_profile', 'Manage profile')}
-                                        <ArrowRight className="size-4" aria-hidden="true" />
+                                        {t(
+                                            'dashboard.edit_profile',
+                                            'Manage profile',
+                                        )}
+                                        <ArrowRight
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
                                     </Link>
                                 </Button>
                             </CardContent>
@@ -159,13 +211,22 @@ export default function PersonalDashboard() {
                         <Card className="gap-3 shadow-none">
                             <CardHeader className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
+                                    <CreditCard
+                                        className="size-4 text-muted-foreground"
+                                        aria-hidden="true"
+                                    />
                                     <CardTitle className="text-base">
-                                        {t('dashboard.current_plan', 'Current Plan')}
+                                        {t(
+                                            'dashboard.current_plan',
+                                            'Current Plan',
+                                        )}
                                     </CardTitle>
                                 </div>
                                 <CardDescription>
-                                    {t('dashboard.account_plan_description', 'Manage your plan and account preferences.')}
+                                    {t(
+                                        'dashboard.account_plan_description',
+                                        'Manage your plan and account preferences.',
+                                    )}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -174,13 +235,22 @@ export default function PersonalDashboard() {
                                 </span>
                                 <Button variant="outline" size="sm" asChild>
                                     <Link href="/billing">
-                                        {t('dashboard.manage_billing', 'Manage billing')}
+                                        {t(
+                                            'dashboard.manage_billing',
+                                            'Manage billing',
+                                        )}
                                     </Link>
                                 </Button>
                                 <Button variant="ghost" size="sm" asChild>
                                     <Link href="/settings/profile">
-                                        <Settings2 className="size-4" aria-hidden="true" />
-                                        {t('dashboard.account_settings', 'Account settings')}
+                                        <Settings2
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
+                                        {t(
+                                            'dashboard.account_settings',
+                                            'Account settings',
+                                        )}
                                     </Link>
                                 </Button>
                             </CardContent>

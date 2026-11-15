@@ -50,10 +50,8 @@ interface Props {
 
 const TYPE_COLORS: Record<string, string> = {
     city: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    town:
-        'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-    woreda:
-        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+    town: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+    woreda: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
 };
 
 /** Decode HTML entities in Laravel paginator labels (e.g. &laquo;, &raquo;). */
@@ -136,7 +134,7 @@ export default function AdminLocations({ locations, filters }: Props) {
 
                 {/* Search */}
                 <div className="relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         placeholder="Search locations…"
                         defaultValue={filters.search}
@@ -223,10 +221,7 @@ export default function AdminLocations({ locations, filters }: Props) {
                                     step="any"
                                     value={form.data.latitude ?? ''}
                                     onChange={(e) =>
-                                        form.setData(
-                                            'latitude',
-                                            e.target.value,
-                                        )
+                                        form.setData('latitude', e.target.value)
                                     }
                                     placeholder="e.g. 9.025"
                                     className="mt-1"
@@ -331,7 +326,12 @@ export default function AdminLocations({ locations, filters }: Props) {
                                         <TableCell>
                                             <Badge
                                                 variant="outline"
-                                                className={TYPE_COLORS[location.type] || 'bg-muted text-muted-foreground'}
+                                                className={
+                                                    TYPE_COLORS[
+                                                        location.type
+                                                    ] ||
+                                                    'bg-muted text-muted-foreground'
+                                                }
                                             >
                                                 {location.type}
                                             </Badge>
@@ -353,7 +353,7 @@ export default function AdminLocations({ locations, filters }: Props) {
                                                 </Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
+                                        <TableCell className="text-sm text-muted-foreground">
                                             {new Date(
                                                 location.created_at,
                                             ).toLocaleDateString()}
@@ -384,9 +384,7 @@ export default function AdminLocations({ locations, filters }: Props) {
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() =>
-                                                        deleteLocation(
-                                                            location,
-                                                        )
+                                                        deleteLocation(location)
                                                     }
                                                     className="text-destructive"
                                                 >

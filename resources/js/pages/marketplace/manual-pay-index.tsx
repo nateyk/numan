@@ -1,8 +1,8 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Head, Link } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 
 interface Payment {
     id: number;
@@ -27,8 +27,10 @@ interface Props {
 }
 
 const STATUS_CLASS: Record<string, string> = {
-    pending_confirmation: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-    confirmed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+    pending_confirmation:
+        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+    confirmed:
+        'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
     rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     expired: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
 };
@@ -40,9 +42,12 @@ export default function ManualPayIndex({ payments, total, links }: Props) {
 
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold tracking-tight">Manual payment requests</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        Manual payment requests
+                    </h1>
                     <p className="text-sm text-muted-foreground">
-                        {total} request{total === 1 ? '' : 's'} for this workspace.
+                        {total} request{total === 1 ? '' : 's'} for this
+                        workspace.
                     </p>
                 </div>
                 <Button asChild variant="outline">
@@ -69,18 +74,25 @@ export default function ManualPayIndex({ payments, total, links }: Props) {
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="space-y-1">
                                     <div className="font-medium">
-                                        {payment.plan_name ?? '—'} &middot; {payment.billing_interval ?? '—'}
+                                        {payment.plan_name ?? '—'} &middot;{' '}
+                                        {payment.billing_interval ?? '—'}
                                     </div>
                                     <div className="font-mono text-xs text-muted-foreground">
                                         {payment.tx_ref}
-                                        {payment.reference ? ` · bank ref ${payment.reference}` : ''}
+                                        {payment.reference
+                                            ? ` · bank ref ${payment.reference}`
+                                            : ''}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className="tabular-nums font-semibold">
+                                    <span className="font-semibold tabular-nums">
                                         {payment.amount_etb} {payment.currency}
                                     </span>
-                                    <Badge className={STATUS_CLASS[payment.status] ?? ''}>
+                                    <Badge
+                                        className={
+                                            STATUS_CLASS[payment.status] ?? ''
+                                        }
+                                    >
                                         {payment.status}
                                     </Badge>
                                 </div>
@@ -107,10 +119,18 @@ export default function ManualPayIndex({ payments, total, links }: Props) {
                         >
                             {link.url ? (
                                 <Link href={link.url} preserveScroll>
-                                    <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                                    <span
+                                        dangerouslySetInnerHTML={{
+                                            __html: link.label,
+                                        }}
+                                    />
                                 </Link>
                             ) : (
-                                <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                                <span
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
+                                />
                             )}
                         </Button>
                     ))}

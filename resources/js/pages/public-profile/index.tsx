@@ -225,7 +225,9 @@ export default function PublicProfileIndex({
                                 currentStep === item.id &&
                                     'border border-border bg-background shadow-xs hover:bg-background',
                             )}
-                            aria-current={currentStep === item.id ? 'step' : undefined}
+                            aria-current={
+                                currentStep === item.id ? 'step' : undefined
+                            }
                             disabled={
                                 form.processing ||
                                 (i > index && form.isDirty) ||
@@ -262,7 +264,10 @@ export default function PublicProfileIndex({
                     <p className="text-xs font-medium text-muted-foreground">
                         Step {index + 1} of {steps.length}
                     </p>
-                    <div className="grid grid-flow-col gap-1" aria-hidden="true">
+                    <div
+                        className="grid grid-flow-col gap-1"
+                        aria-hidden="true"
+                    >
                         {steps.map((item, i) => (
                             <span
                                 key={item.id}
@@ -334,12 +339,18 @@ export default function PublicProfileIndex({
                                         disabled={form.processing}
                                         onClick={() => goTo('basics')}
                                     >
-                                        <ArrowLeft className="size-4" aria-hidden="true" />
+                                        <ArrowLeft
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
                                         Back
                                     </Button>
                                 )}
                                 {form.isDirty && (
-                                    <span role="status" className="text-xs text-muted-foreground">
+                                    <span
+                                        role="status"
+                                        className="text-xs text-muted-foreground"
+                                    >
                                         Unsaved changes
                                     </span>
                                 )}
@@ -366,7 +377,10 @@ export default function PublicProfileIndex({
                                     {currentStep === 'basics'
                                         ? 'Continue'
                                         : 'Save & continue'}
-                                    <ArrowRight className="size-4" aria-hidden="true" />
+                                    <ArrowRight
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />
                                 </Button>
                             </div>
                         </footer>
@@ -501,7 +515,11 @@ export default function PublicProfileIndex({
                             variant="ghost"
                             className="min-h-11"
                             onClick={() =>
-                                goTo(profile.provides_transport ? 'carrier' : 'contact')
+                                goTo(
+                                    profile.provides_transport
+                                        ? 'carrier'
+                                        : 'contact',
+                                )
                             }
                         >
                             <ArrowLeft className="size-4" aria-hidden="true" />

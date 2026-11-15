@@ -65,7 +65,8 @@ export default function IdentityFields({
         return (
             <div className="space-y-5">
                 <p className="rounded-md border bg-muted/30 px-3 py-3 text-sm leading-relaxed text-muted-foreground">
-                    Your contact details are private until revealed. Use a country code for each number.
+                    Your contact details are private until revealed. Use a
+                    country code for each number.
                 </p>
                 <ContactNumberFields
                     field="phone_numbers"
@@ -105,7 +106,8 @@ export default function IdentityFields({
                         Share after a contact reveal
                     </legend>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                        Choose which contact methods people can see after they unlock your details.
+                        Choose which contact methods people can see after they
+                        unlock your details.
                     </p>
                     {(
                         [

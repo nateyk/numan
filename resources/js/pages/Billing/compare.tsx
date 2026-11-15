@@ -148,45 +148,41 @@ export default function ComparePlans({
                     {/* Billing Period Toggle — weekly/monthly/yearly */}
                     <div className="flex items-center justify-center">
                         <div className="inline-flex items-center gap-1 rounded-lg border bg-muted p-1">
-                            {(
-                                [
-                                    'weekly',
-                                    'monthly',
-                                    'yearly',
-                                ] as const
-                            ).map((period) => (
-                                <Button
-                                    key={period}
-                                    variant={
-                                        billingPeriod === period
-                                            ? 'default'
-                                            : 'ghost'
-                                    }
-                                    size="sm"
-                                    className="h-7 px-4 text-xs capitalize"
-                                    onClick={() => setBillingPeriod(period)}
-                                    aria-pressed={billingPeriod === period}
-                                >
-                                    {period === 'weekly'
-                                        ? 'Weekly'
-                                        : period === 'monthly'
-                                          ? 'Monthly'
-                                          : 'Yearly'}
-                                    {period === 'yearly' && (
-                                        <Badge
-                                            variant="secondary"
-                                            className="ml-1 border-none bg-primary/10 px-1 py-0 text-[10px] font-bold text-primary"
-                                        >
-                                            Save 20%
-                                        </Badge>
-                                    )}
-                                    {period === 'weekly' && (
-                                        <span className="ml-1 text-[10px]">
-                                            7d
-                                        </span>
-                                    )}
-                                </Button>
-                            ))}
+                            {(['weekly', 'monthly', 'yearly'] as const).map(
+                                (period) => (
+                                    <Button
+                                        key={period}
+                                        variant={
+                                            billingPeriod === period
+                                                ? 'default'
+                                                : 'ghost'
+                                        }
+                                        size="sm"
+                                        className="h-7 px-4 text-xs capitalize"
+                                        onClick={() => setBillingPeriod(period)}
+                                        aria-pressed={billingPeriod === period}
+                                    >
+                                        {period === 'weekly'
+                                            ? 'Weekly'
+                                            : period === 'monthly'
+                                              ? 'Monthly'
+                                              : 'Yearly'}
+                                        {period === 'yearly' && (
+                                            <Badge
+                                                variant="secondary"
+                                                className="ml-1 border-none bg-primary/10 px-1 py-0 text-[10px] font-bold text-primary"
+                                            >
+                                                Save 20%
+                                            </Badge>
+                                        )}
+                                        {period === 'weekly' && (
+                                            <span className="ml-1 text-[10px]">
+                                                7d
+                                            </span>
+                                        )}
+                                    </Button>
+                                ),
+                            )}
                         </div>
                     </div>
 
@@ -260,7 +256,11 @@ export default function ComparePlans({
                                                                 plan,
                                                             ) > 0 && (
                                                                 <div className="text-xs text-muted-foreground">
-                                                                    ${getWeeklyPrice(plan)}/week
+                                                                    $
+                                                                    {getWeeklyPrice(
+                                                                        plan,
+                                                                    )}
+                                                                    /week
                                                                 </div>
                                                             )}
                                                     </div>

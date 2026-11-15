@@ -1,7 +1,6 @@
 import { OnboardingChecklist } from '@/components/onboarding-checklist';
 import { ProductTour } from '@/components/product-tour';
 import { PostFreightButton } from '@/components/profile/post-freight-button';
-import PersonalDashboard from '@/pages/personal-dashboard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +14,7 @@ import { WorkspaceActivityFeed } from '@/components/workspace-activity-feed';
 import { WorkspaceRetentionWidget } from '@/components/workspace-retention-widget';
 import { useTranslations } from '@/hooks/use-translations';
 import AppLayout from '@/layouts/app-layout';
+import PersonalDashboard from '@/pages/personal-dashboard';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
@@ -39,7 +39,8 @@ const getBreadcrumbs = (
 ];
 
 export default function Dashboard() {
-    const { currentWorkspace, auth, workspace_ui_enabled } = usePage<SharedData>().props;
+    const { currentWorkspace, auth, workspace_ui_enabled } =
+        usePage<SharedData>().props;
     const { t } = useTranslations();
 
     // Default values if no workspace data passed from controller

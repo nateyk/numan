@@ -82,7 +82,8 @@ const TYPE_CONFIG: Record<
 > = {
     consignor: {
         label: 'Consignor',
-        className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+        className:
+            'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
         icon: Package,
     },
     transporter: {
@@ -116,11 +117,15 @@ const LISTING_CONFIG: Record<string, { label: string; className: string }> = {
     },
     rejected: {
         label: 'Rejected',
-        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+        className:
+            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
 };
 
-const VERIFICATION_CONFIG: Record<string, { label: string; className: string }> = {
+const VERIFICATION_CONFIG: Record<
+    string,
+    { label: string; className: string }
+> = {
     unverified: {
         label: 'Unverified',
         className: 'bg-muted text-muted-foreground',
@@ -137,7 +142,8 @@ const VERIFICATION_CONFIG: Record<string, { label: string; className: string }> 
     },
     rejected: {
         label: 'Rejected',
-        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+        className:
+            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
 };
 
@@ -157,7 +163,11 @@ function formatDate(value: string | null): string {
           }).format(date);
 }
 
-export default function AdminProfilesIndex({ profiles, counts, filters }: Props) {
+export default function AdminProfilesIndex({
+    profiles,
+    counts,
+    filters,
+}: Props) {
     const flash = usePage<SharedData>().props.flash;
     const [search, setSearch] = useState(filters.search ?? '');
 
@@ -411,14 +421,16 @@ export default function AdminProfilesIndex({ profiles, counts, filters }: Props)
                 {profiles.last_page > 1 && (
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm text-muted-foreground">
-                            Page {profiles.current_page} of{' '}
-                            {profiles.last_page} · {profiles.total} profiles
+                            Page {profiles.current_page} of {profiles.last_page}{' '}
+                            · {profiles.total} profiles
                         </p>
                         <div className="flex flex-wrap gap-1">
                             {profiles.links.map((link, index) => (
                                 <Button
                                     key={`${link.label}-${index}`}
-                                    variant={link.active ? 'default' : 'outline'}
+                                    variant={
+                                        link.active ? 'default' : 'outline'
+                                    }
                                     size="sm"
                                     disabled={link.url === null}
                                     asChild={link.url !== null}

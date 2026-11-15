@@ -124,7 +124,8 @@ export default function CollapsibleRouteMap({
                                         {routeSnapshot.routing_provider ===
                                         'straight_line'
                                             ? 'Straight-line estimate'
-                                            : routeSnapshot.routing_provider + ' routed'}
+                                            : routeSnapshot.routing_provider +
+                                              ' routed'}
                                     </span>
                                 )}
                             </p>

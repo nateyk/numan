@@ -89,12 +89,9 @@ export default function AdminTruckTypes({ truckTypes, filters }: Props) {
 
     const deleteTruckType = (truckType: TruckTypeItem) => {
         if (confirm(`Delete truck type "${truckType.name}"?`)) {
-            router.delete(
-                `/admin/reference-data/truck-types/${truckType.id}`,
-                {
-                    preserveScroll: true,
-                },
-            );
+            router.delete(`/admin/reference-data/truck-types/${truckType.id}`, {
+                preserveScroll: true,
+            });
         }
     };
 
@@ -131,7 +128,7 @@ export default function AdminTruckTypes({ truckTypes, filters }: Props) {
 
                 {/* Search */}
                 <div className="relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         placeholder="Search truck types…"
                         defaultValue={filters.search}
@@ -233,10 +230,7 @@ export default function AdminTruckTypes({ truckTypes, filters }: Props) {
                             <Input
                                 value={form.data.description ?? ''}
                                 onChange={(e) =>
-                                    form.setData(
-                                        'description',
-                                        e.target.value,
-                                    )
+                                    form.setData('description', e.target.value)
                                 }
                                 placeholder="e.g. Standard flatbed trailer"
                                 className="mt-1"
@@ -318,7 +312,7 @@ export default function AdminTruckTypes({ truckTypes, filters }: Props) {
                                         <TableCell className="text-muted-foreground">
                                             {truckType.icon ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
                                             {truckType.description ?? '—'}
                                         </TableCell>
                                         <TableCell>
@@ -335,7 +329,7 @@ export default function AdminTruckTypes({ truckTypes, filters }: Props) {
                                         <TableCell className="text-muted-foreground">
                                             {truckType.sort_order ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
+                                        <TableCell className="text-sm text-muted-foreground">
                                             {new Date(
                                                 truckType.created_at,
                                             ).toLocaleDateString()}

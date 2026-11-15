@@ -23,8 +23,8 @@ import {
     ListChecks,
     Mail,
     MapPin,
-    Menu,
     Megaphone,
+    Menu,
     MessageSquare,
     Package,
     Power,
@@ -32,9 +32,9 @@ import {
     Search,
     ShieldCheck,
     Terminal,
-    TrendingUp,
     Ticket,
     ToggleLeft,
+    TrendingUp,
     Truck,
     Users,
     X,
@@ -153,7 +153,9 @@ interface AdminNavGroup {
 }
 
 // Navigation groups configuration
-const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => [
+const buildAdminNavGroups = (
+    pendingManualPayments: number,
+): AdminNavGroup[] => [
     {
         title: 'Dashboard',
         icon: LayoutDashboard,
@@ -281,60 +283,68 @@ const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => 
                 icon: Ticket,
                 feature: 'user.support_tickets',
             },
-             {
-                 title: 'Translations',
-                 href: '/admin/translations',
-                 icon: Globe,
-                 feature: 'admin.translations',
-             },
-             {
-                 title: 'Profiles',
-                 href: '/admin/profiles',
-                 icon: Users,
-                 feature: 'admin.transporters',
-             },
-             {
-                 title: 'Freight',
-                 href: '/admin/freight',
-                 icon: Package,
-                 feature: 'admin.freight',
-             },
-         ],
-     },
-     {
-         title: 'Reference Data',
-         icon: Package,
-         storageKey: 'reference-data',
-         defaultExpanded: false,
-         items: [
-             {
-                 title: 'Locations',
-                 href: '/admin/reference-data/locations',
-                 icon: MapPin,
-                 feature: 'admin.reference_data',
-             },
-             {
-                 title: 'Cargo Types',
-                 href: '/admin/reference-data/cargo-types',
-                 icon: Package,
-                 feature: 'admin.reference_data',
-             },
-             {
-                 title: 'Truck Types',
-                 href: '/admin/reference-data/truck-types',
-                 icon: Truck,
-                 feature: 'admin.reference_data',
-             },
-         ],
-     },
+            {
+                title: 'Translations',
+                href: '/admin/translations',
+                icon: Globe,
+                feature: 'admin.translations',
+            },
+            {
+                title: 'Profiles',
+                href: '/admin/profiles',
+                icon: Users,
+                feature: 'admin.transporters',
+            },
+            {
+                title: 'Freight',
+                href: '/admin/freight',
+                icon: Package,
+                feature: 'admin.freight',
+            },
+        ],
+    },
+    {
+        title: 'Reference Data',
+        icon: Package,
+        storageKey: 'reference-data',
+        defaultExpanded: false,
+        items: [
+            {
+                title: 'Locations',
+                href: '/admin/reference-data/locations',
+                icon: MapPin,
+                feature: 'admin.reference_data',
+            },
+            {
+                title: 'Cargo Types',
+                href: '/admin/reference-data/cargo-types',
+                icon: Package,
+                feature: 'admin.reference_data',
+            },
+            {
+                title: 'Truck Types',
+                href: '/admin/reference-data/truck-types',
+                icon: Truck,
+                feature: 'admin.reference_data',
+            },
+        ],
+    },
     {
         title: 'Marketplace',
         icon: DollarSign,
         storageKey: 'marketplace',
         defaultExpanded: true,
         items: [
-            { title: 'Marketplace Plans', href: '/admin/marketplace-plans', icon: Package },
-            { title: 'Payments (Chapa)', href: '/admin/marketplace-payments', icon: DollarSign },
+            {
+                title: 'Marketplace Plans',
+                href: '/admin/marketplace-plans',
+                icon: Package,
+            },
+            {
+                title: 'Payments (Chapa)',
+                href: '/admin/marketplace-payments',
+                icon: DollarSign,
+            },
             {
                 title: 'Manual Payments',
                 href: '/admin/marketplace-manual-payments',
@@ -343,13 +353,21 @@ const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => 
                 // at zero, so the sidebar is quiet until there is work.
                 badge: pendingManualPayments,
             },
-            { title: 'Revenue (ETB)', href: '/admin/marketplace-revenue', icon: TrendingUp },
+            {
+                title: 'Revenue (ETB)',
+                href: '/admin/marketplace-revenue',
+                icon: TrendingUp,
+            },
             {
                 title: 'Payment Instructions',
                 href: '/admin/marketplace-payment-instructions',
                 icon: Landmark,
             },
-            { title: 'Reveal Analytics', href: '/admin/marketplace-reveals', icon: BarChart3 },
+            {
+                title: 'Reveal Analytics',
+                href: '/admin/marketplace-reveals',
+                icon: BarChart3,
+            },
         ],
     },
     {
@@ -771,7 +789,10 @@ export default function AdminLayout({ children }: PropsWithChildren) {
 
                     <main className="flex-1 overflow-y-auto p-4 lg:p-8">
                         <div className="mx-auto max-w-7xl">
-                            <AdminBreadcrumb currentPath={currentPath} groups={groups} />
+                            <AdminBreadcrumb
+                                currentPath={currentPath}
+                                groups={groups}
+                            />
                             {children}
                         </div>
                     </main>
