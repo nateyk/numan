@@ -22,6 +22,12 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
 
+// Dedicated MySQL concurrency tests use separate child PHP processes.
+// They deliberately do not use RefreshDatabase, whose uncommitted transaction
+// would hide fixtures from the child connections.
+pest()->extend(TestCase::class)
+    ->in('Concurrency');
+
 /*
 |--------------------------------------------------------------------------
 | Expectations

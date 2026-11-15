@@ -42,6 +42,48 @@ jobs:
       - run: php artisan key:generate
       - run: php artisan test --compact
 
+  mysql-concurrency:
+    name: MySQL 8.0 concurrency
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: numan_concurrency
+          MYSQL_ROOT_PASSWORD: mysql_test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmysql_test_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: numan_concurrency
+      DB_USERNAME: root
+      DB_PASSWORD: mysql_test_password
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      MAIL_MAILER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql
+          tools: composer:v2
+      - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - run: cp .env.example .env
+      - run: php artisan key:generate
+      # Deliberately separate from SQLite RefreshDatabase; each test creates
+      # fixtures committed to MySQL and launches two independent PHP workers.
+      - run: php artisan test tests/Concurrency --compact
+
   lint:
     runs-on: ubuntu-latest
     steps:
