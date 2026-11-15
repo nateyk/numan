@@ -1,0 +1,47 @@
+name: Temporary dependency security refresh
+
+on:
+  push:
+    branches: [ci/dependency-security-refresh]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.repository == 'nateyk/numan'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ci/dependency-security-refresh
+          persist-credentials: true
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+      - name: Update affected dependency families within declared constraints
+        run: >-
+          composer update
+          guzzlehttp/guzzle
+          laravel/framework
+          league/commonmark
+          league/flysystem
+          phpseclib/phpseclib
+          symfony/filesystem
+          symfony/http-foundation
+          symfony/http-kernel
+          symfony/mime
+          symfony/routing
+          symfony/serializer
+          symfony/yaml
+          --with-all-dependencies --no-interaction --no-progress --no-scripts
+      - name: Commit dependency lock change to this maintenance branch
+        run: |
+          git config user.name "numan-dependency-maintenance"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add composer.lock
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(security): refresh vulnerable Composer dependencies"
+            git push origin HEAD:ci/dependency-security-refresh
+          fi
