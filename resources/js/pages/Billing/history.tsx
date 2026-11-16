@@ -86,8 +86,13 @@ export default function BillingHistory({
         });
     }, [invoices, searchQuery, dateFilter]);
 
-    const etbTotal = marketplacePayments.reduce(
-        (sum, p) => sum + Number(p.amount_etb),
+    // A failed/pending checkout is not revenue. Count only completed and
+    // receipted marketplace payments in the billing summary.
+    const paidPayments = marketplacePayments.filter(
+        (payment) => payment.status === 'verified' && payment.has_receipt,
+    );
+    const etbTotal = paidPayments.reduce(
+        (sum, payment) => sum + Number(payment.amount_etb),
         0,
     );
 
@@ -119,11 +124,11 @@ export default function BillingHistory({
                                     Marketplace payments
                                 </CardTitle>
                                 <CardDescription>
-                                    {marketplacePayments.length} payment
-                                    {marketplacePayments.length === 1
-                                        ? ''
-                                        : 's'}{' '}
-                                    totalling {etbTotal.toLocaleString()} ETB.
+                                    {paidPayments.length} completed payment
+                                    {paidPayments.length === 1 ? '' : 's'} totalling{' '}
+                                    {etbTotal.toLocaleString()} ETB. Pending
+                                    and unsuccessful attempts are listed below
+                                    but excluded from the total.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -139,6 +144,9 @@ export default function BillingHistory({
                                                 </th>
                                                 <th className="py-2 pr-4">
                                                     Method
+                                                </th>
+                                                <th className="py-2 pr-4">
+                                                    Status
                                                 </th>
                                                 <th className="py-2 pr-4">
                                                     Reference
@@ -179,6 +187,11 @@ export default function BillingHistory({
                                                                         .provider
                                                                 ] ??
                                                                     payment.provider}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="py-2 pr-4">
+                                                            <Badge variant="outline" className="capitalize">
+                                                                {payment.status.replaceAll('_', ' ')}
                                                             </Badge>
                                                         </td>
                                                         <td className="py-2 pr-4 font-mono text-xs">
