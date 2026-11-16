@@ -93,7 +93,9 @@ export default function PlansPage({
             'monthly',
     );
     const [processing, setProcessing] = useState<string | null>(null);
-    const [pendingReference, setPendingReference] = useState<string | null>(null);
+    const [pendingReference, setPendingReference] = useState<string | null>(
+        null,
+    );
     const [pendingNotice, setPendingNotice] = useState<string | null>(null);
     const [checkingPayment, setCheckingPayment] = useState(false);
     const { addToast } = useToast();
@@ -130,7 +132,10 @@ export default function PlansPage({
         if (!isOwner) return;
 
         if (pendingReference) {
-            addToast('Check your pending payment before starting another checkout.', 'error');
+            addToast(
+                'Check your pending payment before starting another checkout.',
+                'error',
+            );
             return;
         }
 
@@ -306,7 +311,7 @@ export default function PlansPage({
                                 <p className="text-sm text-muted-foreground">
                                     {pendingNotice}
                                 </p>
-                                <p className="break-all font-mono text-xs text-muted-foreground">
+                                <p className="font-mono text-xs break-all text-muted-foreground">
                                     Reference: {pendingReference}
                                 </p>
                             </div>
@@ -316,7 +321,9 @@ export default function PlansPage({
                                     disabled={checkingPayment}
                                     onClick={checkPendingPayment}
                                 >
-                                    {checkingPayment ? 'Checking…' : 'Check status'}
+                                    {checkingPayment
+                                        ? 'Checking…'
+                                        : 'Check status'}
                                 </Button>
                                 <Button
                                     size="sm"

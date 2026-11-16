@@ -125,10 +125,10 @@ export default function BillingHistory({
                                 </CardTitle>
                                 <CardDescription>
                                     {paidPayments.length} completed payment
-                                    {paidPayments.length === 1 ? '' : 's'} totalling{' '}
-                                    {etbTotal.toLocaleString()} ETB. Pending
-                                    and unsuccessful attempts are listed below
-                                    but excluded from the total.
+                                    {paidPayments.length === 1 ? '' : 's'}{' '}
+                                    totalling {etbTotal.toLocaleString()} ETB.
+                                    Pending and unsuccessful attempts are listed
+                                    below but excluded from the total.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -190,8 +190,14 @@ export default function BillingHistory({
                                                             </Badge>
                                                         </td>
                                                         <td className="py-2 pr-4">
-                                                            <Badge variant="outline" className="capitalize">
-                                                                {payment.status.replaceAll('_', ' ')}
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="capitalize"
+                                                            >
+                                                                {payment.status.replaceAll(
+                                                                    '_',
+                                                                    ' ',
+                                                                )}
                                                             </Badge>
                                                         </td>
                                                         <td className="py-2 pr-4 font-mono text-xs">
