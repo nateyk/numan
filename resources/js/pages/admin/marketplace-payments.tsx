@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/table';
 import AdminLayout from '@/layouts/admin-layout';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
 import { CreditCard, Receipt, Webhook } from 'lucide-react';
+import { useState } from 'react';
 
 interface Tx {
     id: number;
@@ -182,7 +182,9 @@ export default function AdminMarketplacePayments({
                                                             router.post(
                                                                 `/admin/marketplace-payments/${t.id}/reconcile`,
                                                                 {},
-                                                                { preserveScroll: true },
+                                                                {
+                                                                    preserveScroll: true,
+                                                                },
                                                             )
                                                         }
                                                     >
@@ -190,26 +192,60 @@ export default function AdminMarketplacePayments({
                                                     </Button>
                                                     {t.review ? (
                                                         <Badge variant="secondary">
-                                                            Review #{t.review.id}: {t.review.status.replaceAll('_', ' ')}
+                                                            Review #
+                                                            {t.review.id}:{' '}
+                                                            {t.review.status.replaceAll(
+                                                                '_',
+                                                                ' ',
+                                                            )}
                                                         </Badge>
                                                     ) : (
                                                         <>
                                                             <select
                                                                 aria-label={`Review reason for ${t.tx_ref}`}
                                                                 className="h-8 rounded-md border bg-background px-2 text-xs"
-                                                                value={reasonByTransaction[t.id] ?? 'refund_request'}
-                                                                onChange={(event) =>
-                                                                    setReasonByTransaction((current) => ({
-                                                                        ...current,
-                                                                        [t.id]: event.target.value,
-                                                                    }))
+                                                                value={
+                                                                    reasonByTransaction[
+                                                                        t.id
+                                                                    ] ??
+                                                                    'refund_request'
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setReasonByTransaction(
+                                                                        (
+                                                                            current,
+                                                                        ) => ({
+                                                                            ...current,
+                                                                            [t.id]:
+                                                                                event
+                                                                                    .target
+                                                                                    .value,
+                                                                        }),
+                                                                    )
                                                                 }
                                                             >
-                                                                <option value="refund_request">Refund request</option>
-                                                                <option value="paid_after_cancellation">Paid after cancellation</option>
-                                                                <option value="duplicate_charge">Duplicate charge</option>
-                                                                <option value="chargeback_dispute">Chargeback dispute</option>
-                                                                <option value="verification_mismatch">Verification mismatch</option>
+                                                                <option value="refund_request">
+                                                                    Refund
+                                                                    request
+                                                                </option>
+                                                                <option value="paid_after_cancellation">
+                                                                    Paid after
+                                                                    cancellation
+                                                                </option>
+                                                                <option value="duplicate_charge">
+                                                                    Duplicate
+                                                                    charge
+                                                                </option>
+                                                                <option value="chargeback_dispute">
+                                                                    Chargeback
+                                                                    dispute
+                                                                </option>
+                                                                <option value="verification_mismatch">
+                                                                    Verification
+                                                                    mismatch
+                                                                </option>
                                                             </select>
                                                             <Button
                                                                 variant="outline"
@@ -219,10 +255,15 @@ export default function AdminMarketplacePayments({
                                                                         `/admin/marketplace-payments/${t.id}/reviews`,
                                                                         {
                                                                             reason:
-                                                                                reasonByTransaction[t.id] ??
+                                                                                reasonByTransaction[
+                                                                                    t
+                                                                                        .id
+                                                                                ] ??
                                                                                 'refund_request',
                                                                         },
-                                                                        { preserveScroll: true },
+                                                                        {
+                                                                            preserveScroll: true,
+                                                                        },
                                                                     )
                                                                 }
                                                             >
@@ -252,12 +293,15 @@ export default function AdminMarketplacePayments({
 
                 <Card className="gap-0 py-0">
                     <CardHeader className="px-5 py-4">
-                        <CardTitle className="text-base">Refund & dispute review</CardTitle>
+                        <CardTitle className="text-base">
+                            Refund & dispute review
+                        </CardTitle>
                         <p className="text-xs text-muted-foreground">
-                            Admin case tracking only. No action here sends money,
-                            issues a Chapa refund, or changes subscriptions.
-                            Provider-reported refunds require a reference and
-                            are manually attested, not API-verified.
+                            Admin case tracking only. No action here sends
+                            money, issues a Chapa refund, or changes
+                            subscriptions. Provider-reported refunds require a
+                            reference and are manually attested, not
+                            API-verified.
                         </p>
                     </CardHeader>
                     <CardContent className="px-0 pb-0">
@@ -274,7 +318,9 @@ export default function AdminMarketplacePayments({
                                 </TableHeader>
                                 <TableBody>
                                     {reviews.map((review) => {
-                                        const options = allowedNext(review.status);
+                                        const options = allowedNext(
+                                            review.status,
+                                        );
                                         const nextStatus =
                                             statusByReview[review.id] ??
                                             options[0] ??
@@ -286,24 +332,38 @@ export default function AdminMarketplacePayments({
                                                         {review.tx_ref ?? '—'}
                                                     </span>
                                                     <p className="text-muted-foreground">
-                                                        {review.amount_etb ?? '—'} {review.currency ?? ''}
+                                                        {review.amount_etb ??
+                                                            '—'}{' '}
+                                                        {review.currency ?? ''}
                                                     </p>
                                                 </TableCell>
                                                 <TableCell className="text-xs capitalize">
-                                                    {review.reason.replaceAll('_', ' ')}
+                                                    {review.reason.replaceAll(
+                                                        '_',
+                                                        ' ',
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline" className="capitalize">
-                                                        {review.status.replaceAll('_', ' ')}
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="capitalize"
+                                                    >
+                                                        {review.status.replaceAll(
+                                                            '_',
+                                                            ' ',
+                                                        )}
                                                     </Badge>
                                                     {review.provider_reference && (
                                                         <p className="mt-1 font-mono text-xs text-muted-foreground">
-                                                            {review.provider_reference}
+                                                            {
+                                                                review.provider_reference
+                                                            }
                                                         </p>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-xs">
-                                                    {review.history_count} recorded events
+                                                    {review.history_count}{' '}
+                                                    recorded events
                                                 </TableCell>
                                                 <TableCell>
                                                     {options.length > 0 ? (
@@ -311,31 +371,71 @@ export default function AdminMarketplacePayments({
                                                             <select
                                                                 aria-label={`Next status for review ${review.id}`}
                                                                 className="h-8 rounded-md border bg-background px-2 text-xs"
-                                                                value={nextStatus}
-                                                                onChange={(event) =>
-                                                                    setStatusByReview((current) => ({
-                                                                        ...current,
-                                                                        [review.id]: event.target.value,
-                                                                    }))
+                                                                value={
+                                                                    nextStatus
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setStatusByReview(
+                                                                        (
+                                                                            current,
+                                                                        ) => ({
+                                                                            ...current,
+                                                                            [review.id]:
+                                                                                event
+                                                                                    .target
+                                                                                    .value,
+                                                                        }),
+                                                                    )
                                                                 }
                                                             >
-                                                                {options.map((option) => (
-                                                                    <option key={option} value={option}>
-                                                                        {option.replaceAll('_', ' ')}
-                                                                    </option>
-                                                                ))}
+                                                                {options.map(
+                                                                    (
+                                                                        option,
+                                                                    ) => (
+                                                                        <option
+                                                                            key={
+                                                                                option
+                                                                            }
+                                                                            value={
+                                                                                option
+                                                                            }
+                                                                        >
+                                                                            {option.replaceAll(
+                                                                                '_',
+                                                                                ' ',
+                                                                            )}
+                                                                        </option>
+                                                                    ),
+                                                                )}
                                                             </select>
-                                                            {nextStatus === 'provider_reported_refunded' && (
+                                                            {nextStatus ===
+                                                                'provider_reported_refunded' && (
                                                                 <input
                                                                     className="h-8 rounded-md border bg-background px-2 text-xs"
                                                                     aria-label={`Chapa refund reference for review ${review.id}`}
                                                                     placeholder="Chapa refund reference"
-                                                                    value={referenceByReview[review.id] ?? ''}
-                                                                    onChange={(event) =>
-                                                                        setReferenceByReview((current) => ({
-                                                                            ...current,
-                                                                            [review.id]: event.target.value,
-                                                                        }))
+                                                                    value={
+                                                                        referenceByReview[
+                                                                            review
+                                                                                .id
+                                                                        ] ?? ''
+                                                                    }
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        setReferenceByReview(
+                                                                            (
+                                                                                current,
+                                                                            ) => ({
+                                                                                ...current,
+                                                                                [review.id]:
+                                                                                    event
+                                                                                        .target
+                                                                                        .value,
+                                                                            }),
+                                                                        )
                                                                     }
                                                                 />
                                                             )}
@@ -343,8 +443,14 @@ export default function AdminMarketplacePayments({
                                                                 size="sm"
                                                                 variant="outline"
                                                                 disabled={
-                                                                    nextStatus === 'provider_reported_refunded' &&
-                                                                    !(referenceByReview[review.id] ?? '').trim()
+                                                                    nextStatus ===
+                                                                        'provider_reported_refunded' &&
+                                                                    !(
+                                                                        referenceByReview[
+                                                                            review
+                                                                                .id
+                                                                        ] ?? ''
+                                                                    ).trim()
                                                                 }
                                                                 onClick={() =>
                                                                     router.patch(
@@ -352,9 +458,15 @@ export default function AdminMarketplacePayments({
                                                                         {
                                                                             status: nextStatus,
                                                                             provider_reference:
-                                                                                referenceByReview[review.id] || null,
+                                                                                referenceByReview[
+                                                                                    review
+                                                                                        .id
+                                                                                ] ||
+                                                                                null,
                                                                         },
-                                                                        { preserveScroll: true },
+                                                                        {
+                                                                            preserveScroll: true,
+                                                                        },
                                                                     )
                                                                 }
                                                             >
@@ -372,8 +484,12 @@ export default function AdminMarketplacePayments({
                                     })}
                                     {reviews.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                                                No refund or dispute reviews yet.
+                                            <TableCell
+                                                colSpan={5}
+                                                className="py-8 text-center text-sm text-muted-foreground"
+                                            >
+                                                No refund or dispute reviews
+                                                yet.
                                             </TableCell>
                                         </TableRow>
                                     )}

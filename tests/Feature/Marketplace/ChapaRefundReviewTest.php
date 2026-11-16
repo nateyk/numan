@@ -1,12 +1,12 @@
 <?php
 
+use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentReview;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\User;
-use App\Services\MarketplaceFulfillmentService;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -184,7 +184,7 @@ it('never grants subscriptions from signed refund notifications', function () {
     expect(MarketplaceSubscription::where('workspace_id', $transaction->workspace_id)->exists())->toBeFalse();
     expect(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->exists())->toBeFalse();
 
-    $event = \App\Models\ChapaWebhookEvent::where('tx_ref', $transaction->tx_ref)->firstOrFail();
+    $event = ChapaWebhookEvent::where('tx_ref', $transaction->tx_ref)->firstOrFail();
     expect($event->status)->toBe('processed');
     expect($event->payload['webhook_type'])->toBe('refund');
     expect(json_encode($event->payload))->not->toContain('private@example.test');

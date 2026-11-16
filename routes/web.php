@@ -21,8 +21,8 @@ use App\Http\Controllers\Admin\MailTemplateController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\MarketplaceManualPaymentController;
 use App\Http\Controllers\Admin\MarketplacePaymentController;
-use App\Http\Controllers\Admin\MarketplacePaymentReviewController;
 use App\Http\Controllers\Admin\MarketplacePaymentInstructionsController;
+use App\Http\Controllers\Admin\MarketplacePaymentReviewController;
 use App\Http\Controllers\Admin\MarketplacePlanController;
 use App\Http\Controllers\Admin\MarketplaceRevealAnalyticsController;
 use App\Http\Controllers\Admin\MarketplaceSettingController;
@@ -799,7 +799,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
 
         Route::get('/marketplace-payments', [MarketplacePaymentController::class, 'index'])->name('marketplace-payments.index');
         Route::post('/marketplace-payments/{transaction}/reconcile', [MarketplacePaymentController::class, 'reconcile'])->name('marketplace-payments.reconcile');
-    Route::post('/marketplace-payments/{transaction}/reviews', [MarketplacePaymentReviewController::class, 'store'])->name('marketplace-payments.reviews.store');
-    Route::patch('/marketplace-payment-reviews/{review}', [MarketplacePaymentReviewController::class, 'update'])->name('marketplace-payment-reviews.update');
+        Route::post('/marketplace-payments/{transaction}/reviews', [MarketplacePaymentReviewController::class, 'store'])->name('marketplace-payments.reviews.store');
+        Route::patch('/marketplace-payment-reviews/{review}', [MarketplacePaymentReviewController::class, 'update'])->name('marketplace-payment-reviews.update');
     });
 });
