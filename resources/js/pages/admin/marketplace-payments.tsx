@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table';
 import AdminLayout from '@/layouts/admin-layout';
 import { Head, router } from '@inertiajs/react';
+import { useState } from 'react';
 import { CreditCard, Receipt, Webhook } from 'lucide-react';
 
 interface Tx {
@@ -26,6 +27,7 @@ interface Tx {
     mode: string;
     verified_at: string | null;
     created_at: string;
+    review: { id: number; status: string; reason: string } | null;
 }
 
 interface Wh {
@@ -47,7 +49,20 @@ interface Sub {
     chapa_tx_ref: string | null;
 }
 
+interface PaymentReview {
+    id: number;
+    reason: string;
+    status: string;
+    provider_reference: string | null;
+    created_at: string;
+    tx_ref: string | null;
+    amount_etb: string | null;
+    currency: string | null;
+    history_count: number;
+}
+
 interface Props {
+    reviews: PaymentReview[];
     transactions: {
         data: Tx[];
         links: { url: string | null; label: string; active: boolean }[];
@@ -60,7 +75,31 @@ export default function AdminMarketplacePayments({
     transactions,
     webhooks,
     subscriptions,
+    reviews,
 }: Props) {
+    const [reasonByTransaction, setReasonByTransaction] = useState<
+        Record<number, string>
+    >({});
+    const [statusByReview, setStatusByReview] = useState<
+        Record<number, string>
+    >({});
+    const [referenceByReview, setReferenceByReview] = useState<
+        Record<number, string>
+    >({});
+
+    const allowedNext = (status: string): string[] => {
+        if (status === 'open') return ['investigating'];
+        if (status === 'investigating')
+            return ['submitted_to_chapa', 'closed_no_refund'];
+        if (status === 'submitted_to_chapa')
+            return [
+                'provider_reported_refunded',
+                'investigating',
+                'closed_no_refund',
+            ];
+        return [];
+    };
+
     return (
         <AdminLayout>
             <Head title="Marketplace Payments" />
@@ -135,21 +174,63 @@ export default function AdminMarketplacePayments({
                                                 ).toLocaleString()}
                                             </TableCell>
                                             <TableCell>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        router.post(
-                                                            `/admin/marketplace-payments/${t.id}/reconcile`,
-                                                            {},
-                                                            {
-                                                                preserveScroll: true,
-                                                            },
-                                                        )
-                                                    }
-                                                >
-                                                    Reconcile
-                                                </Button>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            router.post(
+                                                                `/admin/marketplace-payments/${t.id}/reconcile`,
+                                                                {},
+                                                                { preserveScroll: true },
+                                                            )
+                                                        }
+                                                    >
+                                                        Reconcile
+                                                    </Button>
+                                                    {t.review ? (
+                                                        <Badge variant="secondary">
+                                                            Review #{t.review.id}: {t.review.status.replaceAll('_', ' ')}
+                                                        </Badge>
+                                                    ) : (
+                                                        <>
+                                                            <select
+                                                                aria-label={`Review reason for ${t.tx_ref}`}
+                                                                className="h-8 rounded-md border bg-background px-2 text-xs"
+                                                                value={reasonByTransaction[t.id] ?? 'refund_request'}
+                                                                onChange={(event) =>
+                                                                    setReasonByTransaction((current) => ({
+                                                                        ...current,
+                                                                        [t.id]: event.target.value,
+                                                                    }))
+                                                                }
+                                                            >
+                                                                <option value="refund_request">Refund request</option>
+                                                                <option value="paid_after_cancellation">Paid after cancellation</option>
+                                                                <option value="duplicate_charge">Duplicate charge</option>
+                                                                <option value="chargeback_dispute">Chargeback dispute</option>
+                                                                <option value="verification_mismatch">Verification mismatch</option>
+                                                            </select>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    router.post(
+                                                                        `/admin/marketplace-payments/${t.id}/reviews`,
+                                                                        {
+                                                                            reason:
+                                                                                reasonByTransaction[t.id] ??
+                                                                                'refund_request',
+                                                                        },
+                                                                        { preserveScroll: true },
+                                                                    )
+                                                                }
+                                                            >
+                                                                Open review
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -160,6 +241,139 @@ export default function AdminMarketplacePayments({
                                                 className="py-8 text-center text-sm text-muted-foreground"
                                             >
                                                 No transactions yet.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="gap-0 py-0">
+                    <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-base">Refund & dispute review</CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                            Admin case tracking only. No action here sends money,
+                            issues a Chapa refund, or changes subscriptions.
+                            Provider-reported refunds require a reference and
+                            are manually attested, not API-verified.
+                        </p>
+                    </CardHeader>
+                    <CardContent className="px-0 pb-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Payment</TableHead>
+                                        <TableHead>Reason</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Audit</TableHead>
+                                        <TableHead>Next action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {reviews.map((review) => {
+                                        const options = allowedNext(review.status);
+                                        const nextStatus =
+                                            statusByReview[review.id] ??
+                                            options[0] ??
+                                            '';
+                                        return (
+                                            <TableRow key={review.id}>
+                                                <TableCell className="text-xs">
+                                                    <span className="font-mono">
+                                                        {review.tx_ref ?? '—'}
+                                                    </span>
+                                                    <p className="text-muted-foreground">
+                                                        {review.amount_etb ?? '—'} {review.currency ?? ''}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell className="text-xs capitalize">
+                                                    {review.reason.replaceAll('_', ' ')}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="capitalize">
+                                                        {review.status.replaceAll('_', ' ')}
+                                                    </Badge>
+                                                    {review.provider_reference && (
+                                                        <p className="mt-1 font-mono text-xs text-muted-foreground">
+                                                            {review.provider_reference}
+                                                        </p>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-xs">
+                                                    {review.history_count} recorded events
+                                                </TableCell>
+                                                <TableCell>
+                                                    {options.length > 0 ? (
+                                                        <div className="flex min-w-48 flex-col gap-2">
+                                                            <select
+                                                                aria-label={`Next status for review ${review.id}`}
+                                                                className="h-8 rounded-md border bg-background px-2 text-xs"
+                                                                value={nextStatus}
+                                                                onChange={(event) =>
+                                                                    setStatusByReview((current) => ({
+                                                                        ...current,
+                                                                        [review.id]: event.target.value,
+                                                                    }))
+                                                                }
+                                                            >
+                                                                {options.map((option) => (
+                                                                    <option key={option} value={option}>
+                                                                        {option.replaceAll('_', ' ')}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            {nextStatus === 'provider_reported_refunded' && (
+                                                                <input
+                                                                    className="h-8 rounded-md border bg-background px-2 text-xs"
+                                                                    aria-label={`Chapa refund reference for review ${review.id}`}
+                                                                    placeholder="Chapa refund reference"
+                                                                    value={referenceByReview[review.id] ?? ''}
+                                                                    onChange={(event) =>
+                                                                        setReferenceByReview((current) => ({
+                                                                            ...current,
+                                                                            [review.id]: event.target.value,
+                                                                        }))
+                                                                    }
+                                                                />
+                                                            )}
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                disabled={
+                                                                    nextStatus === 'provider_reported_refunded' &&
+                                                                    !(referenceByReview[review.id] ?? '').trim()
+                                                                }
+                                                                onClick={() =>
+                                                                    router.patch(
+                                                                        `/admin/marketplace-payment-reviews/${review.id}`,
+                                                                        {
+                                                                            status: nextStatus,
+                                                                            provider_reference:
+                                                                                referenceByReview[review.id] || null,
+                                                                        },
+                                                                        { preserveScroll: true },
+                                                                    )
+                                                                }
+                                                            >
+                                                                Record decision
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Closed
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                    {reviews.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                                                No refund or dispute reviews yet.
                                             </TableCell>
                                         </TableRow>
                                     )}
