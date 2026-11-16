@@ -927,183 +927,110 @@ export default function DiscoverIndex({
                                                 key={f.ulid}
                                                 role="listitem"
                                                 aria-labelledby={titleId}
-                                                className="flex flex-col gap-0 overflow-hidden border bg-card py-0 shadow-xs transition-colors hover:border-primary/25"
+                                                className="flex flex-col gap-0 overflow-hidden border bg-card py-0 shadow-none"
                                             >
-                                                <div className="p-4 pb-3">
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <h3
-                                                            id={titleId}
-                                                            className="flex min-w-0 items-center gap-2 text-base font-semibold tracking-tight"
-                                                        >
-                                                            <span
-                                                                className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10"
-                                                                aria-hidden="true"
+                                                <div className="flex flex-1 flex-col gap-3 p-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <h3
+                                                                id={titleId}
+                                                                className="flex min-w-0 flex-1 items-start gap-2 text-sm font-semibold leading-5 tracking-tight"
                                                             >
-                                                                <MapPin className="size-3.5 text-primary" />
-                                                            </span>
-                                                            <span className="truncate">
-                                                                {origin?.name ??
-                                                                    '—'}
-                                                            </span>
-                                                            <ArrowRight
-                                                                className="size-3.5 shrink-0 text-muted-foreground/50"
-                                                                aria-hidden="true"
-                                                            />
-                                                            <span className="truncate">
-                                                                {destination?.name ??
-                                                                    '—'}
-                                                            </span>
-                                                        </h3>
-                                                        <Badge
-                                                            variant={
-                                                                interest
-                                                                    ? interest.status ===
-                                                                          'rejected' ||
-                                                                      interest.status ===
-                                                                          'withdrawn'
-                                                                        ? 'destructive'
-                                                                        : 'secondary'
-                                                                    : isOwn
-                                                                      ? 'outline'
-                                                                      : 'default'
-                                                            }
-                                                            className="shrink-0 rounded-full px-2.5 py-1 text-xs capitalize"
-                                                            aria-label={`Status: ${interest ? interest.status : isOwn ? 'Your Post' : 'Active'}`}
-                                                        >
-                                                            {interest
-                                                                ? interest.status
-                                                                : isOwn
-                                                                  ? 'Your Post'
-                                                                  : 'Active'}
-                                                        </Badge>
-                                                    </div>
-                                                    {(distanceText ||
-                                                        durationText) && (
-                                                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                                                            {(distanceText ||
-                                                                durationText) && (
-                                                                <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-                                                                    {
-                                                                        distanceText
-                                                                    }
-                                                                    {distanceText &&
-                                                                        durationText && (
-                                                                            <span
-                                                                                className="text-muted-foreground/50"
-                                                                                aria-hidden="true"
-                                                                            >
-                                                                                ·
-                                                                            </span>
-                                                                        )}
-                                                                    {
-                                                                        durationText
-                                                                    }
+                                                                <MapPin
+                                                                    aria-hidden="true"
+                                                                    className="mt-0.5 size-4 shrink-0 text-primary"
+                                                                />
+                                                                <span className="min-w-0 break-words">
+                                                                    {origin?.name ?? '—'}
+                                                                    <ArrowRight
+                                                                        aria-hidden="true"
+                                                                        className="mx-1.5 inline size-3.5 shrink-0 align-middle text-muted-foreground"
+                                                                    />
+                                                                    {destination?.name ?? '—'}
                                                                 </span>
-                                                            )}
+                                                            </h3>
+                                                            <Badge
+                                                                variant={
+                                                                    interest &&
+                                                                    ['rejected', 'withdrawn'].includes(interest.status)
+                                                                        ? 'destructive'
+                                                                        : 'outline'
+                                                                }
+                                                                className="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize"
+                                                                aria-label={`Status: ${interest ? interest.status : isOwn ? 'Your Post' : 'Active'}`}
+                                                            >
+                                                                {interest
+                                                                    ? interest.status
+                                                                    : isOwn
+                                                                      ? 'Your Post'
+                                                                      : 'Active'}
+                                                            </Badge>
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-1 flex-col gap-3 px-4 pb-4">
-                                                    <div className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3">
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                                                                <Package
-                                                                    className="size-3.5"
-                                                                    aria-hidden="true"
-                                                                />{' '}
-                                                                Item
-                                                            </span>
-                                                            <span className="text-sm font-medium break-words">
-                                                                {(
-                                                                    f as unknown as {
-                                                                        item_name?: string;
-                                                                    }
-                                                                ).item_name ??
-                                                                    cargoType?.name ??
-                                                                    'General Cargo'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                                                                <Calendar
-                                                                    className="size-3.5"
-                                                                    aria-hidden="true"
-                                                                />{' '}
+                                                        {(distanceText || durationText) && (
+                                                            <p className="pl-6 text-xs text-muted-foreground">
+                                                                {distanceText}
+                                                                {distanceText && durationText && ' · '}
+                                                                {durationText}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="border-t border-border/70 pt-3">
+                                                        <p
+                                                            className="line-clamp-2 text-sm font-medium leading-5"
+                                                            title={f.item_name ?? cargoType?.name ?? 'General cargo'}
+                                                        >
+                                                            {f.item_name ?? cargoType?.name ?? 'General cargo'}
+                                                        </p>
+                                                    </div>
+
+                                                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                <Calendar aria-hidden="true" className="size-3.5" />
                                                                 Pickup
-                                                            </span>
-                                                            <span className="text-sm font-medium break-words">
+                                                            </dt>
+                                                            <dd className="break-words font-medium">
                                                                 {f.pickup_date
-                                                                    ? String(
-                                                                          f.pickup_date,
-                                                                      ).slice(
-                                                                          0,
-                                                                          10,
-                                                                      )
+                                                                    ? String(f.pickup_date).slice(0, 10)
                                                                     : 'Flexible'}
-                                                                {(
-                                                                    f as unknown as {
-                                                                        pickup_time?: string;
-                                                                    }
-                                                                ).pickup_time
-                                                                    ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0, 5)}`
-                                                                    : ''}
-                                                            </span>
+                                                                {f.pickup_time &&
+                                                                    ` · ${String(f.pickup_time).slice(0, 5)}`}
+                                                            </dd>
                                                         </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-3 text-xs">
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                                                                <Weight
-                                                                    className="size-3.5"
-                                                                    aria-hidden="true"
-                                                                />{' '}
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                <Weight aria-hidden="true" className="size-3.5" />
                                                                 Weight
-                                                            </span>
-                                                            <span className="text-sm font-semibold break-words">
-                                                                {(
-                                                                    f as unknown as {
-                                                                        actual_weight?: string;
-                                                                    }
-                                                                ).actual_weight
-                                                                    ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}`
+                                                            </dt>
+                                                            <dd className="break-words font-medium">
+                                                                {f.actual_weight
+                                                                    ? `${f.actual_weight} ${f.weight_unit ?? 'ton'}`
                                                                     : '—'}
-                                                            </span>
+                                                            </dd>
                                                         </div>
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                                                                <Banknote
-                                                                    className="size-3.5"
-                                                                    aria-hidden="true"
-                                                                />{' '}
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                <Banknote aria-hidden="true" className="size-3.5" />
                                                                 Tariff
-                                                            </span>
-                                                            <span className="text-sm font-semibold break-words">
-                                                                {(
-                                                                    f as unknown as {
-                                                                        tariff_amount?: string;
-                                                                    }
-                                                                ).tariff_amount
-                                                                    ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}`
+                                                            </dt>
+                                                            <dd className="break-words font-semibold">
+                                                                {f.tariff_amount
+                                                                    ? `${Number(f.tariff_amount).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${f.tariff_currency ?? 'ETB'}`
                                                                     : '—'}
-                                                            </span>
+                                                            </dd>
                                                         </div>
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                                                                <Truck
-                                                                    className="size-3.5"
-                                                                    aria-hidden="true"
-                                                                />{' '}
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                <Truck aria-hidden="true" className="size-3.5" />
                                                                 Trucks
-                                                            </span>
-                                                            <span className="text-sm font-semibold break-words">
-                                                                {truckType?.name ??
-                                                                    'Any'}{' '}
-                                                                {f.truck_count
-                                                                    ? `×${f.truck_count}`
-                                                                    : ''}
-                                                            </span>
+                                                            </dt>
+                                                            <dd className="break-words font-medium">
+                                                                {truckType?.name ?? 'Any'}
+                                                                {f.truck_count ? ` ×${f.truck_count}` : ''}
+                                                            </dd>
                                                         </div>
-                                                    </div>
+                                                    </dl>
                                                 </div>
                                                 <div className="flex gap-2 border-t border-border/70 px-4 py-3">
                                                     <Button
@@ -1117,14 +1044,7 @@ export default function DiscoverIndex({
                                                             View Details
                                                         </Link>
                                                     </Button>
-                                                    {isOwn ? (
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="flex flex-1 items-center justify-center rounded-md py-2 text-sm"
-                                                        >
-                                                            Your Post
-                                                        </Badge>
-                                                    ) : interest ? (
+                                                    {isOwn ? null : interest ? (
                                                         <Button
                                                             variant="outline"
                                                             className="min-h-11 flex-1 text-sm capitalize"
