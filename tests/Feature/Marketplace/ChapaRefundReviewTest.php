@@ -156,3 +156,36 @@ it('shows the review queue on the existing admin payment page', function () {
             ->where('reviews.0.reason', 'refund_request')
             ->where('reviews.0.status', 'open'));
 });
+
+it('never grants subscriptions from signed refund notifications', function () {
+    [$payer, $admin, $transaction] = refundReviewFixture();
+    $transaction->update(['status' => 'initialized']);
+
+    $payload = [
+        'webhook_type' => 'refund',
+        'event' => 'payment.fully_refunded',
+        'status' => 'success',
+        'merchant_reference' => $transaction->tx_ref,
+        'amount' => '44900',
+        'refunded_amount' => '44900',
+        'customer' => ['email' => 'private@example.test'],
+    ];
+    $raw = json_encode($payload);
+    $signature = hash_hmac('sha256', $raw, config('chapa.webhookSecret'));
+
+    Http::fake();
+
+    $this->postJson('/webhooks/chapa', $payload, [
+        'x-chapa-signature' => $signature,
+    ])->assertSuccessful();
+
+    Http::assertNothingSent();
+    expect($transaction->fresh()->status)->toBe('initialized');
+    expect(MarketplaceSubscription::where('workspace_id', $transaction->workspace_id)->exists())->toBeFalse();
+    expect(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->exists())->toBeFalse();
+
+    $event = \App\Models\ChapaWebhookEvent::where('tx_ref', $transaction->tx_ref)->firstOrFail();
+    expect($event->status)->toBe('processed');
+    expect($event->payload['webhook_type'])->toBe('refund');
+    expect(json_encode($event->payload))->not->toContain('private@example.test');
+});
