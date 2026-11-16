@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentTransaction;
+use App\Models\MarketplacePaymentReview;
 use App\Models\MarketplaceSubscription;
 use App\Services\ChapaService;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ class MarketplacePaymentController extends Controller
 {
     public function index(Request $request): Response
     {
-        $transactions = MarketplacePaymentTransaction::with(['workspace:id,name', 'plan:id,name,slug', 'user:id,name,email'])
+        $transactions = MarketplacePaymentTransaction::with(['workspace:id,name', 'plan:id,name,slug', 'user:id,name,email', 'paymentReview:id,transaction_id,reason,status'])
             ->latest()
             ->paginate(20)
             ->through(fn ($t) => [
@@ -29,6 +30,11 @@ class MarketplacePaymentController extends Controller
                 'currency' => $t->currency,
                 'status' => $t->status,
                 'mode' => $t->mode,
+                'review' => $t->paymentReview ? [
+                    'id' => $t->paymentReview->id,
+                    'reason' => $t->paymentReview->reason,
+                    'status' => $t->paymentReview->status,
+                ] : null,
                 'verified_at' => $t->verified_at,
                 'created_at' => $t->created_at,
             ]);
@@ -52,10 +58,28 @@ class MarketplacePaymentController extends Controller
             'chapa_tx_ref' => $s->chapa_tx_ref,
         ]);
 
+        $reviews = MarketplacePaymentReview::query()
+            ->with(['transaction:id,tx_ref,amount_etb,currency'])
+            ->latest()
+            ->limit(40)
+            ->get()
+            ->map(fn ($review) => [
+                'id' => $review->id,
+                'reason' => $review->reason,
+                'status' => $review->status,
+                'provider_reference' => $review->provider_reference,
+                'created_at' => $review->created_at,
+                'tx_ref' => $review->transaction?->tx_ref,
+                'amount_etb' => $review->transaction?->amount_etb,
+                'currency' => $review->transaction?->currency,
+                'history_count' => $review->events()->count(),
+            ]);
+
         return Inertia::render('admin/marketplace-payments', [
             'transactions' => $transactions,
             'webhooks' => $webhooks,
             'subscriptions' => $subs,
+            'reviews' => $reviews,
         ]);
     }
 
