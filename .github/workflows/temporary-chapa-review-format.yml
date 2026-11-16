@@ -1,0 +1,42 @@
+name: Temporary Chapa review formatting
+
+on:
+  push:
+    branches: [feat/chapa-test-acceptance-and-refund-review]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.repository == 'nateyk/numan'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/chapa-test-acceptance-and-refund-review
+          persist-credentials: true
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: pnpm install --frozen-lockfile
+      - name: Format touched PHP files with project Pint
+        run: |
+          vendor/bin/pint app/Console/Commands/AcceptChapaTestRenewal.php app/Http/Controllers/Admin/MarketplacePaymentReviewController.php app/Http/Controllers/Admin/MarketplacePaymentController.php app/Models/MarketplacePaymentReview.php app/Models/MarketplacePaymentReviewEvent.php app/Models/MarketplacePaymentTransaction.php app/Services/MarketplacePaymentReviewService.php app/Http/Controllers/Marketplace/ChapaWebhookController.php app/Services/ChapaProviderDataSanitizer.php database/migrations/2026_11_16_000001_create_marketplace_payment_reviews.php tests/Feature/Marketplace/ChapaRefundReviewTest.php tests/Feature/Marketplace/ChapaAcceptanceCommandTest.php routes/web.php
+      - run: pnpm exec prettier --write resources/js/pages/admin/marketplace-payments.tsx
+      - name: Save mechanical formatting and remove external workflow later
+        run: |
+          git config user.name "numan-chapa-review-format"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Console/Commands/AcceptChapaTestRenewal.php app/Http/Controllers/Admin/MarketplacePaymentReviewController.php app/Http/Controllers/Admin/MarketplacePaymentController.php app/Models/MarketplacePaymentReview.php app/Models/MarketplacePaymentReviewEvent.php app/Models/MarketplacePaymentTransaction.php app/Services/MarketplacePaymentReviewService.php app/Http/Controllers/Marketplace/ChapaWebhookController.php app/Services/ChapaProviderDataSanitizer.php database/migrations/2026_11_16_000001_create_marketplace_payment_reviews.php tests/Feature/Marketplace/ChapaRefundReviewTest.php tests/Feature/Marketplace/ChapaAcceptanceCommandTest.php routes/web.php resources/js/pages/admin/marketplace-payments.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m "style(chapa): normalize acceptance and refund review changes"
+            git push origin HEAD:feat/chapa-test-acceptance-and-refund-review
+          fi
