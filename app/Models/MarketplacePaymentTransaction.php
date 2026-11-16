@@ -6,6 +6,7 @@ use App\Services\ChapaProviderDataSanitizer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A payment attempt, by any rail.
@@ -128,9 +129,9 @@ class MarketplacePaymentTransaction extends Model
         return $this->belongsTo(User::class, 'manual_reviewed_by');
     }
 
-    public function receipt(): BelongsTo
+    public function receipt(): HasOne
     {
-        return $this->belongsTo(MarketplacePaymentReceipt::class, 'transaction_id');
+        return $this->hasOne(MarketplacePaymentReceipt::class, 'transaction_id');
     }
 
     public function isManual(): bool
