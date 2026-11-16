@@ -164,6 +164,20 @@ it('never tells a payer that a canceled subscription was activated', function ()
         ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
 });
 
+it('requires a receipt before reporting a previously verified payment as complete', function () {
+    [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-verified-without-receipt');
+    $transaction->update(['status' => 'verified', 'verified_at' => now()]);
+    Http::fake();
+
+    $this->actingAs($user)
+        ->postJson('/marketplace/payments/'.$transaction->tx_ref.'/verify')
+        ->assertStatus(409)
+        ->assertJsonPath('status', 'mismatch');
+
+    Http::assertNothingSent();
+    expect(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->exists())->toBeFalse();
+});
+
 it('keeps a subscription pending when the payer status recheck cannot reach Chapa', function () {
     [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-recheck-provider-outage');
 
