@@ -1,0 +1,42 @@
+name: Temporary freight discovery formatter
+
+on:
+  push:
+    branches: [feat/freight-discovery-location-search-clean-cards]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.repository == 'nateyk/numan'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/freight-discovery-location-search-clean-cards
+          persist-credentials: true
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: pnpm install --frozen-lockfile
+      - name: Apply existing project formatting to focused files
+        run: |
+          vendor/bin/pint app/Http/Controllers/Freight/PublicFreightDiscoveryController.php tests/Feature/PublicFreightDiscoveryTest.php
+          pnpm exec prettier --write resources/js/pages/discover/index.tsx
+      - name: Save only formatting changes to this PR branch
+        run: |
+          git config user.name "numan-discover-maintenance"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/Freight/PublicFreightDiscoveryController.php tests/Feature/PublicFreightDiscoveryTest.php resources/js/pages/discover/index.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m "style(discover): align freight search and cards with project formatters"
+            git push origin HEAD:feat/freight-discovery-location-search-clean-cards
+          fi
