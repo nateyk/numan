@@ -937,25 +937,32 @@ export default function DiscoverIndex({
                                                         <div className="flex items-start justify-between gap-2">
                                                             <h3
                                                                 id={titleId}
-                                                                className="flex min-w-0 flex-1 items-start gap-2 text-sm font-semibold leading-5 tracking-tight"
+                                                                className="flex min-w-0 flex-1 items-start gap-2 text-sm leading-5 font-semibold tracking-tight"
                                                             >
                                                                 <MapPin
                                                                     aria-hidden="true"
                                                                     className="mt-0.5 size-4 shrink-0 text-primary"
                                                                 />
                                                                 <span className="min-w-0 break-words">
-                                                                    {origin?.name ?? '—'}
+                                                                    {origin?.name ??
+                                                                        '—'}
                                                                     <ArrowRight
                                                                         aria-hidden="true"
                                                                         className="mx-1.5 inline size-3.5 shrink-0 align-middle text-muted-foreground"
                                                                     />
-                                                                    {destination?.name ?? '—'}
+                                                                    {destination?.name ??
+                                                                        '—'}
                                                                 </span>
                                                             </h3>
                                                             <Badge
                                                                 variant={
                                                                     interest &&
-                                                                    ['rejected', 'withdrawn'].includes(interest.status)
+                                                                    [
+                                                                        'rejected',
+                                                                        'withdrawn',
+                                                                    ].includes(
+                                                                        interest.status,
+                                                                    )
                                                                         ? 'destructive'
                                                                         : 'outline'
                                                                 }
@@ -969,10 +976,13 @@ export default function DiscoverIndex({
                                                                       : 'Active'}
                                                             </Badge>
                                                         </div>
-                                                        {(distanceText || durationText) && (
+                                                        {(distanceText ||
+                                                            durationText) && (
                                                             <p className="pl-6 text-xs text-muted-foreground">
                                                                 {distanceText}
-                                                                {distanceText && durationText && ' · '}
+                                                                {distanceText &&
+                                                                    durationText &&
+                                                                    ' · '}
                                                                 {durationText}
                                                             </p>
                                                         )}
@@ -980,22 +990,36 @@ export default function DiscoverIndex({
 
                                                     <div className="border-t border-border/70 pt-3">
                                                         <p
-                                                            className="line-clamp-2 text-sm font-medium leading-5"
-                                                            title={f.item_name ?? cargoType?.name ?? 'General cargo'}
+                                                            className="line-clamp-2 text-sm leading-5 font-medium"
+                                                            title={
+                                                                f.item_name ??
+                                                                cargoType?.name ??
+                                                                'General cargo'
+                                                            }
                                                         >
-                                                            {f.item_name ?? cargoType?.name ?? 'General cargo'}
+                                                            {f.item_name ??
+                                                                cargoType?.name ??
+                                                                'General cargo'}
                                                         </p>
                                                     </div>
 
                                                     <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                                                         <div className="min-w-0">
                                                             <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                <Calendar aria-hidden="true" className="size-3.5" />
+                                                                <Calendar
+                                                                    aria-hidden="true"
+                                                                    className="size-3.5"
+                                                                />
                                                                 Pickup
                                                             </dt>
-                                                            <dd className="break-words font-medium">
+                                                            <dd className="font-medium break-words">
                                                                 {f.pickup_date
-                                                                    ? String(f.pickup_date).slice(0, 10)
+                                                                    ? String(
+                                                                          f.pickup_date,
+                                                                      ).slice(
+                                                                          0,
+                                                                          10,
+                                                                      )
                                                                     : 'Flexible'}
                                                                 {f.pickup_time &&
                                                                     ` · ${String(f.pickup_time).slice(0, 5)}`}
@@ -1003,10 +1027,13 @@ export default function DiscoverIndex({
                                                         </div>
                                                         <div className="min-w-0">
                                                             <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                <Weight aria-hidden="true" className="size-3.5" />
+                                                                <Weight
+                                                                    aria-hidden="true"
+                                                                    className="size-3.5"
+                                                                />
                                                                 Weight
                                                             </dt>
-                                                            <dd className="break-words font-medium">
+                                                            <dd className="font-medium break-words">
                                                                 {f.actual_weight
                                                                     ? `${f.actual_weight} ${f.weight_unit ?? 'ton'}`
                                                                     : '—'}
@@ -1014,10 +1041,13 @@ export default function DiscoverIndex({
                                                         </div>
                                                         <div className="min-w-0">
                                                             <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                <Banknote aria-hidden="true" className="size-3.5" />
+                                                                <Banknote
+                                                                    aria-hidden="true"
+                                                                    className="size-3.5"
+                                                                />
                                                                 Tariff
                                                             </dt>
-                                                            <dd className="break-words font-semibold">
+                                                            <dd className="font-semibold break-words">
                                                                 {f.tariff_amount
                                                                     ? `${Number(f.tariff_amount).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${f.tariff_currency ?? 'ETB'}`
                                                                     : '—'}
@@ -1025,12 +1055,18 @@ export default function DiscoverIndex({
                                                         </div>
                                                         <div className="min-w-0">
                                                             <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                <Truck aria-hidden="true" className="size-3.5" />
+                                                                <Truck
+                                                                    aria-hidden="true"
+                                                                    className="size-3.5"
+                                                                />
                                                                 Trucks
                                                             </dt>
-                                                            <dd className="break-words font-medium">
-                                                                {truckType?.name ?? 'Any'}
-                                                                {f.truck_count ? ` ×${f.truck_count}` : ''}
+                                                            <dd className="font-medium break-words">
+                                                                {truckType?.name ??
+                                                                    'Any'}
+                                                                {f.truck_count
+                                                                    ? ` ×${f.truck_count}`
+                                                                    : ''}
                                                             </dd>
                                                         </div>
                                                     </dl>

@@ -5,6 +5,7 @@ use App\Models\CargoType;
 use App\Models\FreightPost;
 use App\Models\FreightPostRoute;
 use App\Models\Location;
+use App\Models\TruckType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -232,7 +233,7 @@ it('searches by origin, destination and their region names without extra filter 
 
 it('matches truck type and cargo type names in global discovery search', function () {
     $cargo = CargoType::factory()->create(['name' => 'Chemical supplies']);
-    $trucks = \App\Models\TruckType::factory()->create(['name' => 'Semi-trailer']);
+    $trucks = TruckType::factory()->create(['name' => 'Semi-trailer']);
     $matching = FreightPost::factory()->create([
         'status' => FreightPostStatus::Active->value,
         'item_name' => 'Salt bags',
