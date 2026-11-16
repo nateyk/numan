@@ -25,6 +25,12 @@ business in a log file that outlives the request."*
 
 The write path now minimizes newly stored provider content. A separately approved retention process is still needed to deal with already-stored personal data and implement a maximum lifetime.
 
+## Open refund/dispute cases are a legal-hold decision
+
+The admin review queue records one case per transaction and its append-only status history. **Do not turn on historical payload scrubbing for transactions with open or provider-pending cases** until finance/legal owners approve the applicable hold conditions. Cases marked `provider_reported_refunded` contain a human attestation and a provider reference, not automatic refund verification.
+
+The current case queue does not activate or change this retention policy, and it does not alter original receipts or charge data. Do not treat this page as authorization to delete financial evidence.
+
 ## The important distinction
 
 **The payload is not the accounting record.**

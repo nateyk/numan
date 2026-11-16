@@ -134,6 +134,11 @@ class MarketplacePaymentTransaction extends Model
         return $this->hasOne(MarketplacePaymentReceipt::class, 'transaction_id');
     }
 
+    public function paymentReview(): HasOne
+    {
+        return $this->hasOne(MarketplacePaymentReview::class, 'transaction_id');
+    }
+
     public function isManual(): bool
     {
         return $this->provider === self::PROVIDER_MANUAL;

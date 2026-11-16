@@ -38,7 +38,10 @@ class ChapaWebhookController extends Controller
 
         $payload = $request->json()->all() ?: json_decode($request->getContent(), true) ?? [];
         $event = $payload['event'] ?? $payload['type'] ?? 'unknown';
-        $txRef = $payload['tx_ref'] ?? $payload['txRef'] ?? $payload['reference'] ?? $payload['data']['tx_ref'] ?? null;
+        $webhookType = $payload['webhook_type'] ?? 'payment';
+        $txRef = $payload['tx_ref'] ?? $payload['txRef']
+            ?? $payload['merchant_reference'] ?? $payload['reference']
+            ?? $payload['data']['tx_ref'] ?? null;
         $chapaRef = $payload['reference'] ?? $payload['data']['reference'] ?? null;
 
         if (! $txRef) {
@@ -66,7 +69,12 @@ class ChapaWebhookController extends Controller
             ]
         );
 
-        $isSuccess = str_contains((string) $event, 'success') || ($payload['status'] ?? null) === 'success';
+        // Refund and payout notifications must NEVER enter payment
+        // fulfillment. v2 refund events can reuse payment.* event names and
+        // merchant references; they are review evidence, not new purchases.
+        $isSuccess = $webhookType === 'payment'
+            && (str_contains((string) $event, 'success') || ($payload['status'] ?? null) === 'success')
+            && ! in_array($event, ['payment.partially_refunded', 'payment.fully_refunded'], true);
         if (! $isSuccess) {
             $webhookEvent->update(['status' => 'processed', 'processed_at' => now()]);
 
