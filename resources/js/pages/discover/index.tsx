@@ -171,7 +171,6 @@ export default function DiscoverIndex({
     // "Updating results…" instead of announcing a sort order that has not
     // landed yet.
     const [updatingResults, setUpdatingResults] = useState(false);
-    const [showMoreFilters, setShowMoreFilters] = useState(false);
 
     // Express Interest is a commitment the shipper sees, so it asks first: one
     // tap used to fire the POST from mid-scroll with no confirmation and no
@@ -377,7 +376,7 @@ export default function DiscoverIndex({
                                             e.preventDefault();
                                             doSearch();
                                         }}
-                                        aria-label="Filter freight posts"
+                                        aria-label="Search and filter freight posts"
                                         className="space-y-4"
                                     >
                                         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end">
@@ -386,7 +385,7 @@ export default function DiscoverIndex({
                                                     htmlFor="freight-search"
                                                     className="text-xs font-medium"
                                                 >
-                                                    Search
+                                                    Search freight
                                                 </Label>
                                                 <div className="relative">
                                                     <Search
@@ -396,7 +395,7 @@ export default function DiscoverIndex({
                                                     <Input
                                                         id="freight-search"
                                                         type="search"
-                                                        placeholder="Search cargo, description..."
+                                                        placeholder="Cargo, city, region or route…"
                                                         value={searchQuery}
                                                         onChange={(e) =>
                                                             setSearchQuery(
@@ -404,7 +403,7 @@ export default function DiscoverIndex({
                                                             )
                                                         }
                                                         className="h-11 pl-10"
-                                                        aria-label="Search cargo and description"
+                                                        aria-label="Search freight by cargo, city, region or route"
                                                     />
                                                 </div>
                                             </div>
@@ -484,43 +483,12 @@ export default function DiscoverIndex({
                                         </div>
 
                                         <div className="sm:contents">
-                                            <button
-                                                type="button"
-                                                aria-expanded={showMoreFilters}
-                                                aria-controls="freight-advanced-filters"
-                                                onClick={() =>
-                                                    setShowMoreFilters(
-                                                        (current) => !current,
-                                                    )
-                                                }
-                                                className="flex min-h-11 w-full items-center justify-between rounded-md border bg-muted/40 px-3 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:hidden"
-                                            >
-                                                <span className="inline-flex items-center gap-2">
-                                                    <SlidersHorizontal
-                                                        className="size-4"
-                                                        aria-hidden="true"
-                                                    />
-                                                    Route & cargo filters
-                                                </span>
-                                                <ChevronDown
-                                                    className={
-                                                        showMoreFilters
-                                                            ? 'size-4 rotate-180 text-muted-foreground transition-transform'
-                                                            : 'size-4 text-muted-foreground transition-transform'
-                                                    }
-                                                    aria-hidden="true"
-                                                />
-                                            </button>
                                             <fieldset
                                                 id="freight-advanced-filters"
-                                                className={
-                                                    showMoreFilters
-                                                        ? 'mt-3 block border-0 p-0 sm:mt-0 sm:block'
-                                                        : 'mt-3 hidden border-0 p-0 sm:mt-0 sm:block'
-                                                }
+                                                className="border-0 p-0"
                                             >
                                                 <legend className="sr-only">
-                                                    Location and cargo filters
+                                                    Route and cargo filters
                                                 </legend>
                                                 <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(16rem,1fr)]">
                                                     <div className="min-w-0 space-y-1.5">
