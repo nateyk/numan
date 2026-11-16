@@ -93,6 +93,9 @@ export default function PlansPage({
             'monthly',
     );
     const [processing, setProcessing] = useState<string | null>(null);
+    const [pendingReference, setPendingReference] = useState<string | null>(null);
+    const [pendingNotice, setPendingNotice] = useState<string | null>(null);
+    const [checkingPayment, setCheckingPayment] = useState(false);
     const { addToast } = useToast();
     const isOwner = userRole === 'owner';
 
@@ -126,6 +129,11 @@ export default function PlansPage({
     const handleSubscribe = async (slug: string) => {
         if (!isOwner) return;
 
+        if (pendingReference) {
+            addToast('Check your pending payment before starting another checkout.', 'error');
+            return;
+        }
+
         setProcessing(slug);
 
         try {
@@ -134,12 +142,26 @@ export default function PlansPage({
                 success?: boolean;
                 error?: string;
                 message?: string;
+                retryable?: boolean;
+                tx_ref?: string;
             }>('/marketplace/checkout', {
                 body: { plan: slug, billing_interval: billingPeriod },
             });
 
             if (data?.checkout_url) {
                 window.location.href = data.checkout_url;
+                return;
+            }
+
+            // A gateway timeout is indeterminate: keep this reference so the
+            // customer can check the same payment before starting another.
+            if (data?.retryable && typeof data.tx_ref === 'string') {
+                setPendingReference(data.tx_ref);
+                setPendingNotice(
+                    data.error ??
+                        'Chapa is temporarily unavailable. Check your payment before retrying.',
+                );
+                setProcessing(null);
                 return;
             }
 
@@ -164,6 +186,36 @@ export default function PlansPage({
                 'error',
             );
             setProcessing(null);
+        }
+    };
+
+    const checkPendingPayment = async () => {
+        if (!pendingReference || checkingPayment) return;
+
+        setCheckingPayment(true);
+        try {
+            const { data } = await http.post<{
+                status?: string;
+                message?: string;
+            }>(
+                `/marketplace/payments/${encodeURIComponent(pendingReference)}/verify`,
+            );
+
+            if (data?.status === 'verified') {
+                window.location.href = '/billing';
+                return;
+            }
+
+            setPendingNotice(
+                data?.message ??
+                    'Payment confirmation is still pending. Keep your reference and check later.',
+            );
+        } catch {
+            setPendingNotice(
+                'Unable to check Chapa right now. Keep your reference and try later.',
+            );
+        } finally {
+            setCheckingPayment(false);
         }
     };
 
@@ -241,6 +293,44 @@ export default function PlansPage({
                             )}
                         </div>
                     </div>
+
+                    {pendingReference && (
+                        <div
+                            role="status"
+                            className="mx-auto flex max-w-5xl flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                            <div className="min-w-0 space-y-1">
+                                <p className="text-sm font-medium">
+                                    Check this payment before paying again
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {pendingNotice}
+                                </p>
+                                <p className="break-all font-mono text-xs text-muted-foreground">
+                                    Reference: {pendingReference}
+                                </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    disabled={checkingPayment}
+                                    onClick={checkPendingPayment}
+                                >
+                                    {checkingPayment ? 'Checking…' : 'Check status'}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setPendingReference(null);
+                                        setPendingNotice(null);
+                                    }}
+                                >
+                                    Dismiss
+                                </Button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="mx-auto grid max-w-5xl gap-8 pb-6 md:grid-cols-2">
                         {/* Free — numbers come from marketplace_settings */}
