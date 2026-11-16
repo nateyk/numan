@@ -31,7 +31,10 @@ class PublicFreightDiscoveryController extends Controller
 
     public function index(Request $request): Response
     {
-        $search = $request->query('search');
+        // Bound public free-text search so a pasted paragraph cannot produce
+        // arbitrarily many relationship checks on the discovery board.
+        $rawSearch = $request->query('search');
+        $search = is_string($rawSearch) ? mb_substr(trim($rawSearch), 0, 120) : '';
         $cargo = $request->query('cargo');
         $sort = $request->query('sort', 'latest');
 
@@ -69,12 +72,40 @@ class PublicFreightDiscoveryController extends Controller
             ->when($request->query('pickup_to'), function ($q, $to) {
                 $q->where('pickup_date', '<=', $to);
             })
-            ->when($search, function ($q, $search) {
-                $q->where(function ($sq) use ($search) {
-                    $sq->where('cargo_description', 'like', "%{$search}%")
-                        ->orWhere('item_name', 'like', "%{$search}%")
-                        ->orWhere('ulid', 'like', "%{$search}%");
-                });
+            ->when($search !== '', function (Builder $q) use ($search) {
+                // Each term can match cargo or either end of the route. Terms
+                // are ANDed, so "Semera Shashemene" finds that lane even
+                // though the two city names are in different location rows.
+                // Parentheses keep active() and visible() scopes in force.
+                $terms = array_slice(
+                    preg_split('/\\s+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [],
+                    0,
+                    8,
+                );
+
+                foreach ($terms as $term) {
+                    $q->where(function (Builder $match) use ($term): void {
+                        $like = "%{$term}%";
+
+                        $match->where('cargo_description', 'like', $like)
+                            ->orWhere('item_name', 'like', $like)
+                            ->orWhere('ulid', 'like', $like)
+                            ->orWhereHas('cargoType', fn (Builder $related) => $related->where('name', 'like', $like))
+                            ->orWhereHas('truckType', fn (Builder $related) => $related->where('name', 'like', $like))
+                            ->orWhereHas('originLocation', function (Builder $location) use ($like): void {
+                                $location->where('name', 'like', $like)
+                                    ->orWhere('region_name', 'like', $like)
+                                    ->orWhere('wereda', 'like', $like)
+                                    ->orWhere('zone', 'like', $like);
+                            })
+                            ->orWhereHas('destinationLocation', function (Builder $location) use ($like): void {
+                                $location->where('name', 'like', $like)
+                                    ->orWhere('region_name', 'like', $like)
+                                    ->orWhere('wereda', 'like', $like)
+                                    ->orWhere('zone', 'like', $like);
+                            });
+                    });
+                }
             });
 
         // Apply sorting. The distance options order by the real route
