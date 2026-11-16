@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MarketplacePaymentTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class ChapaService
 {
@@ -22,9 +23,9 @@ class ChapaService
     {
         if ($prefix) {
             // Chapa rejects refs over 50 chars and anything outside
-            // [A-Za-z0-9_-]. uniqid() alone is 13 hex chars with no dot,
-            // unlike uniqid(time, true). The unique tail is never trimmed.
-            $tail = uniqid();
+            // [A-Za-z0-9_-]. An unpredictable random tail also prevents
+            // enumeration of public server-callback references.
+            $tail = Str::random(20);
             $head = substr($prefix, 0, max(0, 50 - strlen($tail) - 1));
 
             return $head.'_'.$tail;
@@ -32,7 +33,7 @@ class ChapaService
 
         $app = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) config('app.name', 'NumanFreight'));
 
-        $tail = uniqid();
+        $tail = Str::random(20);
         $head = substr($app.'_chapa', 0, max(0, 50 - strlen($tail) - 1));
 
         return $head.'_'.$tail;
