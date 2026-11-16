@@ -312,6 +312,7 @@ export default function DiscoverIndex({
         setOriginName('');
         setDestinationName('');
         setSelectedCargo('all');
+        setSelectedSort('latest');
         setSearchQuery('');
         router.get('/freight', {}, { preserveState: true });
     };
@@ -499,6 +500,7 @@ export default function DiscoverIndex({
                                                             Origin
                                                         </Label>
                                                         <LocationSearchInput
+                                                            key={`origin-${origin || 'all'}`}
                                                             id="origin-filter"
                                                             ariaLabel="Origin location"
                                                             initialName={
@@ -534,6 +536,7 @@ export default function DiscoverIndex({
                                                             Destination
                                                         </Label>
                                                         <LocationSearchInput
+                                                            key={`destination-${destination || 'all'}`}
                                                             id="destination-filter"
                                                             ariaLabel="Destination location"
                                                             initialName={
