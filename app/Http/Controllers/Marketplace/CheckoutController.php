@@ -71,7 +71,8 @@ class CheckoutController extends Controller
             'billing_interval' => $data['billing_interval'],
         ]);
 
-        $callback = route('chapa.callback', ['tx_ref' => $txRef]);
+        $callback = route('chapa.server-callback', ['tx_ref' => $txRef]);
+        $return = route('chapa.callback', ['tx_ref' => $txRef]);
 
         // Chapa only accepts letters, numbers, hyphens, underscores, spaces
         // and dots in the customization description. Plan copy contains
@@ -93,7 +94,7 @@ class CheckoutController extends Controller
             'last_name' => trim(Str::after($user->name, explode(' ', $user->name)[0] ?? '')) ?: 'User',
             'tx_ref' => $txRef,
             'callback_url' => $callback,
-            'return_url' => $callback,
+            'return_url' => $return,
             'customization' => [
                 'title' => Str::limit($plan->name, 16, ''),
                 'description' => Str::limit($description, 50, ''),
@@ -120,6 +121,9 @@ class CheckoutController extends Controller
                     'success' => false,
                     'error' => $message,
                     'retryable' => true,
+                    // The payer can check this exact attempt without making
+                    // another checkout request (and risking a second charge).
+                    'tx_ref' => $txRef,
                 ], 503);
             }
 
