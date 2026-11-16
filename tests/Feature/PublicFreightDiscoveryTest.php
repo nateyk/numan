@@ -192,3 +192,103 @@ it('omits the route geometry from the discovery list', function () {
     expect($snapshot)->not->toHaveKey('geometry')
         ->and($snapshot['distance_meters'])->toBe(932000);
 });
+
+it('searches by origin, destination and their region names without extra filter selections', function () {
+    $semera = Location::factory()->create([
+        'name' => 'Semera',
+        'region_name' => 'Afar',
+        'wereda' => 'Semera Town',
+    ]);
+    $shashemene = Location::factory()->create([
+        'name' => 'Shashemene Zuria',
+        'region_name' => 'Oromia',
+    ]);
+    $other = Location::factory()->create([
+        'name' => 'Dire Dawa',
+        'region_name' => 'Dire Dawa',
+    ]);
+
+    $matching = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $semera->id,
+        'destination_location_id' => $shashemene->id,
+        'item_name' => 'Iodized salt',
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $other->id,
+        'destination_location_id' => $other->id,
+        'item_name' => 'Iodized salt',
+    ]);
+
+    foreach (['Semera', 'Shashemene', 'Afar', 'Oromia', 'Semera Shashemene'] as $query) {
+        $this->get('/freight?search='.urlencode($query))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('freight.total', 1)
+                ->where('freight.data.0.ulid', $matching->ulid));
+    }
+});
+
+it('matches truck type and cargo type names in global discovery search', function () {
+    $cargo = CargoType::factory()->create(['name' => 'Chemical supplies']);
+    $trucks = \App\Models\TruckType::factory()->create(['name' => 'Semi-trailer']);
+    $matching = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'item_name' => 'Salt bags',
+        'cargo_type_id' => $cargo->id,
+        'required_truck_type_id' => $trucks->id,
+    ]);
+
+    foreach (['Chemical', 'Semi-trailer'] as $search) {
+        $this->get('/freight?search='.urlencode($search))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('freight.total', 1)
+                ->where('freight.data.0.ulid', $matching->ulid));
+    }
+});
+
+it('never exposes hidden or draft posts through location search and combines filters', function () {
+    $origin = Location::factory()->create(['name' => 'Semera']);
+    $destination = Location::factory()->create(['name' => 'Shashemene Zuria']);
+    $other = Location::factory()->create(['name' => 'Hawassa']);
+
+    $visible = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $destination->id,
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $destination->id,
+        'hidden_at' => now(),
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Draft->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $destination->id,
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $other->id,
+    ]);
+
+    $this->get('/freight?search=Semera%20Shashemene&destination='.$destination->id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('freight.total', 1)
+            ->where('freight.data.0.ulid', $visible->ulid));
+});
+
+it('ignores malformed search arrays instead of breaking the discovery page', function () {
+    FreightPost::factory()->create(['status' => FreightPostStatus::Active->value]);
+
+    $this->get('/freight?search[]=Semera')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('freight.total', 1)
+            ->where('filters.search', ''));
+});
