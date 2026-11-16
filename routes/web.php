@@ -68,6 +68,8 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LocationSearchController;
 use App\Http\Controllers\Marketplace\ChapaCallbackController;
+use App\Http\Controllers\Marketplace\ChapaPaymentStatusController;
+use App\Http\Controllers\Marketplace\ChapaServerCallbackController;
 use App\Http\Controllers\Marketplace\ChapaWebhookController;
 use App\Http\Controllers\Marketplace\CheckoutController;
 use App\Http\Controllers\Marketplace\ManualPaymentController;
@@ -339,6 +341,8 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     Route::get('/marketplace/manual', [ManualPaymentController::class, 'index'])->name('marketplace.manual.index');
     Route::get('/marketplace/manual/{transaction}', [ManualPaymentController::class, 'show'])->name('marketplace.manual.show');
     Route::get('/chapa/callback/{tx_ref}', [ChapaCallbackController::class, 'show'])->name('chapa.callback');
+    Route::post('/marketplace/payments/{tx_ref}/verify', [ChapaPaymentStatusController::class, 'verify'])
+        ->middleware('throttle:10,1')->name('marketplace.payments.verify');
     // Workspace Security Settings
     Route::get('/settings/workspace-security', [WorkspaceSecurityController::class, 'index'])->name('workspace.security');
     Route::put('/settings/workspace-security', [WorkspaceSecurityController::class, 'update'])->name('workspace.security.update');
@@ -530,6 +534,11 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook']
     ->name('cashier.webhook');
 
 // Chapa webhook (no CSRF, no auth)
+// Provider callback is public: Chapa does not have the payer's browser session.
+// This route verifies payment directly with Chapa before any subscription grant.
+Route::get('/chapa/notify/{tx_ref}', [ChapaServerCallbackController::class, 'handle'])
+    ->middleware('throttle:20,1')->name('chapa.server-callback');
+
 Route::post('/webhooks/chapa', [ChapaWebhookController::class, 'handle'])
     ->name('webhooks.chapa');
 
