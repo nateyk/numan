@@ -94,6 +94,13 @@ class ChapaService
             return false;
         }
 
+        // Do not activate a live subscription with a test-mode provider
+        // payment (or vice versa). Older mock/legacy responses may omit
+        // mode; when present it must exactly match the stored checkout.
+        if (array_key_exists('mode', $data) && $data['mode'] !== $transaction->mode) {
+            return false;
+        }
+
         if (isset($data['tx_ref']) && (string) $data['tx_ref'] !== $transaction->tx_ref) {
             return false;
         }
