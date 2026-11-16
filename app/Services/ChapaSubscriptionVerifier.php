@@ -32,7 +32,9 @@ class ChapaSubscriptionVerifier
         }
 
         if ($transaction->status === 'verified' && $transaction->verified_at !== null) {
-            return 'verified';
+            // A historical partial settlement lacking its receipt needs a
+            // human ledger review; do not announce a successful subscription.
+            return $transaction->receipt()->exists() ? 'verified' : 'mismatch';
         }
 
         $verified = $this->chapa->verifyTransaction($transaction->tx_ref);
