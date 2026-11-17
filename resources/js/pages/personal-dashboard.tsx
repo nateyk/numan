@@ -36,6 +36,7 @@ interface FreightDashboardProps {
         drafts: number;
         arrived: number;
     };
+    availableFreight: number;
     recentFreight: Array<{
         ulid: string;
         title: string;
@@ -56,7 +57,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function PersonalDashboard() {
-    const { auth, currentWorkspace, freightStats, recentFreight } =
+    const { auth, currentWorkspace, freightStats, recentFreight, availableFreight } =
         usePage<SharedData & FreightDashboardProps>().props;
     const { t } = useTranslations();
     const firstName = auth.user.name?.trim().split(/\s+/)[0] || '';
@@ -227,7 +228,13 @@ export default function PersonalDashboard() {
                                     )}
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                                <span className="text-sm text-muted-foreground">
+                                    <span className="font-semibold text-foreground tabular-nums">
+                                        {availableFreight.toLocaleString()}
+                                    </span>{' '}
+                                    available now
+                                </span>
                                 <Button variant="outline" size="sm" asChild>
                                     <Link href="/freight">
                                         {t(
