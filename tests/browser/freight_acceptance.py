@@ -65,7 +65,7 @@ def desktop_owner_flow(browser, fixtures):
         expect(contact).to_be_visible()
         expect(contact).to_contain_text("Posted")
         expect(contact).to_contain_text("Expires")
-        expect(page.get_by_role("columnheader", name="Pickup / closes")).to_be_visible()
+        expect(page.get_by_text("Pickup / closes", exact=True)).to_be_visible()
         expect(contact).not_to_contain_text("Browser Test Transporter")
         page.screenshot(path=str(EVIDENCE / "desktop-owner-before.png"), full_page=True)
 
