@@ -32,7 +32,9 @@ class FreightPostController extends Controller
             ->withCount('interests')
             ->latest();
 
-        if ($status !== 'all' && in_array($status, FreightPostStatus::values(), true)) {
+        if ($status === 'arrived') {
+            $query->whereNotNull('arrived_at');
+        } elseif ($status !== 'all' && in_array($status, FreightPostStatus::values(), true)) {
             $query->where('status', $status);
         }
 
@@ -46,6 +48,7 @@ class FreightPostController extends Controller
         }
 
         $posts = $query->paginate(12)->withQueryString();
+        $posts->getCollection()->each(fn (FreightPost $post) => $post->append('expires_on'));
 
         $base = FreightPost::ownedBy($request->user());
         $counts = [
@@ -55,6 +58,7 @@ class FreightPostController extends Controller
             'under_review' => (clone $base)->where('status', FreightPostStatus::UnderReview->value)->count(),
             'active' => (clone $base)->where('status', FreightPostStatus::Active->value)->count(),
             'closed' => (clone $base)->where('status', FreightPostStatus::Closed->value)->count(),
+            'arrived' => (clone $base)->whereNotNull('arrived_at')->count(),
             'expired' => (clone $base)->where('status', FreightPostStatus::Expired->value)->count(),
             'rejected' => (clone $base)->where('status', FreightPostStatus::Rejected->value)->count(),
         ];
