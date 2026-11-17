@@ -121,11 +121,13 @@ export default function ConnectionShow({
                 )}
 
                 {contact ? (
-                    <div className="space-y-1 rounded-md border bg-muted/40 p-4">
-                        <h3 className="font-semibold">Contact Details</h3>
-                        <div>Name: {contact.name}</div>
-                        <ContactChannels contact={contact} />
-                    </div>
+                    <section className="space-y-3" aria-label="Revealed contact details">
+                        <h2 className="text-sm font-semibold">Contact details</h2>
+                        {!counterparty && contact.name && (
+                            <p className="text-sm font-medium">{contact.name}</p>
+                        )}
+                        <ContactChannels contact={contact} variant="full" />
+                    </section>
                 ) : reveal_blocked ? (
                     <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
                         <p className="text-sm">
