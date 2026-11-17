@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\FreightPostStatus;
+use App\Models\FreightInterest;
 use App\Models\FreightPost;
 use App\Models\User;
 use App\Services\WorkspaceService;
@@ -136,4 +137,19 @@ it('keeps freight creation wizard pages private to the draft editor', function (
     $this->actingAs($owner)
         ->get("/my-freight/{$post->ulid}/schedule")
         ->assertForbidden();
+});
+
+it('preserves closed freight and transporter interest history from deletion', function () {
+    $owner = lifecycleConsignor();
+    $post = FreightPost::factory()->for($owner)->create([
+        'status' => FreightPostStatus::Closed->value,
+        'closed_at' => now(),
+    ]);
+    FreightInterest::factory()->for($post)->create();
+
+    $this->actingAs($owner)->delete("/my-freight/{$post->ulid}")
+        ->assertSessionHasErrors('freight');
+
+    expect($post->fresh())->not->toBeNull()
+        ->and($post->interests()->count())->toBe(1);
 });
