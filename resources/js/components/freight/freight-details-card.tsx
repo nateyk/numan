@@ -5,6 +5,7 @@ import {
     formatDistance,
     formatDuration,
 } from '@/components/freight/format-route';
+import { formatFreightDate } from '@/lib/freight-dates';
 import { CalendarDays, Package, Route, Truck } from 'lucide-react';
 
 /**
@@ -34,6 +35,9 @@ export type FreightDetailsPost = {
     pickup_date: string | null;
     pickup_time: string | null;
     pickup_date_flexibility_days: number | null;
+    expires_on: string | null;
+    arrived_at: string | null;
+    closed_at: string | null;
     created_at: string | null;
     origin_site_note: string | null;
     destination_site_note: string | null;
@@ -175,7 +179,7 @@ export default function FreightDetailsCard({
         [
             post.pickup_time ? post.pickup_time.slice(0, 5) : '',
             post.pickup_date_flexibility_days
-                ? `±${post.pickup_date_flexibility_days} days`
+                ? `+${post.pickup_date_flexibility_days} days`
                 : '',
         ]
             .filter(Boolean)
@@ -239,6 +243,17 @@ export default function FreightDetailsCard({
                                 .filter(Boolean)
                                 .join(' · ')}
                         />
+                        <Fact
+                            label="Listing closes"
+                            value={formatFreightDate(post.expires_on)}
+                            detail="End of the pickup window"
+                        />
+                        {post.arrived_at && (
+                            <Fact
+                                label="Cargo arrival"
+                                value={new Date(post.arrived_at).toLocaleDateString()}
+                            />
+                        )}
                         <Fact
                             label="Distance / time"
                             value={laneFact || 'Not calculated'}
