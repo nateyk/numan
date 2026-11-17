@@ -293,3 +293,20 @@ it('ignores malformed search arrays instead of breaking the discovery page', fun
             ->where('freight.total', 1)
             ->where('filters.search', ''));
 });
+
+it('sorts latest freight by publication date rather than the later pickup date', function () {
+    $old = FreightPost::factory()->active()->create([
+        'pickup_date' => now()->addDays(25)->toDateString(),
+        'published_at' => now()->subDays(5),
+    ]);
+    $recent = FreightPost::factory()->active()->create([
+        'pickup_date' => now()->addDay()->toDateString(),
+        'published_at' => now()->subHour(),
+    ]);
+
+    $this->get('/freight?sort=latest')->assertOk()->assertInertia(fn ($page) => $page
+        ->component('discover/index')
+        ->where('freight.data.0.ulid', $recent->ulid)
+        ->where('freight.data.1.ulid', $old->ulid)
+        ->etc());
+});
