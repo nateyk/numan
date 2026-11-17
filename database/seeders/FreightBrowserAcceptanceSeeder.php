@@ -32,6 +32,14 @@ class FreightBrowserAcceptanceSeeder extends Seeder
         $consignor = $this->createUser('consignor-browser@numan.invalid', 'Browser Test Consignor', '+251900111222', $addis, false);
         $transporter = $this->createUser('transporter-browser@numan.invalid', 'Browser Test Transporter', '+251900333444', $adama, true);
 
+        // Multiple channels exercise both contact actions and de-duplication.
+        // These numbers belong only to disposable browser-test accounts.
+        $consignor->profile->update([
+            'phone_numbers' => ['+251900111222', '+251900222333', '+251900111222'],
+            'whatsapp' => '+251900444555',
+            'whatsapp_numbers' => ['+251900444555', '0911777888'],
+        ]);
+
         $common = [
             'user_id' => $consignor->id,
             'pickup_date' => now()->addDays(7)->toDateString(),
@@ -84,6 +92,9 @@ class FreightBrowserAcceptanceSeeder extends Seeder
             'consignor_email' => $consignor->email,
             'transporter_email' => $transporter->email,
             'consignor_phone' => $consignor->profile->phone,
+            'consignor_secondary_phone' => '+251900222333',
+            'consignor_whatsapp' => '+251900444555',
+            'consignor_secondary_whatsapp' => '0911777888',
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
     }
 
@@ -108,6 +119,7 @@ class FreightBrowserAcceptanceSeeder extends Seeder
         Profile::factory()->create([
             'user_id' => $user->id,
             'display_name' => $name,
+            'email' => $email,
             'phone' => $phone,
             'primary_location_id' => $base->id,
             'posts_freight' => ! $carrier,
