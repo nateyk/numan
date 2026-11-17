@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
+import { formatFreightDate, formatPostedDate } from '@/lib/freight-dates';
 import { freightRoute, routeLabel } from '@/lib/freight-route';
 import { type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -44,6 +45,8 @@ import {
     ArrowRight,
     Calendar,
     CheckCircle2,
+    CheckCheck,
+    LockKeyhole,
     ExternalLink,
     Eye,
     MapPin,
@@ -76,6 +79,9 @@ interface Freight {
     truckType?: { name: string } | null;
     truck_type?: { name: string } | null;
     pickup_date: string | null;
+    expires_on?: string | null;
+    created_at?: string | null;
+    arrived_at?: string | null;
     completion_score: number;
     interests_count?: number | null;
     hidden_at?: string | null;
@@ -104,6 +110,7 @@ const STATUSES = [
     { value: 'under_review', label: 'Under Review' },
     { value: 'active', label: 'Active' },
     { value: 'closed', label: 'Closed' },
+    { value: 'arrived', label: 'Arrived' },
     { value: 'expired', label: 'Expired' },
     { value: 'rejected', label: 'Rejected' },
 ];
@@ -118,12 +125,72 @@ const statusColor = (status: string) => {
         case 'rejected':
         case 'expired':
             return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
+        case 'arrived':
+            return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20';
         case 'closed':
             return 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/20';
         default:
             return 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/20';
     }
 };
+
+type LifecycleAction = 'close' | 'arrive';
+
+interface LifecycleTarget {
+    ulid: string;
+    label: string;
+    action: LifecycleAction;
+}
+
+function LifecycleMenuItems({
+    post,
+    onAction,
+}: {
+    post: Freight;
+    onAction: (target: LifecycleTarget) => void;
+}) {
+    const canClose = ['submitted', 'under_review', 'active'].includes(
+        post.status,
+    );
+    const canArrive = post.status === 'closed' && !post.arrived_at;
+
+    if (!canClose && !canArrive) return null;
+
+    return (
+        <>
+            {canClose && (
+                <DropdownMenuItem
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        onAction({
+                            ulid: post.ulid,
+                            label: routeLabel(post),
+                            action: 'close',
+                        });
+                    }}
+                >
+                    <LockKeyhole className="mr-2 size-4" />
+                    Close listing
+                </DropdownMenuItem>
+            )}
+            {canArrive && (
+                <DropdownMenuItem
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        onAction({
+                            ulid: post.ulid,
+                            label: routeLabel(post),
+                            action: 'arrive',
+                        });
+                    }}
+                >
+                    <CheckCheck className="mr-2 size-4" />
+                    Mark arrived
+                </DropdownMenuItem>
+            )}
+        </>
+    );
+}
 
 export default function FreightIndex({
     posts,
@@ -154,6 +221,9 @@ export default function FreightIndex({
         label: string;
     } | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [lifecycleTarget, setLifecycleTarget] =
+        useState<LifecycleTarget | null>(null);
+    const [processingLifecycle, setProcessingLifecycle] = useState(false);
     const { addToast } = useToast();
 
     const confirmDelete = () => {
@@ -171,6 +241,38 @@ export default function FreightIndex({
                 setDeleteTarget(null);
             },
         });
+    };
+
+    const confirmLifecycle = () => {
+        if (!lifecycleTarget || processingLifecycle) return;
+
+        setProcessingLifecycle(true);
+        router.post(
+            `/my-freight/${lifecycleTarget.ulid}/${lifecycleTarget.action}`,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () =>
+                    addToast(
+                        lifecycleTarget.action === 'close'
+                            ? 'Freight listing closed.'
+                            : 'Cargo marked as arrived.',
+                        'success',
+                    ),
+                onError: (errors) =>
+                    addToast(
+                        String(
+                            Object.values(errors)[0] ??
+                                'Could not update this freight post.',
+                        ),
+                        'error',
+                    ),
+                onFinish: () => {
+                    setProcessingLifecycle(false);
+                    setLifecycleTarget(null);
+                },
+            },
+        );
     };
 
     const allowPost = () => {
