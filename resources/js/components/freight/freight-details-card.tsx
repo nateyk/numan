@@ -306,7 +306,10 @@ export default function FreightDetailsCard({
                     </h2>
                     <dl className="divide-y divide-border/50">
                         {post.origin_site_note && (
-                            <Fact label="Pickup" value={post.origin_site_note} />
+                            <Fact
+                                label="Pickup"
+                                value={post.origin_site_note}
+                            />
                         )}
                         {post.destination_site_note && (
                             <Fact
