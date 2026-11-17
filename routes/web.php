@@ -58,6 +58,7 @@ use App\Http\Controllers\Freight\FreightInterestAcceptanceController;
 use App\Http\Controllers\Freight\FreightInterestController;
 use App\Http\Controllers\Freight\FreightInterestStatusController;
 use App\Http\Controllers\Freight\FreightPostController;
+use App\Http\Controllers\Freight\FreightPostLifecycleController;
 use App\Http\Controllers\Freight\FreightReviewController;
 use App\Http\Controllers\Freight\FreightRouteController;
 use App\Http\Controllers\Freight\FreightScheduleController;
@@ -421,6 +422,8 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     Route::post('/my-freight', [FreightPostController::class, 'store'])->name('freight.store');
     Route::get('/my-freight/{ulid}', [FreightPostController::class, 'show'])->name('freight.show');
     Route::delete('/my-freight/{ulid}', [FreightPostController::class, 'destroy'])->name('freight.destroy');
+    Route::post('/my-freight/{ulid}/close', [FreightPostLifecycleController::class, 'close'])->name('freight.close');
+    Route::post('/my-freight/{ulid}/arrive', [FreightPostLifecycleController::class, 'arrive'])->name('freight.arrive');
     Route::get('/my-freight/{ulid}/route', [FreightRouteController::class, 'show'])->name('freight.route.show');
     Route::put('/my-freight/{ulid}/route', [FreightRouteController::class, 'update'])->name('freight.route.update');
     Route::get('/my-freight/{ulid}/cargo', [FreightCargoController::class, 'show'])->name('freight.cargo.show');

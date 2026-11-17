@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
+import { pickupWindowEndsOn } from '@/lib/freight-dates';
 import { Head, useForm } from '@inertiajs/react';
 
 interface Props {
@@ -25,6 +26,11 @@ export default function FreightSchedule({ post }: Props) {
         schedule_type: post.schedule_type ?? 'one_time',
     });
 
+    const closesOn = pickupWindowEndsOn(
+        form.data.pickup_date,
+        form.data.pickup_date_flexibility_days,
+    );
+
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         form.put(`/my-freight/${post.ulid}/schedule`);
@@ -32,15 +38,18 @@ export default function FreightSchedule({ post }: Props) {
 
     return (
         <AppLayout>
-            <Head title="Post Details" />
+            <Head title="Freight pickup schedule" />
             <FreightWizardShell ulid={post.ulid} currentStep={2}>
                 <form onSubmit={submit}>
                     <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                         <div className="grid gap-0 md:grid-cols-2">
                             <div className="space-y-4 p-6">
                                 <div>
-                                    <Label>Pickup Date *</Label>
+                                    <Label htmlFor="freight-pickup-date">
+                                        Pickup date *
+                                    </Label>
                                     <Input
+                                        id="freight-pickup-date"
                                         type="date"
                                         value={form.data.pickup_date}
                                         onChange={(e) =>
@@ -58,8 +67,11 @@ export default function FreightSchedule({ post }: Props) {
                                     )}
                                 </div>
                                 <div>
-                                    <Label>Pickup Time</Label>
+                                    <Label htmlFor="freight-pickup-time">
+                                        Pickup time
+                                    </Label>
                                     <Input
+                                        id="freight-pickup-time"
                                         type="time"
                                         value={form.data.pickup_time}
                                         onChange={(e) =>
@@ -72,8 +84,11 @@ export default function FreightSchedule({ post }: Props) {
                                     />
                                 </div>
                                 <div>
-                                    <Label>Flexibility (± days)</Label>
+                                    <Label htmlFor="freight-flex-days">
+                                        Extra pickup days
+                                    </Label>
                                     <Input
+                                        id="freight-flex-days"
                                         type="number"
                                         value={
                                             form.data
@@ -89,10 +104,27 @@ export default function FreightSchedule({ post }: Props) {
                                         max={30}
                                         className="mt-1 w-32"
                                     />
+                                    {form.errors
+                                        .pickup_date_flexibility_days && (
+                                        <p className="text-xs text-destructive">
+                                            {
+                                                form.errors
+                                                    .pickup_date_flexibility_days
+                                            }
+                                        </p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                        Extends the pickup window after the
+                                        selected date.
+                                    </p>
+                                    <p className="text-sm font-medium">
+                                        Listing closes:{' '}
+                                        {closesOn ?? 'Choose a pickup date'}
+                                    </p>
                                 </div>
                             </div>
                             <div className="border-t p-6 md:border-t-0 md:border-l">
-                                <Label>Schedule Type</Label>
+                                <Label>Offer type</Label>
                                 <div className="mt-2 grid gap-3">
                                     {[
                                         {

@@ -21,7 +21,7 @@ class FreightReviewController extends Controller
     public function show(Request $request, string $ulid): Response
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
-        Gate::authorize('view', $post);
+        Gate::authorize('viewWizard', $post);
 
         $post->load(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
@@ -69,6 +69,10 @@ class FreightReviewController extends Controller
 
             if (empty($post->pickup_date)) {
                 return back()->withErrors(['pickup_date' => 'Select a pickup date.']);
+            }
+
+            if ($post->pickup_date->startOfDay()->isBefore(today())) {
+                return back()->withErrors(['pickup_date' => 'The pickup date has passed. Update the schedule before submitting.']);
             }
 
             if ($completion->score($post) < 60) {

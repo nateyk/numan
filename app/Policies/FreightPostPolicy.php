@@ -25,7 +25,17 @@ class FreightPostPolicy
             return true;
         }
 
-        return $post->status === FreightPostStatus::Active->value;
+        return $post->status === FreightPostStatus::Active->value
+            && ! $post->isPastPickupWindow();
+    }
+
+    /**
+     * Management wizard pages may be read by their owner at any stage,
+     * including when a paid-plan listing is hidden. Editing remains draft-only.
+     */
+    public function viewWizard(User $user, FreightPost $post): bool
+    {
+        return $user->id === $post->user_id || (bool) $user->is_superadmin;
     }
 
     public function create(User $user): bool
@@ -75,6 +85,23 @@ class FreightPostPolicy
         return (bool) $user->is_superadmin;
     }
 
+    public function close(User $user, FreightPost $post): bool
+    {
+        return $user->id === $post->user_id
+            && in_array($post->status, [
+                FreightPostStatus::Submitted->value,
+                FreightPostStatus::UnderReview->value,
+                FreightPostStatus::Active->value,
+                FreightPostStatus::Closed->value,
+            ], true);
+    }
+
+    public function markArrived(User $user, FreightPost $post): bool
+    {
+        return $user->id === $post->user_id
+            && $post->status === FreightPostStatus::Closed->value;
+    }
+
     public function delete(User $user, FreightPost $post): bool
     {
         if ((bool) $user->is_superadmin) {
@@ -82,6 +109,12 @@ class FreightPostPolicy
         }
 
         if ($user->id !== $post->user_id) {
+            return false;
+        }
+
+        // Preserve interested transporters, chosen connections and delivery
+        // history even after the listing has closed.
+        if ($post->arrived_at !== null || $post->interests()->exists()) {
             return false;
         }
 

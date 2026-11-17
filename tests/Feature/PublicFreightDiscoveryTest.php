@@ -56,10 +56,10 @@ it('is accessible via discover route as well', function () {
  * sequence that is not the distance ordering.
  */
 it('sorts near to far by real distance, with unrouted posts last', function () {
-    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-01']);
-    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-05']);
-    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-10']);
-    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-15']);
+    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(1)->toDateString()]);
+    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(5)->toDateString()]);
+    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(10)->toDateString()]);
+    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(15)->toDateString()]);
 
     FreightPostRoute::create(['freight_post_id' => $far->id, 'distance_meters' => 500000, 'duration_seconds' => 6000]);
     FreightPostRoute::create(['freight_post_id' => $mid->id, 'distance_meters' => 300000, 'duration_seconds' => 4000]);
@@ -77,10 +77,10 @@ it('sorts near to far by real distance, with unrouted posts last', function () {
 });
 
 it('sorts far to near by real distance, with unrouted posts last', function () {
-    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-01']);
-    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-05']);
-    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-10']);
-    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-15']);
+    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(1)->toDateString()]);
+    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(5)->toDateString()]);
+    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(10)->toDateString()]);
+    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(15)->toDateString()]);
 
     FreightPostRoute::create(['freight_post_id' => $far->id, 'distance_meters' => 500000, 'duration_seconds' => 6000]);
     FreightPostRoute::create(['freight_post_id' => $mid->id, 'distance_meters' => 300000, 'duration_seconds' => 4000]);

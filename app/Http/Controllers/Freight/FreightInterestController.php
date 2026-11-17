@@ -121,7 +121,7 @@ class FreightInterestController extends Controller
             ]);
         }
 
-        if ($post->status !== FreightPostStatus::Active->value) {
+        if ($post->status !== FreightPostStatus::Active->value || $post->isPastPickupWindow()) {
             return back()->withErrors(['interest' => 'This freight is not active (status: '.$post->status.'). You can only express interest on active freights.']);
         }
 
@@ -144,7 +144,7 @@ class FreightInterestController extends Controller
 
             $lockedPost = FreightPost::whereKey($post->id)->lockForUpdate()->firstOrFail();
 
-            if ($lockedPost->status !== FreightPostStatus::Active->value || $lockedPost->isHidden()) {
+            if ($lockedPost->status !== FreightPostStatus::Active->value || $lockedPost->isHidden() || $lockedPost->isPastPickupWindow()) {
                 return ['error' => 'This freight is no longer accepting interests.'];
             }
 
