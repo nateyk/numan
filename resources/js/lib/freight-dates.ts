@@ -42,3 +42,44 @@ export function pickupWindowEndsOn(
         year: 'numeric',
     });
 }
+
+type FreightLifecycleDates = {
+    status: string;
+    created_at?: string | null;
+    published_at?: string | null;
+    expires_on?: string | null;
+    closed_at?: string | null;
+    arrived_at?: string | null;
+    closure_reason?: string | null;
+};
+
+/** Draft creation must never be presented as the approval/publication date. */
+export function freightPublicationLabel(post: FreightLifecycleDates): string {
+    return post.published_at
+        ? `Posted ${formatPostedDate(post.published_at)}`
+        : `Created ${formatPostedDate(post.created_at)}`;
+}
+
+/** A closed or delivered load no longer has an upcoming listing expiry. */
+export function freightLifecycleLabel(post: FreightLifecycleDates): string {
+    if (post.arrived_at) {
+        return `Arrived ${formatPostedDate(post.arrived_at)}`;
+    }
+
+    if (post.status === 'closed') {
+        const label =
+            post.closure_reason === 'cancelled' ? 'Cancelled' : 'Closed';
+        const day = formatPostedDate(post.closed_at);
+        return day === '—' ? label : `${label} ${day}`;
+    }
+
+    if (post.status === 'expired') {
+        return `Expired ${formatFreightDate(post.expires_on)}`;
+    }
+
+    if (post.status === 'active') {
+        return `Expires ${formatFreightDate(post.expires_on)}`;
+    }
+
+    return `Pickup window ends ${formatFreightDate(post.expires_on)}`;
+}
