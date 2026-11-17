@@ -134,6 +134,8 @@ def check_page(browser, spec, fixtures):
             expect(page.get_by_role("link", name=re.compile("View my freight", re.I)).first).to_be_visible()
             expect(page.locator('a[href="/my-freight?status=active"]')).to_contain_text("2")
             expect(page.locator('a[href="/my-freight?status=draft"]')).to_contain_text("0")
+            expect(page.get_by_text("available now", exact=False).first).to_be_visible()
+            expect(page.get_by_text("Recent freight", exact=True)).to_be_visible()
             expect(page.locator('a[href="/usage"]')).to_have_count(0)
         elif path == "/usage":
             expect(page).to_have_url(re.compile(r"/dashboard$"))
