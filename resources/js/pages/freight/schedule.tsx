@@ -45,7 +45,9 @@ export default function FreightSchedule({ post }: Props) {
                         <div className="grid gap-0 md:grid-cols-2">
                             <div className="space-y-4 p-6">
                                 <div>
-                                    <Label htmlFor="freight-pickup-date">Pickup date *</Label>
+                                    <Label htmlFor="freight-pickup-date">
+                                        Pickup date *
+                                    </Label>
                                     <Input
                                         id="freight-pickup-date"
                                         type="date"
@@ -65,7 +67,9 @@ export default function FreightSchedule({ post }: Props) {
                                     )}
                                 </div>
                                 <div>
-                                    <Label htmlFor="freight-pickup-time">Pickup time</Label>
+                                    <Label htmlFor="freight-pickup-time">
+                                        Pickup time
+                                    </Label>
                                     <Input
                                         id="freight-pickup-time"
                                         type="time"
@@ -100,16 +104,22 @@ export default function FreightSchedule({ post }: Props) {
                                         max={30}
                                         className="mt-1 w-32"
                                     />
-                                    {form.errors.pickup_date_flexibility_days && (
+                                    {form.errors
+                                        .pickup_date_flexibility_days && (
                                         <p className="text-xs text-destructive">
-                                            {form.errors.pickup_date_flexibility_days}
+                                            {
+                                                form.errors
+                                                    .pickup_date_flexibility_days
+                                            }
                                         </p>
                                     )}
                                     <p className="text-xs text-muted-foreground">
-                                        Extends the pickup window after the selected date.
+                                        Extends the pickup window after the
+                                        selected date.
                                     </p>
                                     <p className="text-sm font-medium">
-                                        Listing closes: {closesOn ?? 'Choose a pickup date'}
+                                        Listing closes:{' '}
+                                        {closesOn ?? 'Choose a pickup date'}
                                     </p>
                                 </div>
                             </div>
