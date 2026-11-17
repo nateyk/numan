@@ -1057,7 +1057,7 @@ export default function FreightIndex({
                                     >
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="z-[2100]">
                                         <SelectItem value="matched">
                                             Transport arranged
                                         </SelectItem>
