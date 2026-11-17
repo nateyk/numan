@@ -26,7 +26,7 @@ export function LandingHero() {
                         )}
                     </div>
 
-                    <h1 className="max-w-2xl text-4xl leading-[1.08] font-bold tracking-tight text-[#0F294A] sm:text-5xl lg:text-6xl dark:text-slate-50">
+                    <h1 className="max-w-2xl text-4xl leading-[1.08] font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
                         {t(
                             'brand.home.hero.title',
                             'A clearer way to move freight.',
@@ -59,14 +59,14 @@ export function LandingHero() {
                     </div>
 
                     <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
-                        <span className="inline-flex items-center gap-2 dark:text-muted-foreground">
+                        <span className="inline-flex items-center gap-2">
                             <Package className="size-4 text-brand-sky-strong dark:text-brand-sky" />
                             {t(
                                 'brand.home.hero.point.loads',
                                 'Loads with clear routes and cargo details',
                             )}
                         </span>
-                        <span className="inline-flex items-center gap-2 dark:text-muted-foreground">
+                        <span className="inline-flex items-center gap-2">
                             <Truck className="size-4 text-brand-sky-strong dark:text-brand-sky" />
                             {t(
                                 'brand.home.hero.point.carriers',
@@ -107,7 +107,7 @@ export function LandingHero() {
                                     <MapPin className="size-5" />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                         {t(
                                             'brand.home.hero.origin_label',
                                             'Origin',
@@ -127,7 +127,7 @@ export function LandingHero() {
                                     <MapPin className="size-5" />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                         {t(
                                             'brand.home.hero.destination_label',
                                             'Destination',
