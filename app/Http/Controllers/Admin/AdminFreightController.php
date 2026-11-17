@@ -118,30 +118,45 @@ class AdminFreightController extends Controller
     {
         Gate::authorize('moderate', FreightPost::class);
 
-        $post = FreightPost::where('ulid', $ulid)->firstOrFail();
-
         $validated = $request->validate([
             'to_status' => ['required', Rule::in(FreightPostStatus::values())],
             'reason' => ['nullable', 'string', 'max:1000', Rule::requiredIf(fn () => $request->input('to_status') === FreightPostStatus::Rejected->value)],
         ]);
 
-        $from = FreightPostStatus::tryFrom($post->status);
-        $to = FreightPostStatus::tryFrom($validated['to_status']);
+        // The consignor may close a submitted listing while moderation runs.
+        // Lock and recheck its status to avoid publishing a withdrawn load.
+        $result = DB::transaction(function () use ($ulid, $validated, $request): array {
+            $post = FreightPost::where('ulid', $ulid)->lockForUpdate()->firstOrFail();
+            $from = FreightPostStatus::tryFrom($post->status);
+            $to = FreightPostStatus::tryFrom($validated['to_status']);
 
-        if (! $from || ! $to || ! $from->canTransitionTo($to)) {
-            return back()->withErrors(['to_status' => 'Invalid status transition.']);
-        }
+            if (! $from || ! $to || ! $from->canTransitionTo($to)) {
+                return ['error' => 'Invalid status transition.'];
+            }
 
-        DB::transaction(function () use ($post, $from, $to, $validated, $request): void {
+            if ($to === FreightPostStatus::Active && (
+                ! $post->pickup_date || $post->pickup_date->startOfDay()->isBefore(today())
+            )) {
+                return ['error' => 'This pickup date has passed. Ask the consignor to create a listing with a current pickup date.'];
+            }
+
             $post->update(['status' => $to->value]);
-
             $post->moderationLogs()->create([
                 'from_status' => $from->value,
                 'to_status' => $to->value,
                 'reason' => $validated['reason'] ?? null,
                 'moderator_id' => $request->user()->id,
             ]);
+
+            return ['post' => $post, 'to' => $to];
         });
+
+        if (isset($result['error'])) {
+            return back()->withErrors(['to_status' => $result['error']]);
+        }
+
+        $post = $result['post'];
+        $to = $result['to'];
 
         $action = match ($to->value) {
             FreightPostStatus::Active->value => 'approved',
