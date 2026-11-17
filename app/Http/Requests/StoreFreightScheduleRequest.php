@@ -18,7 +18,7 @@ class StoreFreightScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pickup_date' => ['nullable', 'date', 'after:today'],
+            'pickup_date' => ['required', 'date', 'after_or_equal:today'],
             'pickup_time' => ['nullable', 'date_format:H:i'],
             'pickup_date_flexibility_days' => ['nullable', 'integer', 'between:0,30'],
             'schedule_type' => ['nullable', Rule::in(['one_time', 'recurring'])],
