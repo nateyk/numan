@@ -17,6 +17,12 @@ interface Props {
         last_updated: string | null;
     };
     webhook_url: string;
+    webhook_status: {
+        last_received_at: string | null;
+        last_processed_at: string | null;
+        pending_count: number;
+        failed_count: number;
+    };
 }
 
 const sourceLabel: Record<KeySource, string> = {
@@ -25,7 +31,11 @@ const sourceLabel: Record<KeySource, string> = {
     missing: 'Not configured',
 };
 
-export default function AdminChapaSettings({ settings, webhook_url }: Props) {
+export default function AdminChapaSettings({
+    settings,
+    webhook_url,
+    webhook_status,
+}: Props) {
     const form = useForm({
         mode: settings.mode,
         public_key: '',
@@ -194,6 +204,54 @@ export default function AdminChapaSettings({ settings, webhook_url }: Props) {
                                     payment verification.
                                 </p>
                             </div>
+                            <div className="grid gap-3 border-t pt-4 text-sm sm:grid-cols-2">
+                                <div>
+                                    <p className="text-muted-foreground">
+                                        Last received
+                                    </p>
+                                    <p>
+                                        {webhook_status.last_received_at
+                                            ? new Date(
+                                                  webhook_status.last_received_at,
+                                              ).toLocaleString()
+                                            : 'No signed events recorded'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">
+                                        Last processed
+                                    </p>
+                                    <p>
+                                        {webhook_status.last_processed_at
+                                            ? new Date(
+                                                  webhook_status.last_processed_at,
+                                              ).toLocaleString()
+                                            : 'No processed events'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">
+                                        Pending events
+                                    </p>
+                                    <p className="font-medium">
+                                        {webhook_status.pending_count}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">
+                                        Failed events
+                                    </p>
+                                    <p className="font-medium">
+                                        {webhook_status.failed_count}
+                                    </p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                These counts reflect locally recorded signed
+                                events, not Chapa delivery guarantees. Check
+                                payment reconciliation before acting on
+                                failures.
+                            </p>
                         </CardContent>
                     </Card>
 

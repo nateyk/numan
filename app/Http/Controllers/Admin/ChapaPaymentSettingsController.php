@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ChapaPaymentSetting;
+use App\Models\ChapaWebhookEvent;
 use App\Services\ChapaConfiguration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,15 @@ class ChapaPaymentSettingsController extends Controller
                 'last_updated' => $stored?->updated_at?->toISOString(),
             ],
             'webhook_url' => route('webhooks.chapa'),
+            // Only operational metadata is exposed; never send signed payloads,
+            // transaction references, signatures or payer details to Inertia.
+            'webhook_status' => [
+                'last_received_at' => ChapaWebhookEvent::query()->latest('id')->value('created_at'),
+                'last_processed_at' => ChapaWebhookEvent::query()
+                    ->where('status', 'processed')->latest('id')->value('processed_at'),
+                'pending_count' => ChapaWebhookEvent::query()->where('status', 'pending')->count(),
+                'failed_count' => ChapaWebhookEvent::query()->where('status', 'failed')->count(),
+            ],
         ]);
     }
 
