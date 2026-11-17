@@ -26,7 +26,7 @@ def sign_in(page, email):
     page.locator("#email").fill(email)
     page.locator("#password").fill(PASSWORD)
     page.locator('[data-test="login-button"]').click()
-    page.wait_for_url(lambda url: "/login" not in url.path, timeout=20000)
+    page.wait_for_url(lambda url: "/login" not in str(url), timeout=20000)
 
 
 def owner_row(page, ulid):
