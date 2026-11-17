@@ -293,10 +293,10 @@ export default function FreightDetailsCard({
             </div>
 
             <CollapsibleRouteMap
-                fromLat={post.origin?.latitude ?? null}
-                fromLng={post.origin?.longitude ?? null}
-                toLat={post.destination?.latitude ?? null}
-                toLng={post.destination?.longitude ?? null}
+                fromLat={latitudeOf(post.origin)}
+                fromLng={longitudeOf(post.origin)}
+                toLat={latitudeOf(post.destination)}
+                toLng={longitudeOf(post.destination)}
                 fromName={post.origin?.name}
                 toName={post.destination?.name}
                 routeSnapshot={post.route_snapshot}
