@@ -84,6 +84,7 @@ export function AdminSidebarGroup({
         <div className="mb-2">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
+                aria-expanded={isExpanded}
                 className={cn(
                     'flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isGroupActive
