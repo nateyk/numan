@@ -7,9 +7,11 @@ import { cn } from '@/lib/utils';
 export default function BrandLockup({
     className,
     iconOnly = false,
+    wordmarkClassName,
 }: {
     className?: string;
     iconOnly?: boolean;
+    wordmarkClassName?: string;
 }) {
     return (
         <span className={cn('inline-flex min-w-0 items-center gap-2', className)}>
@@ -22,7 +24,12 @@ export default function BrandLockup({
                 />
             </span>
             {!iconOnly && (
-                <span className="block h-6 w-[132px] shrink-0">
+                <span
+                    className={cn(
+                        'block h-6 w-[132px] shrink-0',
+                        wordmarkClassName,
+                    )}
+                >
                     <img
                         src="/brand/numanfreight-wordmark.svg"
                         alt=""
