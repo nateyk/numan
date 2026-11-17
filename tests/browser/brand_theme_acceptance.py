@@ -129,7 +129,15 @@ def check_page(browser, spec, fixtures):
             expect(page.locator('img[src="/brand/numanfreight-wordmark-white.svg"]')).to_be_visible()
         elif path == "/dashboard":
             expect(page.get_by_role("heading", name=re.compile("Welcome back")).first).to_be_visible()
+            expect(page.get_by_role("heading", name="Freight overview")).to_be_visible()
+            expect(page.get_by_role("heading", name="Recent freight")).to_be_visible()
             expect(page.get_by_role("link", name=re.compile("View my freight", re.I)).first).to_be_visible()
+            expect(page.locator('a[href="/my-freight?status=active"]')).to_contain_text("2")
+            expect(page.locator('a[href="/my-freight?status=draft"]')).to_contain_text("0")
+            expect(page.locator('a[href="/usage"]')).to_have_count(0)
+        elif path == "/usage":
+            expect(page).to_have_url(re.compile(r"/dashboard$"))
+            expect(page.get_by_role("heading", name="Freight overview")).to_be_visible()
         elif path == "/admin/dashboard":
             expect(page.get_by_role("heading", name="System Overview")).to_be_visible()
             if mobile:
@@ -172,6 +180,7 @@ def main():
         ("freight-detail-dark-mobile", "/freight/{contact_ulid}", None, "dark", 390, 844),
         ("dashboard-light-desktop", "/dashboard", "consignor_email", "light", 1280, 800),
         ("dashboard-dark-mobile", "/dashboard", "consignor_email", "dark", 390, 844),
+        ("usage-redirect-mobile", "/usage", "consignor_email", "light", 390, 844),
         ("admin-light-desktop", "/admin/dashboard", "admin_email", "light", 1280, 800),
         ("admin-dark-mobile", "/admin/dashboard", "admin_email", "dark", 390, 844),
     ]
