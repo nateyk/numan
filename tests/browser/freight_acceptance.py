@@ -154,6 +154,32 @@ def transporter_contact_privacy(browser, fixtures):
         guest_page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
         assert_public_brand(guest_page)
         expect(guest_page.get_by_text("Consignor Poster")).to_be_visible()
+        expect(guest_page.get_by_role("heading", name="Route & pickup")).to_be_visible()
+        expect(guest_page.get_by_role("heading", name="Cargo & truck")).to_be_visible()
+        expect(
+            guest_page.get_by_text(re.compile(r"400(?:\.0+)? quintal"))
+        ).to_have_count(1)
+        expect(guest_page.get_by_text("Tariff weight", exact=True)).to_have_count(0)
+        expect(guest_page.get_by_text("Warehouse loading entrance")).to_be_visible()
+        expect(guest_page.get_by_text("Receiver gate")).to_be_visible()
+
+        map_button = guest_page.get_by_role("button", name="Show route map")
+        expect(map_button).to_be_visible()
+        expect(guest_page.get_by_role("region", name="Expanded freight route map")).to_have_count(0)
+        map_button.click()
+        map_region = guest_page.get_by_role("region", name="Expanded freight route map")
+        expect(map_region).to_be_visible()
+        expect(map_region.locator(".leaflet-container")).to_be_visible(timeout=20000)
+        assert map_region.evaluate(
+            "(node) => node.closest('section[aria-label]')?.getAttribute('aria-label') === 'Freight details'"
+        ), "Route map must expand within the freight details page"
+        expect(guest_page.get_by_role("dialog")).to_have_count(0)
+        assert guest_page.evaluate(
+            "document.documentElement.scrollWidth <= window.innerWidth + 2"
+        ), "Expanded route map introduces horizontal overflow"
+        guest_page.screenshot(path=str(EVIDENCE / "mobile-route-map-inline.png"), full_page=True)
+        guest_page.get_by_role("button", name="Hide route map").click()
+        expect(guest_page.get_by_role("region", name="Expanded freight route map")).to_have_count(0)
         assert fixtures["consignor_phone"] not in guest_page.content()
         assert fixtures["consignor_secondary_phone"] not in guest_page.content()
         assert fixtures["consignor_whatsapp"] not in guest_page.content()
