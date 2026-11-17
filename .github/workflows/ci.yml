@@ -102,10 +102,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
-      - name: Show CSS formatter diff (temporary diagnostic)
+      - name: Show formatter diffs (temporary diagnostic)
         run: |
-          pnpm exec prettier resources/css/app.css > /tmp/numan-app-formatted.css
-          diff -u resources/css/app.css /tmp/numan-app-formatted.css || true
+          for file in resources/css/app.css resources/js/layouts/admin-layout.tsx resources/js/pages/admin/dashboard.tsx; do
+            pnpm exec prettier "$file" > /tmp/numan-formatted.tmp
+            diff -u "$file" /tmp/numan-formatted.tmp || true
+          done
       - run: pnpm run format:check
       # Lint maintained repository files; exclude bundled tools and disabled workspace UI via eslint.config.js.
       - run: pnpm exec eslint .
