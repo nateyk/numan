@@ -79,6 +79,7 @@ use App\Http\Controllers\Marketplace\ManualPaymentController;
 use App\Http\Controllers\MemberActivityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
+use App\Http\Controllers\PersonalDashboardController;
 use App\Http\Controllers\PhoneNumberController;
 use App\Http\Controllers\ProfileDocumentController;
 use App\Http\Controllers\ProfileSetupController;
@@ -227,25 +228,7 @@ Route::middleware(['auth', 'workspace'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip', 'workspace.suspended'])->group(function () {
-    Route::get('dashboard', function () {
-        $user = request()->user();
-
-        if (config('features.workspace.ui') && $user->isIndividual()) {
-            return redirect()->route('freight.discovery');
-        }
-
-        $workspace = $user->currentWorkspace;
-
-        return Inertia::render('dashboard', [
-            'workspace' => [
-                'id' => $workspace->id,
-                'name' => $workspace->name,
-                'slug' => $workspace->slug,
-                'plan' => $workspace->plan_name,
-                'members_count' => $workspace->users()->count(),
-            ],
-        ]);
-    })->name('dashboard');
+    Route::get('dashboard', [PersonalDashboardController::class, 'index'])->name('dashboard');
 
     // Workspace routes
     Route::prefix('workspaces')->name('workspaces.')->group(function () {
