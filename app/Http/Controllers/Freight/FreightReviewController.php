@@ -71,6 +71,10 @@ class FreightReviewController extends Controller
                 return back()->withErrors(['pickup_date' => 'Select a pickup date.']);
             }
 
+            if ($post->pickup_date->startOfDay()->isBefore(today())) {
+                return back()->withErrors(['pickup_date' => 'The pickup date has passed. Update the schedule before submitting.']);
+            }
+
             if ($completion->score($post) < 60) {
                 return back()->withErrors(['confirm' => 'Please complete the freight details before submitting.']);
             }
