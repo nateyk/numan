@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PlanLimitService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,8 +17,14 @@ class UsageController extends Controller
     /**
      * Display the usage dashboard.
      */
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
+        // Workspace quotas are not relevant to Numan's single-profile mode.
+        // Preserve the legacy page for any future workspace-specific experience.
+        if (! config('features.workspace.ui')) {
+            return redirect()->route('dashboard');
+        }
+
         $user = $request->user();
         $workspace = $user->currentWorkspace;
         $limits = $this->planLimitService->getLimits($workspace->plan_name);

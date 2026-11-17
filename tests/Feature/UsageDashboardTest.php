@@ -8,6 +8,8 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    // These assertions exercise the dormant legacy workspace usage page.
+    config()->set('features.workspace.ui', true);
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create([
         'owner_id' => $this->user->id,

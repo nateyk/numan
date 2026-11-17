@@ -18,7 +18,6 @@ import { useTranslations } from '@/hooks/use-translations';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
-    BarChart3,
     BookOpen,
     Heart,
     LayoutGrid,
@@ -71,11 +70,6 @@ const getMainNavItems = (
                   },
               ]
             : []),
-        {
-            title: t('navigation.usage', 'Usage'),
-            href: '/usage',
-            icon: BarChart3,
-        },
         ...(!workspaceUiEnabled || isIndividual
             ? []
             : [
