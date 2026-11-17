@@ -12,6 +12,8 @@ interface Connection {
         ulid: string;
         cargo_description: string | null;
         status: string;
+        arrived_at?: string | null;
+        closed_at?: string | null;
         origin: string | null;
         destination: string | null;
     } | null;
@@ -94,7 +96,17 @@ export default function ConnectionShow({
                         {connection.transporter?.display_name ?? '—'}
                     </div>
                     <div>
-                        <span className="text-muted-foreground">Outcome:</span>{' '}
+                        <span className="text-muted-foreground">
+                            Freight:
+                        </span>{' '}
+                        {connection.freight_post?.arrived_at
+                            ? 'Arrived'
+                            : 'Listing closed — awaiting delivery confirmation'}
+                    </div>
+                    <div>
+                        <span className="text-muted-foreground">
+                            Connection outcome:
+                        </span>{' '}
                         {connection.outcome?.outcome ?? 'pending'}
                     </div>
                 </div>
