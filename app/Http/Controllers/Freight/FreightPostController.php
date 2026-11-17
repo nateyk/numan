@@ -187,7 +187,7 @@ class FreightPostController extends Controller
             // The owner clicking delete on a live post is a wrong-status
             // problem, not an intruder: explain it instead of a bare 403.
             if ($request->user()->id === $post->user_id) {
-                return back()->withErrors(['freight' => 'Only drafts and finished posts can be deleted. Close or wait out a live post instead.']);
+                return back()->withErrors(['freight' => 'Only drafts and finished posts without interests or delivery records can be deleted. Close the listing to stop enquiries without losing its history.']);
             }
 
             throw new AuthorizationException('You are not allowed to delete this freight post.');
