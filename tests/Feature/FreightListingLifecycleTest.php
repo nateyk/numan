@@ -136,6 +136,12 @@ it('keeps freight creation wizard pages private to the draft editor', function (
 
     $this->actingAs($owner)
         ->get("/my-freight/{$post->ulid}/schedule")
+        ->assertOk();
+
+    $this->actingAs($owner)
+        ->put("/my-freight/{$post->ulid}/schedule", [
+            'pickup_date' => now()->addDays(10)->toDateString(),
+        ])
         ->assertForbidden();
 });
 
