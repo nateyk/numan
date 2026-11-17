@@ -142,7 +142,12 @@ function GrowthBadge({
     );
 }
 
-const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'];
+const COLORS = [
+    'var(--chart-1)',
+    'var(--chart-2)',
+    'var(--chart-3)',
+    'var(--chart-4)',
+];
 
 export default function AdminDashboard({
     metrics,
@@ -405,7 +410,8 @@ export default function AdminDashboard({
                                         />
                                         <Tooltip
                                             contentStyle={{
-                                                backgroundColor: 'var(--popover)',
+                                                backgroundColor:
+                                                    'var(--popover)',
                                                 borderColor: 'var(--border)',
                                                 borderRadius: '4px',
                                                 border: '1px solid var(--border)',
@@ -482,7 +488,8 @@ export default function AdminDashboard({
                                         </Pie>
                                         <Tooltip
                                             contentStyle={{
-                                                backgroundColor: 'var(--popover)',
+                                                backgroundColor:
+                                                    'var(--popover)',
                                                 borderColor: 'var(--border)',
                                                 borderRadius: '4px',
                                                 border: '1px solid var(--border)',
