@@ -556,7 +556,9 @@ export default function FreightIndex({
                                                             •{' '}
                                                             {p.ulid.slice(0, 8)}
                                                             {' · '}
-                                                            {freightPublicationLabel(p)}
+                                                            {freightPublicationLabel(
+                                                                p,
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -586,7 +588,9 @@ export default function FreightIndex({
                                                             )}
                                                         </div>
                                                         <div className="text-xs text-muted-foreground">
-                                                            {freightLifecycleLabel(p)}
+                                                            {freightLifecycleLabel(
+                                                                p,
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -820,9 +824,13 @@ export default function FreightIndex({
                                         >
                                             {p.arrived_at
                                                 ? 'Arrived'
-                                                : p.closure_reason === 'cancelled'
+                                                : p.closure_reason ===
+                                                    'cancelled'
                                                   ? 'Cancelled'
-                                                  : p.status.replaceAll('_', ' ')}
+                                                  : p.status.replaceAll(
+                                                        '_',
+                                                        ' ',
+                                                    )}
                                         </Badge>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -1060,7 +1068,8 @@ export default function FreightIndex({
                                 </Select>
                                 {closureReason === 'cancelled' && (
                                     <p className="text-xs text-muted-foreground">
-                                        A cancelled freight cannot be marked as arrived.
+                                        A cancelled freight cannot be marked as
+                                        arrived.
                                     </p>
                                 )}
                             </div>
