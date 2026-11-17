@@ -618,10 +618,13 @@ function MobileAdminDrawer({
                 onClick={onClose}
             />
             {/* Drawer */}
-            <div className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar lg:hidden">
+            <div role="dialog"
+                aria-label="Admin navigation"
+                aria-modal="true"
+                className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar lg:hidden">
                 <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
                     <div className="flex items-center gap-2">
-                        <div className="flex size-7 items-center justify-center rounded-md bg-red-600 text-xs font-bold text-white">
+                        <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
                             A
                         </div>
                         <span className="text-sm font-semibold text-sidebar-foreground">
@@ -630,6 +633,7 @@ function MobileAdminDrawer({
                     </div>
                     <button
                         onClick={onClose}
+                        aria-label="Close admin menu"
                         className="rounded p-1 hover:bg-sidebar-accent"
                     >
                         <X className="size-5 text-sidebar-foreground" />
@@ -730,7 +734,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                 {/* Desktop Sidebar */}
                 <aside className="hidden w-64 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
                     <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-6">
-                        <div className="flex size-7 items-center justify-center rounded-md bg-red-600 text-xs font-bold text-white">
+                        <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
                             A
                         </div>
                         <span className="text-sm font-semibold">
@@ -782,11 +786,13 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                     <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden">
                         <button
                             onClick={() => setMobileDrawerOpen(true)}
+                            aria-label="Open admin menu"
+                            aria-expanded={mobileDrawerOpen}
                             className="rounded-md p-2 hover:bg-accent"
                         >
                             <Menu className="size-5" />
                         </button>
-                        <div className="flex size-7 items-center justify-center rounded-md bg-red-600 text-xs font-bold text-white">
+                        <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
                             A
                         </div>
                         <span className="text-sm font-semibold">
