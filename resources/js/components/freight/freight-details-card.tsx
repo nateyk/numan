@@ -214,11 +214,12 @@ export default function FreightDetailsCard({
                                 value={`+${pickupWindow} days`}
                             />
                         )}
-                        {offerType && (
-                            <Fact label="Offer" value={offerType} />
-                        )}
+                        {offerType && <Fact label="Offer" value={offerType} />}
                         {routeEstimate && (
-                            <Fact label="Distance / time" value={routeEstimate} />
+                            <Fact
+                                label="Distance / time"
+                                value={routeEstimate}
+                            />
                         )}
                         <div className="col-span-2">
                             <Fact
@@ -248,14 +249,17 @@ export default function FreightDetailsCard({
                             {post.item_name ?? 'Cargo not specified'}
                         </p>
                         {itemDescription && (
-                            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line break-words">
+                            <p className="text-sm leading-relaxed break-words whitespace-pre-line text-muted-foreground">
                                 {itemDescription}
                             </p>
                         )}
                     </div>
                     <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
                         {post.cargo_type && (
-                            <Fact label="Cargo type" value={post.cargo_type.name} />
+                            <Fact
+                                label="Cargo type"
+                                value={post.cargo_type.name}
+                            />
                         )}
                         {actualWeight && (
                             <Fact label="Weight" value={actualWeight} />
@@ -267,7 +271,9 @@ export default function FreightDetailsCard({
                             <Fact
                                 label="Tariff rate"
                                 value={
-                                    <span className="tabular-nums">{tariff}</span>
+                                    <span className="tabular-nums">
+                                        {tariff}
+                                    </span>
                                 }
                             />
                         )}
@@ -323,7 +329,7 @@ export default function FreightDetailsCard({
                                 <dt className="text-xs text-muted-foreground">
                                     Pickup
                                 </dt>
-                                <dd className="text-sm leading-relaxed whitespace-pre-line break-words">
+                                <dd className="text-sm leading-relaxed break-words whitespace-pre-line">
                                     {post.origin_site_note}
                                 </dd>
                             </div>
@@ -333,7 +339,7 @@ export default function FreightDetailsCard({
                                 <dt className="text-xs text-muted-foreground">
                                     Delivery
                                 </dt>
-                                <dd className="text-sm leading-relaxed whitespace-pre-line break-words">
+                                <dd className="text-sm leading-relaxed break-words whitespace-pre-line">
                                     {post.destination_site_note}
                                 </dd>
                             </div>
