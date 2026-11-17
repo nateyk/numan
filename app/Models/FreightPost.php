@@ -53,6 +53,8 @@ class FreightPost extends Model
         'pickup_date_flexibility_days',
         'status',
         'hidden_at',
+        'closed_at',
+        'arrived_at',
         'completion_score',
     ];
 
@@ -66,6 +68,8 @@ class FreightPost extends Model
             'origin_point_confirmed_at' => 'datetime',
             'destination_point_confirmed_at' => 'datetime',
             'hidden_at' => 'datetime',
+            'closed_at' => 'datetime',
+            'arrived_at' => 'datetime',
             'pickup_date' => 'date',
             'truck_count' => 'integer',
             'pickup_date_flexibility_days' => 'integer',
@@ -189,23 +193,52 @@ class FreightPost extends Model
         return $query->where('status', FreightPostStatus::Expired->value);
     }
 
+    /**
+     * A freight listing is available through the end of its pickup window.
+     * Flexibility extends the end date; it does not move the pickup earlier.
+     */
+    public function pickupWindowEndsAt(): ?Carbon
+    {
+        if (! $this->pickup_date) {
+            return null;
+        }
+
+        return $this->pickup_date->copy()
+            ->addDays((int) ($this->pickup_date_flexibility_days ?? 0))
+            ->endOfDay();
+    }
+
+    public function isPastPickupWindow(): bool
+    {
+        return $this->pickupWindowEndsAt()?->isPast() ?? true;
+    }
+
+    /**
+     * The listing board must not show stale active rows between scheduler
+     * runs. SQL is used before pagination so page totals remain accurate.
+     *
+     * @param  Builder<FreightPost>  $query
+     */
+    public function scopeWithinPickupWindow(Builder $query): Builder
+    {
+        $driver = $query->getQuery()->getConnection()->getDriverName();
+        $dateExpression = match ($driver) {
+            'sqlite' => "date(pickup_date, '+' || COALESCE(pickup_date_flexibility_days, 0) || ' days')",
+            'pgsql' => "(pickup_date + COALESCE(pickup_date_flexibility_days, 0) * INTERVAL '1 day')::date",
+            default => 'DATE_ADD(pickup_date, INTERVAL COALESCE(pickup_date_flexibility_days, 0) DAY)',
+        };
+
+        return $query->whereNotNull('pickup_date')
+            ->whereRaw($dateExpression.' >= ?', [today()->toDateString()]);
+    }
+
     public function expireIfPastPickup(): bool
     {
-        if ($this->status !== FreightPostStatus::Active->value || ! $this->pickup_date) {
+        if ($this->status !== FreightPostStatus::Active->value || ! $this->isPastPickupWindow()) {
             return false;
         }
 
-        $pickup = $this->pickup_date instanceof Carbon ? $this->pickup_date : Carbon::parse($this->pickup_date);
-        $flex = (int) ($this->pickup_date_flexibility_days ?? 0);
-        $expiresAt = $pickup->copy()->addDays($flex)->endOfDay();
-
-        if ($expiresAt->isPast()) {
-            $this->update(['status' => FreightPostStatus::Expired->value]);
-
-            return true;
-        }
-
-        return false;
+        return $this->update(['status' => FreightPostStatus::Expired->value]);
     }
 
     /**
