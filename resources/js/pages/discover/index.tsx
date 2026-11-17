@@ -1074,9 +1074,13 @@ export default function DiscoverIndex({
                                                         </div>
                                                     </dl>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {freightPublicationLabel(f)}
+                                                        {freightPublicationLabel(
+                                                            f,
+                                                        )}
                                                         {' · '}
-                                                        {freightLifecycleLabel(f)}
+                                                        {freightLifecycleLabel(
+                                                            f,
+                                                        )}
                                                     </p>
                                                 </div>
                                                 <div className="flex gap-2 border-t border-border/70 px-4 py-3">
