@@ -23,6 +23,11 @@ it('shows accurate owner-only freight counts and recent posts', function () {
         'item_name' => 'Hidden load',
         'hidden_at' => now(),
     ]);
+    FreightPost::factory()->for($user)->active()->create([
+        'item_name' => 'Past pickup',
+        'pickup_date' => now()->subDays(10)->toDateString(),
+        'pickup_date_flexibility_days' => 0,
+    ]);
     $arrived = FreightPost::factory()->for($user)->create([
         'item_name' => 'Delivered load',
         'status' => FreightPostStatus::Closed->value,
@@ -37,11 +42,12 @@ it('shows accurate owner-only freight counts and recent posts', function () {
 
     $response->assertOk()->assertInertia(fn ($page) => $page
         ->component('dashboard')
-        ->where('freightStats.total', 4)
-        ->where('freightStats.active', 2)
+        ->where('freightStats.total', 5)
+        ->where('freightStats.active', 3)
         ->where('freightStats.drafts', 1)
         ->where('freightStats.arrived', 1)
-        ->has('recentFreight', 4)
+        ->where('availableFreight', 2)
+        ->has('recentFreight', 5)
         ->where('recentFreight.0.ulid', $arrived->ulid)
         ->where('recentFreight.0.status', 'arrived')
         ->missing('recentFreight.0.user_id')
@@ -62,6 +68,7 @@ it('provides an accurate empty dashboard without placeholder totals', function (
             ->where('freightStats.active', 0)
             ->where('freightStats.drafts', 0)
             ->where('freightStats.arrived', 0)
+            ->where('availableFreight', 0)
             ->has('recentFreight', 0)
         );
 });
