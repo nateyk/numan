@@ -70,3 +70,18 @@ it('does not publish a freight whose pickup date has already passed', function (
     expect($post->fresh()->status)->toBe(FreightPostStatus::Submitted->value)
         ->and($post->fresh()->published_at)->toBeNull();
 });
+
+it('marks administrator-closed freight as cancelled rather than delivered', function () {
+    $admin = createSuperAdmin();
+    $post = FreightPost::factory()->active()->create();
+
+    $this->actingAs($admin)
+        ->post("/admin/freight/{$post->ulid}/moderate", ['to_status' => 'closed'])
+        ->assertRedirect();
+
+    $post->refresh();
+    expect($post->status)->toBe(FreightPostStatus::Closed->value)
+        ->and($post->closure_reason)->toBe('cancelled')
+        ->and($post->closed_at)->not->toBeNull()
+        ->and($post->arrived_at)->toBeNull();
+});
