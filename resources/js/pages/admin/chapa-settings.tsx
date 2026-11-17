@@ -249,7 +249,8 @@ export default function AdminChapaSettings({
                             <p className="text-xs text-muted-foreground">
                                 These counts reflect locally recorded signed
                                 events, not Chapa delivery guarantees. Check
-                                payment reconciliation before acting on failures.
+                                payment reconciliation before acting on
+                                failures.
                             </p>
                         </CardContent>
                     </Card>
