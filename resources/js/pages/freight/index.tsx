@@ -511,7 +511,9 @@ export default function FreightIndex({
                                                 'rejected',
                                                 'closed',
                                                 'expired',
-                                            ].includes(p.status);
+                                            ].includes(p.status) &&
+                                                (p.interests_count ?? 0) === 0 &&
+                                                !p.arrived_at;
                                             return (
                                                 <TableRow key={p.ulid}>
                                                     <TableCell>
@@ -769,7 +771,9 @@ export default function FreightIndex({
                                 'rejected',
                                 'closed',
                                 'expired',
-                            ].includes(p.status);
+                            ].includes(p.status) &&
+                                                (p.interests_count ?? 0) === 0 &&
+                                                !p.arrived_at;
                             return (
                                 <Card key={p.ulid} className="p-4">
                                     <div className="flex items-start justify-between gap-3">
