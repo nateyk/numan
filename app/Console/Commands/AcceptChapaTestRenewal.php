@@ -26,10 +26,11 @@ class AcceptChapaTestRenewal extends Command
 
     public function handle(ChapaService $chapa): int
     {
-        $key = (string) config('chapa.secretKey');
+        $settings = app(\App\Services\ChapaConfiguration::class);
+        $key = (string) $settings->value('secretKey');
         $baseUrl = rtrim((string) config('chapa.baseUrl'), '/');
 
-        if (config('chapa.mode') !== 'test'
+        if ($settings->mode() !== 'test'
             || ! preg_match('/^(CHASECK_TEST|CHAPA_TEST)[_-]/', $key)) {
             $this->error('Test Mode acceptance requires CHAPA_MODE=test and a Chapa TEST private key.');
 
