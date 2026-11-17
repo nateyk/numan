@@ -8,8 +8,8 @@ use App\Services\ChapaConfiguration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -78,7 +78,7 @@ class ChapaPaymentSettingsController extends Controller
                 continue;
             }
 
-            if (! preg_match('/^'. $prefix .'[_-](TEST|LIVE)[_-]/i', $key, $matches)) {
+            if (! preg_match('/^'.$prefix.'[_-](TEST|LIVE)[_-]/i', $key, $matches)) {
                 throw ValidationException::withMessages([
                     $field => 'Enter a valid Chapa '.str_replace('_', ' ', $field).' for the selected mode.',
                 ]);
@@ -92,7 +92,7 @@ class ChapaPaymentSettingsController extends Controller
         }
 
         DB::transaction(function () use ($mode, $incoming, $request): void {
-            $settings = ChapaPaymentSetting::query()->find(1) ?? new ChapaPaymentSetting();
+            $settings = ChapaPaymentSetting::query()->find(1) ?? new ChapaPaymentSetting;
             $settings->id = 1;
             $settings->mode = $mode;
 

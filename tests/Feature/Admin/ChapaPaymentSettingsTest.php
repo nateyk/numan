@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\ChapaPaymentSetting;
-use App\Models\MarketplacePaymentTransaction;
 use App\Models\User;
 use App\Services\ChapaConfiguration;
 use App\Services\ChapaService;

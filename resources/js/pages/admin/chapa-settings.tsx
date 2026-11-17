@@ -25,10 +25,7 @@ const sourceLabel: Record<KeySource, string> = {
     missing: 'Not configured',
 };
 
-export default function AdminChapaSettings({
-    settings,
-    webhook_url,
-}: Props) {
+export default function AdminChapaSettings({ settings, webhook_url }: Props) {
     const form = useForm({
         mode: settings.mode,
         public_key: '',
@@ -82,7 +79,8 @@ export default function AdminChapaSettings({
                                     onChange={(event) =>
                                         form.setData(
                                             'mode',
-                                            event.target.value as 'test' | 'live',
+                                            event.target.value as
+                                                'test' | 'live',
                                         )
                                     }
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplaceSubscription;
+use App\Services\ChapaConfiguration;
 use App\Services\ChapaService;
 use Illuminate\Console\Command;
 use Throwable;
@@ -26,7 +27,7 @@ class AcceptChapaTestRenewal extends Command
 
     public function handle(ChapaService $chapa): int
     {
-        $settings = app(\App\Services\ChapaConfiguration::class);
+        $settings = app(ChapaConfiguration::class);
         $key = (string) $settings->value('secretKey');
         $baseUrl = rtrim((string) config('chapa.baseUrl'), '/');
 
