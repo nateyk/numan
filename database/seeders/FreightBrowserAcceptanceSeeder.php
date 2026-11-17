@@ -95,7 +95,7 @@ class FreightBrowserAcceptanceSeeder extends Seeder
             throw new \RuntimeException('A synthetic browser-test password is required.');
         }
 
-        $user = User::factory()->create([
+        $user = User::factory()->withoutTwoFactor()->create([
             'name' => $name,
             'email' => $email,
             'password' => $password,
