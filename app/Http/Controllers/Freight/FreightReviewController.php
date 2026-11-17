@@ -21,7 +21,7 @@ class FreightReviewController extends Controller
     public function show(Request $request, string $ulid): Response
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
-        Gate::authorize('view', $post);
+        Gate::authorize('submit', $post);
 
         $post->load(['originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
