@@ -293,7 +293,7 @@ export default function FreightShow({
                                         }
                                         className="shrink-0 capitalize"
                                     >
-                                        {post.status.replaceAll('_', ' ')}
+                                        {post.arrived_at ? 'Arrived' : post.status.replaceAll('_', ' ')}
                                     </Badge>
                                 )}
                             </div>
