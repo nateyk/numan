@@ -1016,7 +1016,9 @@ export default function DiscoverIndex({
                                                                 Pickup
                                                             </dt>
                                                             <dd className="font-medium break-words">
-                                                                {formatFreightDate(f.pickup_date)}
+                                                                {formatFreightDate(
+                                                                    f.pickup_date,
+                                                                )}
                                                                 {f.pickup_time &&
                                                                     ` · ${String(f.pickup_time).slice(0, 5)}`}
                                                             </dd>
@@ -1067,9 +1069,14 @@ export default function DiscoverIndex({
                                                         </div>
                                                     </dl>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Posted {formatPostedDate(f.created_at)}
+                                                        Posted{' '}
+                                                        {formatPostedDate(
+                                                            f.created_at,
+                                                        )}
                                                         {' · Closes '}
-                                                        {formatFreightDate(f.expires_on)}
+                                                        {formatFreightDate(
+                                                            f.expires_on,
+                                                        )}
                                                     </p>
                                                 </div>
                                                 <div className="flex gap-2 border-t border-border/70 px-4 py-3">
