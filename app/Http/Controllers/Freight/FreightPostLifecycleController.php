@@ -9,14 +9,19 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class FreightPostLifecycleController extends Controller
 {
     public function close(Request $request, string $ulid): RedirectResponse
     {
+        $validated = $request->validate([
+            'closure_reason' => ['required', Rule::in(['matched', 'cancelled'])],
+        ]);
+
         // Serialize against competing transporter acceptance, which locks the
         // same freight post before closing the listing.
-        DB::transaction(function () use ($request, $ulid): void {
+        DB::transaction(function () use ($request, $ulid, $validated): void {
             $post = FreightPost::where('ulid', $ulid)->lockForUpdate()->firstOrFail();
             Gate::authorize('close', $post);
 
@@ -28,11 +33,14 @@ class FreightPostLifecycleController extends Controller
             $post->update([
                 'status' => FreightPostStatus::Closed->value,
                 'closed_at' => now(),
+                'closure_reason' => $validated['closure_reason'],
             ]);
             $post->moderationLogs()->create([
                 'from_status' => $from,
                 'to_status' => FreightPostStatus::Closed->value,
-                'reason' => 'Listing closed by consignor',
+                'reason' => $validated['closure_reason'] === 'cancelled'
+                    ? 'Listing cancelled by consignor'
+                    : 'Transport arranged outside the interest flow',
                 'moderator_id' => $request->user()->id,
             ]);
         });
