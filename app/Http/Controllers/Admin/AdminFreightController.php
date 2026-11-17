@@ -149,6 +149,12 @@ class AdminFreightController extends Controller
                 'published_at' => $to === FreightPostStatus::Active
                     ? ($post->published_at ?? now())
                     : $post->published_at,
+                'closed_at' => $to === FreightPostStatus::Closed
+                    ? now()
+                    : $post->closed_at,
+                'closure_reason' => $to === FreightPostStatus::Closed
+                    ? 'cancelled'
+                    : $post->closure_reason,
             ]);
             $post->moderationLogs()->create([
                 'from_status' => $from->value,
