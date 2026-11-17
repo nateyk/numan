@@ -708,10 +708,6 @@ export default function FreightIndex({
                                                                         onAction={setLifecycleTarget}
                                                                     />
                                                                     <DropdownMenuSeparator />
-                                                                    <LifecycleMenuItems
-                                                    post={p}
-                                                    onAction={setLifecycleTarget}
-                                                />
                                                 {canDelete && (
                                                                         <DropdownMenuItem
                                                                             className="cursor-pointer text-destructive"
@@ -872,6 +868,10 @@ export default function FreightIndex({
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
+                                                <LifecycleMenuItems
+                                                    post={p}
+                                                    onAction={setLifecycleTarget}
+                                                />
                                                 {canDelete && (
                                                     <DropdownMenuItem
                                                         className="text-destructive"
