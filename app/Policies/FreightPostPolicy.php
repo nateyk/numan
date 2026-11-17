@@ -29,6 +29,15 @@ class FreightPostPolicy
             && ! $post->isPastPickupWindow();
     }
 
+    /**
+     * Management wizard pages may be read by their owner at any stage,
+     * including when a paid-plan listing is hidden. Editing remains draft-only.
+     */
+    public function viewWizard(User $user, FreightPost $post): bool
+    {
+        return $user->id === $post->user_id || (bool) $user->is_superadmin;
+    }
+
     public function create(User $user): bool
     {
         if ((bool) $user->is_superadmin) {
