@@ -75,7 +75,7 @@ interface AdminDashboardProps {
 
 function Sparkline({
     data,
-    color = '#1d4aff',
+    color = 'var(--chart-1)',
 }: {
     data: number[];
     color?: string;
@@ -142,7 +142,7 @@ function GrowthBadge({
     );
 }
 
-const COLORS = ['#1d4aff', '#cd68d4', '#2ab7a9', '#6aa84f'];
+const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'];
 
 export default function AdminDashboard({
     metrics,
@@ -352,12 +352,12 @@ export default function AdminDashboard({
                                             >
                                                 <stop
                                                     offset="5%"
-                                                    stopColor="#1d4aff"
+                                                    stopColor="var(--chart-1)"
                                                     stopOpacity={0.3}
                                                 />
                                                 <stop
                                                     offset="95%"
-                                                    stopColor="#1d4aff"
+                                                    stopColor="var(--chart-1)"
                                                     stopOpacity={0}
                                                 />
                                             </linearGradient>
@@ -370,26 +370,26 @@ export default function AdminDashboard({
                                             >
                                                 <stop
                                                     offset="5%"
-                                                    stopColor="#cd68d4"
+                                                    stopColor="var(--chart-2)"
                                                     stopOpacity={0.3}
                                                 />
                                                 <stop
                                                     offset="95%"
-                                                    stopColor="#cd68d4"
+                                                    stopColor="var(--chart-2)"
                                                     stopOpacity={0}
                                                 />
                                             </linearGradient>
                                         </defs>
                                         <XAxis
                                             dataKey="date"
-                                            stroke="#9ca3af"
+                                            stroke="var(--muted-foreground)"
                                             fontSize={12}
                                             tickLine={false}
                                             axisLine={false}
                                             dy={10}
                                         />
                                         <YAxis
-                                            stroke="#9ca3af"
+                                            stroke="var(--muted-foreground)"
                                             fontSize={12}
                                             tickLine={false}
                                             axisLine={false}
@@ -400,18 +400,18 @@ export default function AdminDashboard({
                                         <CartesianGrid
                                             strokeDasharray="3 3"
                                             vertical={false}
-                                            stroke="#e5e7eb"
+                                            stroke="var(--border)"
                                             strokeOpacity={0.5}
                                         />
                                         <Tooltip
                                             contentStyle={{
-                                                backgroundColor: '#1d1d1d',
-                                                borderColor: '#404040',
+                                                backgroundColor: 'var(--popover)',
+                                                borderColor: 'var(--border)',
                                                 borderRadius: '4px',
                                                 border: '1px solid #404040',
                                             }}
                                             itemStyle={{
-                                                color: '#f5f5f5',
+                                                color: 'var(--popover-foreground)',
                                             }}
                                         />
                                         <Legend
@@ -423,7 +423,7 @@ export default function AdminDashboard({
                                             type="monotone"
                                             dataKey="users"
                                             name="New Users"
-                                            stroke="#1d4aff"
+                                            stroke="var(--chart-1)"
                                             strokeWidth={2}
                                             fillOpacity={1}
                                             fill="url(#colorUsers)"
@@ -432,7 +432,7 @@ export default function AdminDashboard({
                                             type="monotone"
                                             dataKey="workspaces"
                                             name="New Workspaces"
-                                            stroke="#cd68d4"
+                                            stroke="var(--chart-2)"
                                             strokeWidth={2}
                                             fillOpacity={1}
                                             fill="url(#colorWorkspaces)"
@@ -482,13 +482,13 @@ export default function AdminDashboard({
                                         </Pie>
                                         <Tooltip
                                             contentStyle={{
-                                                backgroundColor: '#1d1d1d',
-                                                borderColor: '#404040',
+                                                backgroundColor: 'var(--popover)',
+                                                borderColor: 'var(--border)',
                                                 borderRadius: '4px',
                                                 border: '1px solid #404040',
                                             }}
                                             itemStyle={{
-                                                color: '#f5f5f5',
+                                                color: 'var(--popover-foreground)',
                                             }}
                                             formatter={
                                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
