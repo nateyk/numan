@@ -51,6 +51,12 @@ class FreightBrowserAcceptanceSeeder extends Seeder
         $contact = FreightPost::factory()->for($consignor)->active()->create([
             ...$common,
             'item_name' => 'Browser contact freight',
+            'actual_weight' => '400',
+            'weight_unit' => 'quintal',
+            'tariff_weight' => '400',
+            'tariff_weight_unit' => 'quintal',
+            'origin_site_note' => 'Warehouse loading entrance',
+            'destination_site_note' => 'Receiver gate',
             'origin_location_id' => $addis->id,
             'destination_location_id' => $adama->id,
         ]);
