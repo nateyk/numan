@@ -15,7 +15,7 @@
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
         "format": "prettier --write resources/",
-        "format:check": "prettier --check resources/ || (prettier --write resources/js/components/freight/freight-details-card.tsx; git diff --no-ext-diff --unified=0 -- resources/js/components/freight/freight-details-card.tsx; exit 1)",
+        "format:check": "prettier --check resources/",
         "lint": "eslint . --fix",
         "types": "tsc --noEmit",
         "fix": "npm run format && npm run lint && npm run types",
