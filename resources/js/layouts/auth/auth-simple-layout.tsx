@@ -20,10 +20,10 @@ export default function AuthSimpleLayout({
 
     return (
         <div className="grid min-h-svh bg-background lg:grid-cols-2">
-            <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0F294A] p-10 text-white lg:flex">
+            <div className="relative hidden flex-col justify-between overflow-hidden bg-brand-navy p-10 text-white lg:flex">
                 <div
                     aria-hidden="true"
-                    className="absolute -top-40 -right-44 size-[32rem] rounded-full bg-[#2D9CDB]/20 blur-3xl"
+                    className="absolute -top-40 -right-44 size-[32rem] rounded-full bg-brand-sky/20 blur-3xl"
                 />
                 <div className="relative flex items-center justify-between">
                     <Link
@@ -52,7 +52,7 @@ export default function AuthSimpleLayout({
 
                 <div className="relative max-w-xl space-y-8">
                     <div className="space-y-4">
-                        <p className="text-sm font-semibold tracking-wide text-[#72C5F2] uppercase">
+                        <p className="text-sm font-semibold tracking-wide text-brand-sky uppercase">
                             {t(
                                 'brand.home.hero.badge',
                                 "Ethiopia's freight marketplace",
@@ -74,7 +74,7 @@ export default function AuthSimpleLayout({
 
                     <div className="grid gap-3 sm:grid-cols-2">
                         <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[#72C5F2]">
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-brand-sky">
                                 <Package className="size-4" />
                             </div>
                             <p className="text-sm leading-6 text-white/75">
@@ -85,7 +85,7 @@ export default function AuthSimpleLayout({
                             </p>
                         </div>
                         <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[#72C5F2]">
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-brand-sky">
                                 <Truck className="size-4" />
                             </div>
                             <p className="text-sm leading-6 text-white/75">
@@ -98,7 +98,7 @@ export default function AuthSimpleLayout({
                     </div>
 
                     <div className="flex items-center gap-3 text-sm text-white/60">
-                        <MapPin className="size-4 text-[#72C5F2]" />
+                        <MapPin className="size-4 text-brand-sky" />
                         {t(
                             'brand.auth.location',
                             'Built around the routes people travel every day.',
@@ -125,7 +125,7 @@ export default function AuthSimpleLayout({
                         <img
                             src="/brand/numanfreight-wordmark.svg"
                             alt="Numan Freight"
-                            className="h-6 w-auto max-w-36"
+                            className="h-6 w-auto max-w-36 dark:hidden"\n                        />\n                        <img\n                            src="/brand/numanfreight-wordmark-white.svg"\n                            alt=""\n                            aria-hidden="true"\n                            className="hidden h-6 w-auto max-w-36 dark:block"
                         />
                     </Link>
                     <AppearanceToggleDropdown />
