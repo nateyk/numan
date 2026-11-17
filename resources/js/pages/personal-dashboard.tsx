@@ -57,8 +57,13 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function PersonalDashboard() {
-    const { auth, currentWorkspace, freightStats, recentFreight, availableFreight } =
-        usePage<SharedData & FreightDashboardProps>().props;
+    const {
+        auth,
+        currentWorkspace,
+        freightStats,
+        recentFreight,
+        availableFreight,
+    } = usePage<SharedData & FreightDashboardProps>().props;
     const { t } = useTranslations();
     const firstName = auth.user.name?.trim().split(/\s+/)[0] || '';
     const profileScore = auth.user.profile_completeness?.score;
@@ -140,7 +145,7 @@ export default function PersonalDashboard() {
                             <Link
                                 key={item.label}
                                 href={item.href}
-                                className="flex min-w-0 flex-col gap-3 rounded-lg border bg-card p-4 shadow-xs transition-colors hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                                className="flex min-w-0 flex-col gap-3 rounded-lg border bg-card p-4 shadow-xs transition-colors hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none"
                             >
                                 <span className="flex items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
                                     <span className="min-w-0 truncate">
@@ -278,7 +283,7 @@ export default function PersonalDashboard() {
                                     <li key={post.ulid}>
                                         <Link
                                             href={`/my-freight/${post.ulid}`}
-                                            className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60"
+                                            className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-inset"
                                         >
                                             <span className="min-w-0 space-y-1">
                                                 <span className="block truncate text-sm font-medium">
@@ -298,8 +303,8 @@ export default function PersonalDashboard() {
                             </ul>
                         ) : (
                             <p className="px-4 py-6 text-sm text-muted-foreground">
-                                You have not posted freight yet. Start with
-                                Post Freight above.
+                                You have not posted freight yet. Start with Post
+                                Freight above.
                             </p>
                         )}
                     </Card>
