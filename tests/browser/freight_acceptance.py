@@ -41,10 +41,10 @@ def owner_card(page, ulid):
     )
 
 
-def menu_action(container, name):
+def menu_action(page, container, name):
     container.locator('button[aria-label^="More actions for"]').click()
-    expect(container.page.get_by_role("menuitem", name=name)).to_be_visible()
-    container.page.get_by_role("menuitem", name=name).click()
+    expect(page.get_by_role("menuitem", name=name)).to_be_visible()
+    page.get_by_role("menuitem", name=name).click()
 
 
 def confirm_dialog(page, label):
@@ -65,12 +65,12 @@ def desktop_owner_flow(browser, fixtures):
         expect(contact).to_be_visible()
         expect(contact).to_contain_text("Posted")
         expect(contact).to_contain_text("Expires")
-        expect(contact).to_contain_text("Pickup")
+        expect(page.get_by_role("columnheader", name="Pickup / closes")).to_be_visible()
         expect(contact).not_to_contain_text("Browser Test Transporter")
         page.screenshot(path=str(EVIDENCE / "desktop-owner-before.png"), full_page=True)
 
         cancel = owner_row(page, fixtures["cancel_ulid"])
-        menu_action(cancel, "Close listing")
+        menu_action(page, cancel, "Close listing")
         dialog = page.get_by_role("dialog")
         expect(dialog).to_contain_text("This does not confirm delivery")
         dialog.get_by_role("combobox").click()
@@ -79,7 +79,7 @@ def desktop_owner_flow(browser, fixtures):
         expect(owner_row(page, fixtures["cancel_ulid"])).to_contain_text("Cancelled")
 
         arrived = owner_row(page, fixtures["arrive_ulid"])
-        menu_action(arrived, "Mark arrived")
+        menu_action(page, arrived, "Mark arrived")
         confirm_dialog(page, "Mark arrived")
         expect(owner_row(page, fixtures["arrive_ulid"])).to_contain_text("Arrived")
 
