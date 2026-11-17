@@ -169,6 +169,7 @@ def transporter_contact_privacy(browser, fixtures):
         map_button.click()
         map_region = guest_page.get_by_role("region", name="Expanded freight route map")
         expect(map_region).to_be_visible()
+        expect(map_region.locator(".leaflet-container")).to_be_visible(timeout=20000)
         assert map_region.evaluate(
             "(node) => node.closest('section[aria-label]')?.getAttribute('aria-label') === 'Freight details'"
         ), "Route map must expand within the freight details page"
