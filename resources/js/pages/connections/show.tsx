@@ -121,10 +121,17 @@ export default function ConnectionShow({
                 )}
 
                 {contact ? (
-                    <section className="space-y-3" aria-label="Revealed contact details">
-                        <h2 className="text-sm font-semibold">Contact details</h2>
+                    <section
+                        className="space-y-3"
+                        aria-label="Revealed contact details"
+                    >
+                        <h2 className="text-sm font-semibold">
+                            Contact details
+                        </h2>
                         {!counterparty && contact.name && (
-                            <p className="text-sm font-medium">{contact.name}</p>
+                            <p className="text-sm font-medium">
+                                {contact.name}
+                            </p>
                         )}
                         <ContactChannels contact={contact} variant="full" />
                     </section>
