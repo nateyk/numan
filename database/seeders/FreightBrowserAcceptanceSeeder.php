@@ -119,6 +119,7 @@ class FreightBrowserAcceptanceSeeder extends Seeder
         Profile::factory()->create([
             'user_id' => $user->id,
             'display_name' => $name,
+            'email' => $email,
             'phone' => $phone,
             'primary_location_id' => $base->id,
             'posts_freight' => ! $carrier,
