@@ -170,8 +170,7 @@ function LifecycleMenuItems({
         <>
             {canClose && (
                 <DropdownMenuItem
-                    onSelect={(event) => {
-                        event.preventDefault();
+                    onSelect={() => {
                         onAction({
                             ulid: post.ulid,
                             label: routeLabel(post),
@@ -185,8 +184,7 @@ function LifecycleMenuItems({
             )}
             {canArrive && (
                 <DropdownMenuItem
-                    onSelect={(event) => {
-                        event.preventDefault();
+                    onSelect={() => {
                         onAction({
                             ulid: post.ulid,
                             label: routeLabel(post),
