@@ -38,7 +38,7 @@ export default function Welcome({ canRegister = true, appUrl }: WelcomeProps) {
                 '@id': `${canonicalUrl}/#organization`,
                 name: 'Numan Freight',
                 url: canonicalUrl,
-                logo: `${canonicalUrl}/logo.svg`,
+                logo: `${canonicalUrl}/brand/numanfreight-symbol.svg`,
                 description,
             },
             {
@@ -111,7 +111,7 @@ export default function Welcome({ canRegister = true, appUrl }: WelcomeProps) {
                 </script>
             </Head>
 
-            <div className="min-h-screen bg-background text-[#0F294A] dark:text-slate-100">
+            <div className="min-h-screen bg-background text-foreground">
                 <LandingHeader canRegister={canRegister} />
                 <main>
                     <LandingHero />
@@ -122,19 +122,19 @@ export default function Welcome({ canRegister = true, appUrl }: WelcomeProps) {
                     >
                         <div className="mx-auto max-w-7xl">
                             <div className="max-w-2xl">
-                                <p className="text-sm font-semibold tracking-wide text-[#2D9CDB] uppercase">
+                                <p className="text-sm font-semibold tracking-wide text-brand-sky-strong uppercase dark:text-brand-sky">
                                     {t(
                                         'brand.home.section.eyebrow',
                                         'One marketplace, both sides of the journey',
                                     )}
                                 </p>
-                                <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#0F294A] sm:text-4xl dark:text-slate-50">
+                                <h2 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                                     {t(
                                         'brand.home.section.title',
                                         'Freight starts moving when the right people connect.',
                                     )}
                                 </h2>
-                                <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg dark:text-slate-300">
+                                <p className="mt-4 text-base leading-7 text-muted-foreground sm:text-lg">
                                     {t(
                                         'brand.home.section.description',
                                         'Whether you need a truck or have one ready, Numan Freight helps you find the next step.',
@@ -146,34 +146,34 @@ export default function Welcome({ canRegister = true, appUrl }: WelcomeProps) {
                                 {benefits.map((benefit) => (
                                     <article
                                         key={benefit.title}
-                                        className="rounded-xl border border-slate-200 bg-white p-6 shadow-[0_12px_36px_-28px_rgba(15,41,74,0.45)] dark:border-white/10 dark:bg-slate-900"
+                                        className="rounded-xl border border-border bg-card p-6"
                                     >
-                                        <div className="flex size-11 items-center justify-center rounded-lg bg-[#2D9CDB]/10 text-[#0F294A] dark:text-sky-300">
+                                        <div className="flex size-11 items-center justify-center rounded-lg bg-brand-sky/10 text-brand-sky-strong dark:text-brand-sky">
                                             <benefit.icon className="size-5" />
                                         </div>
-                                        <h3 className="mt-5 text-lg font-semibold text-[#0F294A] dark:text-slate-100">
+                                        <h3 className="mt-5 text-lg font-semibold text-card-foreground">
                                             {benefit.title}
                                         </h3>
-                                        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
                                             {benefit.description}
                                         </p>
                                     </article>
                                 ))}
                             </div>
 
-                            <div className="mt-10 flex flex-col gap-4 rounded-xl bg-[#F3F8FB] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8 dark:bg-slate-800">
+                            <div className="mt-10 flex flex-col gap-4 rounded-xl bg-secondary p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
                                 <div className="flex items-start gap-4">
-                                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-[#2D9CDB] shadow-sm dark:bg-slate-900">
+                                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-card text-brand-sky-strong shadow-sm dark:text-brand-sky">
                                         <Handshake className="size-5" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-[#0F294A] dark:text-slate-100">
+                                        <h3 className="font-semibold text-card-foreground">
                                             {t(
                                                 'brand.home.cta.title',
                                                 'Ready for your next load?',
                                             )}
                                         </h3>
-                                        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                                        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
                                             {t(
                                                 'brand.home.cta.description',
                                                 'Browse freight already posted or create a listing and connect with a transporter.',
@@ -183,7 +183,7 @@ export default function Welcome({ canRegister = true, appUrl }: WelcomeProps) {
                                 </div>
                                 <Link
                                     href="/freight"
-                                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-md bg-[#0F294A] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#173B67] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9CDB]"
+                                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 >
                                     {t(
                                         'brand.home.cta.button',
