@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatFreightDate, formatPostedDate } from '@/lib/freight-dates';
 import { freightRoute } from '@/lib/freight-route';
 import type { SharedData } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
@@ -58,6 +59,8 @@ interface Freight {
     tariff_amount?: string | null;
     tariff_currency?: string | null;
     pickup_date: string | null;
+    expires_on?: string | null;
+    created_at?: string | null;
     pickup_time?: string | null;
     truck_count?: number | null;
     /**
@@ -1013,14 +1016,7 @@ export default function DiscoverIndex({
                                                                 Pickup
                                                             </dt>
                                                             <dd className="font-medium break-words">
-                                                                {f.pickup_date
-                                                                    ? String(
-                                                                          f.pickup_date,
-                                                                      ).slice(
-                                                                          0,
-                                                                          10,
-                                                                      )
-                                                                    : 'Flexible'}
+                                                                {formatFreightDate(f.pickup_date)}
                                                                 {f.pickup_time &&
                                                                     ` · ${String(f.pickup_time).slice(0, 5)}`}
                                                             </dd>
@@ -1070,6 +1066,11 @@ export default function DiscoverIndex({
                                                             </dd>
                                                         </div>
                                                     </dl>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Posted {formatPostedDate(f.created_at)}
+                                                        {' · Closes '}
+                                                        {formatFreightDate(f.expires_on)}
+                                                    </p>
                                                 </div>
                                                 <div className="flex gap-2 border-t border-border/70 px-4 py-3">
                                                     <Button
