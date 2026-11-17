@@ -972,6 +972,47 @@ export default function FreightIndex({
                     </DialogContent>
                 </Dialog>
                 <Dialog
+                    open={lifecycleTarget !== null}
+                    onOpenChange={(open) => {
+                        if (!open) setLifecycleTarget(null);
+                    }}
+                >
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {lifecycleTarget?.action === 'close'
+                                    ? 'Close this freight listing?'
+                                    : 'Confirm cargo arrival?'}
+                            </DialogTitle>
+                            <DialogDescription>
+                                {lifecycleTarget?.label ?? 'This freight'}
+                                {lifecycleTarget?.action === 'close'
+                                    ? ' will stop accepting transporter enquiries. This does not confirm delivery.'
+                                    : ' will be recorded as arrived at its destination.'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2">
+                            <Button
+                                variant="outline"
+                                disabled={processingLifecycle}
+                                onClick={() => setLifecycleTarget(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                disabled={processingLifecycle}
+                                onClick={confirmLifecycle}
+                            >
+                                {processingLifecycle
+                                    ? 'Saving…'
+                                    : lifecycleTarget?.action === 'close'
+                                      ? 'Close listing'
+                                      : 'Mark arrived'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                <Dialog
                     open={deleteTarget !== null}
                     onOpenChange={(open) => {
                         if (!open) setDeleteTarget(null);
