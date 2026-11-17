@@ -618,10 +618,12 @@ function MobileAdminDrawer({
                 onClick={onClose}
             />
             {/* Drawer */}
-            <div role="dialog"
+            <div
+                role="dialog"
                 aria-label="Admin navigation"
                 aria-modal="true"
-                className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar lg:hidden">
+                className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar lg:hidden"
+            >
                 <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
                     <div className="flex items-center gap-2">
                         <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
