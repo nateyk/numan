@@ -25,7 +25,8 @@ class FreightPostPolicy
             return true;
         }
 
-        return $post->status === FreightPostStatus::Active->value;
+        return $post->status === FreightPostStatus::Active->value
+            && ! $post->isPastPickupWindow();
     }
 
     public function create(User $user): bool
@@ -73,6 +74,23 @@ class FreightPostPolicy
     public function moderate(User $user): bool
     {
         return (bool) $user->is_superadmin;
+    }
+
+    public function close(User $user, FreightPost $post): bool
+    {
+        return $user->id === $post->user_id
+            && in_array($post->status, [
+                FreightPostStatus::Submitted->value,
+                FreightPostStatus::UnderReview->value,
+                FreightPostStatus::Active->value,
+                FreightPostStatus::Closed->value,
+            ], true);
+    }
+
+    public function markArrived(User $user, FreightPost $post): bool
+    {
+        return $user->id === $post->user_id
+            && $post->status === FreightPostStatus::Closed->value;
     }
 
     public function delete(User $user, FreightPost $post): bool
