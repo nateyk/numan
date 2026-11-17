@@ -45,6 +45,13 @@ class PersonalDashboardController extends Controller
 
             // Do not serialize entire FreightPost models, contact data, or
             // another account's posts onto the dashboard.
+            // The unfiltered public board uses these same visibility scopes.
+            $props['availableFreight'] = FreightPost::query()
+                ->active()
+                ->withinPickupWindow()
+                ->visible()
+                ->count();
+
             $props['recentFreight'] = (clone $owned)
                 ->with(['originLocation:id,name', 'destinationLocation:id,name'])
                 ->orderByDesc('created_at')
