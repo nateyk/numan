@@ -103,6 +103,12 @@ class FreightPostPolicy
             return false;
         }
 
+        // Preserve interested transporters, chosen connections and delivery
+        // history even after the listing has closed.
+        if ($post->arrived_at !== null || $post->interests()->exists()) {
+            return false;
+        }
+
         // Owners may only remove drafts and finished posts. Live posts
         // (submitted / under review / active) carry transporter interests and
         // marketplace visibility, so deleting them would silently destroy
