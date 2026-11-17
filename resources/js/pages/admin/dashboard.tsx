@@ -408,7 +408,7 @@ export default function AdminDashboard({
                                                 backgroundColor: 'var(--popover)',
                                                 borderColor: 'var(--border)',
                                                 borderRadius: '4px',
-                                                border: '1px solid #404040',
+                                                border: '1px solid var(--border)',
                                             }}
                                             itemStyle={{
                                                 color: 'var(--popover-foreground)',
@@ -485,7 +485,7 @@ export default function AdminDashboard({
                                                 backgroundColor: 'var(--popover)',
                                                 borderColor: 'var(--border)',
                                                 borderRadius: '4px',
-                                                border: '1px solid #404040',
+                                                border: '1px solid var(--border)',
                                             }}
                                             itemStyle={{
                                                 color: 'var(--popover-foreground)',
