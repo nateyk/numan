@@ -110,6 +110,10 @@ class AdminFreightController extends Controller
                     'created_at' => $m->created_at?->toISOString(),
                 ]),
                 'created_at' => $post->created_at?->toISOString(),
+                'published_at' => $post->published_at?->toISOString(),
+                'closed_at' => $post->closed_at?->toISOString(),
+                'arrived_at' => $post->arrived_at?->toISOString(),
+                'closure_reason' => $post->closure_reason,
             ],
         ]);
     }
@@ -140,7 +144,12 @@ class AdminFreightController extends Controller
                 return ['error' => 'This pickup date has passed. Ask the consignor to create a listing with a current pickup date.'];
             }
 
-            $post->update(['status' => $to->value]);
+            $post->update([
+                'status' => $to->value,
+                'published_at' => $to === FreightPostStatus::Active
+                    ? ($post->published_at ?? now())
+                    : $post->published_at,
+            ]);
             $post->moderationLogs()->create([
                 'from_status' => $from->value,
                 'to_status' => $to->value,
