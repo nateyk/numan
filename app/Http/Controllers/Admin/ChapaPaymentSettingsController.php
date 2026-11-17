@@ -92,7 +92,8 @@ class ChapaPaymentSettingsController extends Controller
         }
 
         DB::transaction(function () use ($mode, $incoming, $request): void {
-            $settings = ChapaPaymentSetting::query()->firstOrNew(['id' => 1]);
+            $settings = ChapaPaymentSetting::query()->find(1) ?? new ChapaPaymentSetting();
+            $settings->id = 1;
             $settings->mode = $mode;
 
             foreach ($incoming as $field => $value) {
