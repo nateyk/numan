@@ -96,9 +96,7 @@ export default function ConnectionShow({
                         {connection.transporter?.display_name ?? '—'}
                     </div>
                     <div>
-                        <span className="text-muted-foreground">
-                            Freight:
-                        </span>{' '}
+                        <span className="text-muted-foreground">Freight:</span>{' '}
                         {connection.freight_post?.arrived_at
                             ? 'Arrived'
                             : 'Listing closed — awaiting delivery confirmation'}
