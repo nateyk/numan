@@ -1,3 +1,4 @@
+import BrandLockup from '@/components/brand-lockup';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -25,7 +26,6 @@ import {
     Search,
     Settings,
     ShieldAlert,
-    Truck,
     UserRound,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -124,18 +124,11 @@ function IndividualBrand() {
         <SidebarMenu>
             <SidebarMenuItem>
                 <SidebarMenuButton size="lg" asChild>
-                    <Link href="/freight">
-                        <span className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                            <Truck className="size-4" />
-                        </span>
-                        <span className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                            <span className="truncate font-semibold">
-                                Numan Freight
-                            </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                                Personal account
-                            </span>
-                        </span>
+                    <Link
+                        href="/freight"
+                        aria-label="Numan Freight — browse freight"
+                    >
+                        <BrandLockup wordmarkClassName="group-data-[collapsible=icon]:hidden" />
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>

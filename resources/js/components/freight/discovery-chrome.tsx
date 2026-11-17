@@ -1,3 +1,4 @@
+import BrandLockup from '@/components/brand-lockup';
 import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { PublicAccountMenu } from '@/components/public-account-menu';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { login, register } from '@/routes';
 import { discovery, myInterests } from '@/routes/freight';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Menu, Truck } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useState } from 'react';
 
 /**
@@ -99,17 +100,10 @@ export function DiscoveryHeader({
             <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                 <Link
                     href={discovery()}
-                    className="flex shrink-0 items-center gap-2"
+                    aria-label="Numan Freight — browse freight"
+                    className="flex shrink-0 items-center"
                 >
-                    <span
-                        className="flex size-7 items-center justify-center rounded-sm bg-foreground"
-                        aria-hidden="true"
-                    >
-                        <Truck className="size-4 text-background" />
-                    </span>
-                    <span className="text-base font-bold tracking-tight">
-                        Numan Freight
-                    </span>
+                    <BrandLockup />
                 </Link>
 
                 <nav
