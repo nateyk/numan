@@ -115,3 +115,25 @@ it('exposes a clear end-of-window label to the consignor', function () {
         ->where('posts.data.0.expires_on', now()->addDays(4)->toDateString())
         ->etc());
 });
+
+it('keeps freight creation wizard pages private to the draft editor', function () {
+    $owner = lifecycleConsignor();
+    $stranger = lifecycleConsignor();
+    $post = FreightPost::factory()->for($owner)->draft()->create();
+
+    foreach (['route', 'cargo', 'schedule', 'review'] as $step) {
+        $this->actingAs($stranger)
+            ->get("/my-freight/{$post->ulid}/{$step}")
+            ->assertForbidden();
+
+        $this->actingAs($owner)
+            ->get("/my-freight/{$post->ulid}/{$step}")
+            ->assertOk();
+    }
+
+    $post->update(['status' => FreightPostStatus::Active->value]);
+
+    $this->actingAs($owner)
+        ->get("/my-freight/{$post->ulid}/schedule")
+        ->assertForbidden();
+});
