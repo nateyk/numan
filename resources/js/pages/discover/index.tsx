@@ -27,7 +27,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatFreightDate, formatPostedDate } from '@/lib/freight-dates';
+import {
+    formatFreightDate,
+    freightLifecycleLabel,
+    freightPublicationLabel,
+} from '@/lib/freight-dates';
 import { freightRoute } from '@/lib/freight-route';
 import type { SharedData } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
@@ -61,6 +65,7 @@ interface Freight {
     pickup_date: string | null;
     expires_on?: string | null;
     created_at?: string | null;
+    published_at?: string | null;
     pickup_time?: string | null;
     truck_count?: number | null;
     /**
@@ -1069,14 +1074,9 @@ export default function DiscoverIndex({
                                                         </div>
                                                     </dl>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Posted{' '}
-                                                        {formatPostedDate(
-                                                            f.created_at,
-                                                        )}
-                                                        {' · Closes '}
-                                                        {formatFreightDate(
-                                                            f.expires_on,
-                                                        )}
+                                                        {freightPublicationLabel(f)}
+                                                        {' · '}
+                                                        {freightLifecycleLabel(f)}
                                                     </p>
                                                 </div>
                                                 <div className="flex gap-2 border-t border-border/70 px-4 py-3">
