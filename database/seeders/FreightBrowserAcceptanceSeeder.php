@@ -61,6 +61,20 @@ class FreightBrowserAcceptanceSeeder extends Seeder
             'destination_location_id' => $adama->id,
         ]);
 
+        // Keep browser rendering deterministic without an external OSRM request.
+        $contact->routeSnapshot()->create([
+            'distance_meters' => 95000,
+            'duration_seconds' => 7200,
+            'routing_provider' => 'synthetic',
+            'geometry' => [
+                'type' => 'LineString',
+                'coordinates' => [
+                    [(float) $addis->longitude, (float) $addis->latitude],
+                    [(float) $adama->longitude, (float) $adama->latitude],
+                ],
+            ],
+        ]);
+
         $cancel = FreightPost::factory()->for($consignor)->active()->create([
             ...$common,
             'item_name' => 'Browser cancellation freight',
