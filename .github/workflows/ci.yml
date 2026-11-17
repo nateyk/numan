@@ -102,6 +102,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
+      - name: Show dashboard formatter diff (temporary diagnostic)
+        run: |
+          pnpm exec prettier resources/js/pages/personal-dashboard.tsx > /tmp/numan-dashboard-formatted.tsx
+          diff -u resources/js/pages/personal-dashboard.tsx /tmp/numan-dashboard-formatted.tsx || true
       - run: pnpm run format:check
       # Lint maintained repository files; exclude bundled tools and disabled workspace UI via eslint.config.js.
       - run: pnpm exec eslint .
