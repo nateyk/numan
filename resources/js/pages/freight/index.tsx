@@ -456,7 +456,7 @@ export default function FreightIndex({
                                         <TableHead>Route</TableHead>
                                         <TableHead>Cargo</TableHead>
                                         <TableHead>Truck</TableHead>
-                                        <TableHead>Pickup</TableHead>
+                                        <TableHead>Pickup / closes</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">
                                             Actions
@@ -535,6 +535,8 @@ export default function FreightIndex({
                                                                 ''}{' '}
                                                             •{' '}
                                                             {p.ulid.slice(0, 8)}
+                                                            {' · Posted '}
+                                                            {formatPostedDate(p.created_at)}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -559,23 +561,21 @@ export default function FreightIndex({
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                             <Calendar className="size-4 text-muted-foreground" />{' '}
-                                                            {p.pickup_date
-                                                                ? String(
-                                                                      p.pickup_date,
-                                                                  ).slice(0, 10)
-                                                                : '—'}
+                                                            {formatFreightDate(p.pickup_date)}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            Closes {formatFreightDate(p.expires_on)}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-wrap items-center gap-1">
                                                             <Badge
                                                                 variant="secondary"
-                                                                className={`${statusColor(p.status)} capitalize`}
+                                                                className={`${statusColor(p.arrived_at ? 'arrived' : p.status)} capitalize`}
                                                             >
-                                                                {p.status.replace(
-                                                                    '_',
-                                                                    ' ',
-                                                                )}
+                                                                {p.arrived_at
+                                                                    ? 'Arrived'
+                                                                    : p.status.replaceAll('_', ' ')}
                                                             </Badge>
                                                             {p.hidden_at && (
                                                                 <Badge
@@ -703,8 +703,16 @@ export default function FreightIndex({
                                                                                 </Link>
                                                                             </DropdownMenuItem>
                                                                         )}
+                                                                    <LifecycleMenuItems
+                                                                        post={p}
+                                                                        onAction={setLifecycleTarget}
+                                                                    />
                                                                     <DropdownMenuSeparator />
-                                                                    {canDelete && (
+                                                                    <LifecycleMenuItems
+                                                    post={p}
+                                                    onAction={setLifecycleTarget}
+                                                />
+                                                {canDelete && (
                                                                         <DropdownMenuItem
                                                                             className="cursor-pointer text-destructive"
                                                                             onSelect={(
@@ -779,9 +787,9 @@ export default function FreightIndex({
                                         </div>
                                         <Badge
                                             variant="secondary"
-                                            className={`${statusColor(p.status)} text-xs capitalize`}
+                                            className={`${statusColor(p.arrived_at ? 'arrived' : p.status)} text-xs capitalize`}
                                         >
-                                            {p.status.replace('_', ' ')}
+                                            {p.arrived_at ? 'Arrived' : p.status.replaceAll('_', ' ')}
                                         </Badge>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -791,12 +799,7 @@ export default function FreightIndex({
                                         </Badge>
                                         <Badge variant="secondary">
                                             <Calendar className="mr-1 size-3" />
-                                            {p.pickup_date
-                                                ? String(p.pickup_date).slice(
-                                                      0,
-                                                      10,
-                                                  )
-                                                : '—'}
+                                            {formatFreightDate(p.pickup_date)}
                                         </Badge>
                                         {/* The desktop table carries this badge
                                             too. Without it here, the banner says
@@ -811,6 +814,11 @@ export default function FreightIndex({
                                             </Badge>
                                         )}
                                     </div>
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                        Posted {formatPostedDate(p.created_at)}
+                                        {' · Closes '}
+                                        {formatFreightDate(p.expires_on)}
+                                    </p>
                                     <div className="mt-3 flex gap-2">
                                         <Button
                                             asChild
