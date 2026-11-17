@@ -208,6 +208,14 @@ class FreightPost extends Model
             ->endOfDay();
     }
 
+    /**
+     * Public-facing date label; null while the draft has no pickup date.
+     */
+    public function getExpiresOnAttribute(): ?string
+    {
+        return $this->pickupWindowEndsAt()?->toDateString();
+    }
+
     public function isPastPickupWindow(): bool
     {
         return $this->pickupWindowEndsAt()?->isPast() ?? true;
