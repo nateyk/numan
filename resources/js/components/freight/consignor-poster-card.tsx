@@ -60,14 +60,6 @@ function initialsFor(name: string | null): string {
         .toUpperCase();
 }
 
-/**
- * Turn a stored number into a wa.me URL.
- *
- * Ethiopian numbers arrive in three shapes: +251…, 0…, and a bare 9… or 7….
- * wa.me wants digits only, without a leading zero. International numbers are
- * left alone apart from stripping their punctuation.
- */
-
 function VerificationBadge({ owner }: { owner: NonNullable<PostOwner> }) {
     // Verified is the only state worth saying. "Identity not verified" on every
     // unverified card read as a warning attached to a person the visitor was
@@ -116,9 +108,7 @@ function ContactBlock({
 
     if (revealedContacts) {
         return (
-            <div className="rounded-md border bg-muted/30 p-3">
-                <ContactChannels contact={revealedContacts} />
-            </div>
+            <ContactChannels contact={revealedContacts} variant="full" />
         );
     }
 
@@ -142,8 +132,8 @@ function ContactBlock({
                 </p>
                 <p className="text-muted-foreground">
                     {postLimitReached
-                        ? `Your workspace has ${revealBlocked.used} of ${revealBlocked.limit} live freight posts. Upgrade your plan to reveal new consignor contacts.`
-                        : `Your workspace has used ${revealBlocked.used} of ${revealBlocked.limit} contact reveals. Upgrade to reveal new contacts.`}
+                        ? `Your plan has ${revealBlocked.used} of ${revealBlocked.limit} live freight posts. Upgrade to reveal new consignor contacts.`
+                        : `You have used ${revealBlocked.used} of ${revealBlocked.limit} contact reveals on your plan. Upgrade to reveal new contacts.`}
                 </p>
                 <Button size="sm" className="w-full" asChild>
                     <Link href="/billing/plans">View upgrade plans</Link>
@@ -273,8 +263,8 @@ export default function ConsignorPosterCard({
     const identityVisible = isOwnPost || owner !== null;
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
+        <Card className="gap-0 py-4">
+            <CardHeader className="px-4 pb-4">
                 <CardTitle className="flex items-center gap-2 text-base">
                     {identityVisible ? (
                         <User className="size-4" />
@@ -285,19 +275,19 @@ export default function ConsignorPosterCard({
                 </CardTitle>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 px-4">
                 {identityVisible ? (
                     <div className="flex items-center gap-3">
-                        <Avatar className="size-12">
+                        <Avatar className="size-11">
                             {/* No avatar_url: the resource does not send one. The page
                                 used to request it and render a broken image beside a
                                 blank name. */}
-                            <AvatarFallback>
+                            <AvatarFallback className="bg-muted text-sm font-medium">
                                 {initialsFor(owner?.display_name ?? null)}
                             </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                            <p className="truncate leading-none font-semibold">
+                            <p className="truncate text-sm leading-tight font-semibold">
                                 {owner?.display_name ?? 'Consignor'}
                             </p>
                             {owner && <VerificationBadge owner={owner} />}
