@@ -168,7 +168,7 @@ def transporter_contact_privacy(browser, fixtures):
         map_region = guest_page.get_by_role("region", name="Expanded freight route map")
         expect(map_region).to_be_visible()
         assert map_region.evaluate(
-            "(node) => node.closest('section[aria-label=\\\"Freight details\\\"]') !== null"
+            "(node) => node.closest('section[aria-label]')?.getAttribute('aria-label') === 'Freight details'"
         ), "Route map must expand within the freight details page"
         expect(guest_page.get_by_role("dialog")).to_have_count(0)
         assert guest_page.evaluate(
