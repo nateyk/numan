@@ -49,7 +49,7 @@ class FreightInterestAcceptanceController extends Controller
                 return ['error' => 'Interest cannot be accepted at this stage.'];
             }
 
-            if ($post->status !== FreightPostStatus::Active->value) {
+            if ($post->status !== FreightPostStatus::Active->value || $post->isPastPickupWindow()) {
                 return ['error' => 'Freight post is not active.'];
             }
 
