@@ -115,14 +115,19 @@ def check_page(browser, spec, fixtures):
         assert response and response.status == 200, (
             f"{name}: request did not resolve ({response.status if response else 'none'})"
         )
-        expect(page.locator("main").first).to_be_visible()
+        if path == "/login":
+            expect(page.locator("#email")).to_be_visible()
+        else:
+            expect(page.locator("main").first).to_be_visible()
         page.wait_for_function(
             "() => getComputedStyle(document.body).backgroundColor !== 'rgba(0, 0, 0, 0)'"
         )
         assert_theme(page, mode, name)
         assert_fit(page, name)
 
-        if path == "/dashboard":
+        if path == "/login":
+            expect(page.locator('img[src="/brand/numanfreight-wordmark-white.svg"]')).to_be_visible()
+        elif path == "/dashboard":
             expect(page.get_by_role("heading", name=re.compile("Welcome back")).first).to_be_visible()
             expect(page.get_by_role("link", name=re.compile("View my freight", re.I)).first).to_be_visible()
         elif path == "/admin/dashboard":
@@ -161,6 +166,7 @@ def main():
     specs = [
         ("landing-light-desktop", "/", None, "light", 1280, 800),
         ("landing-dark-mobile", "/", None, "dark", 390, 844),
+        ("login-dark-mobile", "/login", None, "dark", 390, 844),
         ("freight-list-light-mobile", "/freight", None, "light", 390, 844),
         ("freight-list-dark-desktop", "/freight", None, "dark", 1280, 800),
         ("freight-detail-dark-mobile", "/freight/{contact_ulid}", None, "dark", 390, 844),
