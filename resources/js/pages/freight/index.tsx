@@ -170,8 +170,7 @@ function LifecycleMenuItems({
         <>
             {canClose && (
                 <DropdownMenuItem
-                    onSelect={(event) => {
-                        event.preventDefault();
+                    onSelect={() => {
                         onAction({
                             ulid: post.ulid,
                             label: routeLabel(post),
@@ -185,8 +184,7 @@ function LifecycleMenuItems({
             )}
             {canArrive && (
                 <DropdownMenuItem
-                    onSelect={(event) => {
-                        event.preventDefault();
+                    onSelect={() => {
                         onAction({
                             ulid: post.ulid,
                             label: routeLabel(post),
@@ -1057,7 +1055,7 @@ export default function FreightIndex({
                                     >
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="z-[2100]">
                                         <SelectItem value="matched">
                                             Transport arranged
                                         </SelectItem>
