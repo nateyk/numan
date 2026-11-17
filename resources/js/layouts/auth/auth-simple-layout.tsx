@@ -125,7 +125,13 @@ export default function AuthSimpleLayout({
                         <img
                             src="/brand/numanfreight-wordmark.svg"
                             alt="Numan Freight"
-                            className="h-6 w-auto max-w-36 dark:hidden"\n                        />\n                        <img\n                            src="/brand/numanfreight-wordmark-white.svg"\n                            alt=""\n                            aria-hidden="true"\n                            className="hidden h-6 w-auto max-w-36 dark:block"
+                            className="h-6 w-auto max-w-36 dark:hidden"
+                        />
+                        <img
+                            src="/brand/numanfreight-wordmark-white.svg"
+                            alt=""
+                            aria-hidden="true"
+                            className="hidden h-6 w-auto max-w-36 dark:block"
                         />
                     </Link>
                     <AppearanceToggleDropdown />
