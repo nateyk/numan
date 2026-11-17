@@ -218,7 +218,9 @@ class FreightPost extends Model
 
     public function isPastPickupWindow(): bool
     {
-        return $this->pickupWindowEndsAt()?->isPast() ?? true;
+        // Older approved posts sometimes have no pickup date; preserve their
+        // existing visibility until they are explicitly closed.
+        return $this->pickupWindowEndsAt()?->isPast() ?? false;
     }
 
     /**
@@ -236,8 +238,10 @@ class FreightPost extends Model
             default => 'DATE_ADD(pickup_date, INTERVAL COALESCE(pickup_date_flexibility_days, 0) DAY)',
         };
 
-        return $query->whereNotNull('pickup_date')
-            ->whereRaw($dateExpression.' >= ?', [today()->toDateString()]);
+        return $query->where(function (Builder $available) use ($dateExpression): void {
+            $available->whereNull('pickup_date')
+                ->orWhereRaw($dateExpression.' >= ?', [today()->toDateString()]);
+        });
     }
 
     public function expireIfPastPickup(): bool
