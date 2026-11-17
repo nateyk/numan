@@ -52,6 +52,24 @@ def assert_public_brand(page):
     expect(brand.locator('svg.lucide-truck')).to_have_count(0)
 
 
+def assert_stacked_freight_facts(page):
+    """Both information groups retain their headings, one fact per full row."""
+    for heading in ("freight-route-heading", "freight-cargo-heading"):
+        facts = page.locator(
+            f'section[aria-labelledby="{heading}"] dl > div'
+        )
+        assert facts.count() >= 3, f"{heading}: missing freight facts"
+        first = facts.nth(0).bounding_box()
+        second = facts.nth(1).bounding_box()
+        assert first and second
+        assert second["y"] >= first["y"] + first["height"] - 2, (
+            f"{heading}: facts must stack vertically, not side by side"
+        )
+        assert abs(second["x"] - first["x"]) <= 2, (
+            f"{heading}: facts must share the same left edge"
+        )
+
+
 def owner_row(page, ulid):
     return page.locator("tbody tr").filter(
         has=page.locator(f'a[href="/freight/{ulid}"]')
@@ -156,6 +174,7 @@ def transporter_contact_privacy(browser, fixtures):
         expect(guest_page.get_by_text("Consignor Poster")).to_be_visible()
         expect(guest_page.get_by_role("heading", name="Route & pickup")).to_be_visible()
         expect(guest_page.get_by_role("heading", name="Cargo & truck")).to_be_visible()
+        assert_stacked_freight_facts(guest_page)
         expect(
             guest_page.get_by_text(re.compile(r"400(?:\.0+)? quintal"))
         ).to_have_count(1)
@@ -241,6 +260,7 @@ def transporter_contact_privacy(browser, fixtures):
     try:
         sign_in(page, fixtures["transporter_email"])
         page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
+        assert_stacked_freight_facts(page)
         expect(page.locator('a[href="https://wa.me/251911777888"]')).to_be_visible()
         expect(page.locator('a[href="tel:+251900111222"]')).to_be_visible()
         assert page.evaluate(
