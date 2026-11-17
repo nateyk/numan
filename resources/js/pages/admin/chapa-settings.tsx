@@ -31,7 +31,11 @@ const sourceLabel: Record<KeySource, string> = {
     missing: 'Not configured',
 };
 
-export default function AdminChapaSettings({ settings, webhook_url, webhook_status }: Props) {
+export default function AdminChapaSettings({
+    settings,
+    webhook_url,
+    webhook_status,
+}: Props) {
     const form = useForm({
         mode: settings.mode,
         public_key: '',
