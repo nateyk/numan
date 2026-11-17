@@ -67,7 +67,7 @@ class CheckoutController extends Controller
             'amount_etb' => $amount,
             'currency' => 'ETB',
             'status' => 'pending',
-            'mode' => config('chapa.mode', 'test'),
+            'mode' => app(\App\Services\ChapaConfiguration::class)->mode(),
             'billing_interval' => $data['billing_interval'],
         ]);
 
