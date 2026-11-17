@@ -19,7 +19,7 @@ class FreightRouteController extends Controller
     public function show(Request $request, string $ulid): Response
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
-        Gate::authorize('update', $post);
+        Gate::authorize('viewWizard', $post);
 
         return Inertia::render('freight/route', [
             'post' => $post->load(['originLocation', 'destinationLocation', 'routeSnapshot']),
