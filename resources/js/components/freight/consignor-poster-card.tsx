@@ -107,9 +107,7 @@ function ContactBlock({
     const isGuest = !page.props.auth?.user;
 
     if (revealedContacts) {
-        return (
-            <ContactChannels contact={revealedContacts} variant="full" />
-        );
+        return <ContactChannels contact={revealedContacts} variant="full" />;
     }
 
     if (isOwnPost) {
