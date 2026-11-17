@@ -181,3 +181,70 @@ it('keeps environment credentials usable until dashboard overrides are saved', f
     expect(app(ChapaConfiguration::class)->value('secretKey'))->toBe('CHASECK_TEST-fallback-key')
         ->and(app(ChapaConfiguration::class)->value('webhookSecret'))->toBe('environment-fallback-webhook');
 });
+
+it('accepts a signed real webhook HTTP request with the dashboard secret and rejects invalid signatures', function () {
+    $this->actingAs(chapaAdmin())->put('/admin/chapa-settings', chapaTestKeys());
+    $this->app['auth']->logout();
+
+    $payload = [
+        'event' => 'charge.failed',
+        'status' => 'failed',
+        'tx_ref' => 'NF-admin-webhook-configuration-test',
+    ];
+    $body = json_encode($payload);
+    $secret = chapaTestKeys()['webhook_secret'];
+
+    $this->call(
+        'POST',
+        '/webhooks/chapa',
+        [],
+        [],
+        [],
+        [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_CHAPA_SIGNATURE' => hash_hmac('sha256', $body, $secret),
+        ],
+        $body,
+    )->assertSuccessful()->assertJsonPath('message', 'Event ignored');
+
+    $this->call(
+        'POST',
+        '/webhooks/chapa',
+        [],
+        [],
+        [],
+        [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_CHAPA_SIGNATURE' => hash_hmac('sha256', $body, 'incorrect'),
+        ],
+        $body,
+    )->assertStatus(403);
+});
+
+it('immediately rotates webhook verification without returning secrets to the browser', function () {
+    $admin = chapaAdmin();
+    $this->actingAs($admin)->put('/admin/chapa-settings', chapaTestKeys());
+
+    $newSecret = 'numan-rotated-webhook-secret-987654321';
+    $this->actingAs($admin)->put('/admin/chapa-settings', [
+        'mode' => 'test',
+        'public_key' => '',
+        'secret_key' => '',
+        'webhook_secret' => $newSecret,
+    ])->assertSessionHas('success');
+
+    $body = json_encode(['tx_ref' => 'NF-rotated', 'event' => 'charge.failed']);
+    $request = Request::create('/webhooks/chapa', 'POST', [], [], [], [], $body);
+
+    $request->headers->set(
+        'x-chapa-signature',
+        hash_hmac('sha256', $body, chapaTestKeys()['webhook_secret']),
+    );
+    expect(app(ChapaService::class)->validateWebhook($request))->toBeFalse();
+
+    $request->headers->set(
+        'x-chapa-signature',
+        hash_hmac('sha256', $body, $newSecret),
+    );
+    expect(app(ChapaService::class)->validateWebhook($request))->toBeTrue();
+});
