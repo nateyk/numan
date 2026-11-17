@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplaceSubscription;
+use App\Services\ChapaConfiguration;
 use App\Services\ChapaService;
 use Illuminate\Console\Command;
 use Throwable;
@@ -26,10 +27,11 @@ class AcceptChapaTestRenewal extends Command
 
     public function handle(ChapaService $chapa): int
     {
-        $key = (string) config('chapa.secretKey');
+        $settings = app(ChapaConfiguration::class);
+        $key = (string) $settings->value('secretKey');
         $baseUrl = rtrim((string) config('chapa.baseUrl'), '/');
 
-        if (config('chapa.mode') !== 'test'
+        if ($settings->mode() !== 'test'
             || ! preg_match('/^(CHASECK_TEST|CHAPA_TEST)[_-]/', $key)) {
             $this->error('Test Mode acceptance requires CHAPA_MODE=test and a Chapa TEST private key.');
 

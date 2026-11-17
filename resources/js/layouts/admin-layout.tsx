@@ -348,6 +348,11 @@ const buildAdminNavGroups = (
                 icon: DollarSign,
             },
             {
+                title: 'Chapa Settings',
+                href: '/admin/chapa-settings',
+                icon: KeyRound,
+            },
+            {
                 title: 'Manual Payments',
                 href: '/admin/marketplace-manual-payments',
                 icon: HandCoins,

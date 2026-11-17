@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminTruckTypeController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BroadcastController;
+use App\Http\Controllers\Admin\ChapaPaymentSettingsController;
 use App\Http\Controllers\Admin\CohortAnalysisController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FeatureFlagController;
@@ -797,6 +798,9 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
         // Free plan limits (admin-editable settings)
         Route::put('/marketplace-settings', [MarketplaceSettingController::class, 'update'])->name('marketplace-settings.update');
 
+        // Credentials are write-only and available to superadmins only.
+        Route::get('/chapa-settings', [ChapaPaymentSettingsController::class, 'index'])->name('chapa-settings.index');
+        Route::put('/chapa-settings', [ChapaPaymentSettingsController::class, 'update'])->name('chapa-settings.update');
         Route::get('/marketplace-payments', [MarketplacePaymentController::class, 'index'])->name('marketplace-payments.index');
         Route::post('/marketplace-payments/{transaction}/reconcile', [MarketplacePaymentController::class, 'reconcile'])->name('marketplace-payments.reconcile');
         Route::post('/marketplace-payments/{transaction}/reviews', [MarketplacePaymentReviewController::class, 'store'])->name('marketplace-payments.reviews.store');

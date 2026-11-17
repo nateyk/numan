@@ -14,9 +14,17 @@ class ChapaService
         protected ?string $baseUrl = null,
         protected ?string $webhookSecret = null,
     ) {
-        $this->secretKey = $secretKey ?? config('chapa.secretKey');
+        // Defer database-backed credentials until an actual provider call.
+        // Composer's package:discover and migrations instantiate this service
+        // before the database or settings table necessarily exists.
+        $this->secretKey = $secretKey;
         $this->baseUrl = $baseUrl ?? config('chapa.baseUrl', 'https://api.chapa.co/v1');
-        $this->webhookSecret = $webhookSecret ?? config('chapa.webhookSecret');
+        $this->webhookSecret = $webhookSecret;
+    }
+
+    private function resolvedSecretKey(): string
+    {
+        return (string) ($this->secretKey ?? app(ChapaConfiguration::class)->value('secretKey'));
     }
 
     public function generateReference(?string $prefix = null): string
@@ -45,7 +53,7 @@ class ChapaService
      */
     public function initializePayment(array $data): array
     {
-        $response = Http::withToken((string) $this->secretKey)
+        $response = Http::withToken($this->resolvedSecretKey())
             ->connectTimeout(5)
             ->timeout(15)
             ->acceptJson()
@@ -65,7 +73,7 @@ class ChapaService
      */
     public function verifyTransaction(string $txRef): array
     {
-        $response = Http::withToken((string) $this->secretKey)
+        $response = Http::withToken($this->resolvedSecretKey())
             ->connectTimeout(5)
             ->timeout(15)
             ->acceptJson()
@@ -133,17 +141,29 @@ class ChapaService
 
     public function validateWebhook(Request $request): bool
     {
-        $signature = $request->header('x-chapa-signature') ?? $request->header('chapa-signature');
-
-        // Never treat an unset secret as the empty HMAC key. Anyone could
-        // calculate that signature and forge a successful payment event.
-        if (! is_string($this->webhookSecret) || trim($this->webhookSecret) === '' || ! $signature) {
+        // Chapa v1 uses separate signature algorithms depending on the
+        // header. The x-chapa-signature digest covers the raw request bytes;
+        // chapa-signature authenticates the shared webhook secret itself.
+        // A valid digest from either header is sufficient per Chapa docs.
+        $secret = $this->webhookSecret ?? app(ChapaConfiguration::class)->value('webhookSecret');
+        if (! is_string($secret) || trim($secret) === '') {
             return false;
         }
 
-        $expected = hash_hmac('sha256', $request->getContent(), $this->webhookSecret);
+        $bodySignature = $request->header('x-chapa-signature');
+        if (is_string($bodySignature) && hash_equals(
+            hash_hmac('sha256', $request->getContent(), $secret),
+            $bodySignature,
+        )) {
+            return true;
+        }
 
-        return hash_equals($expected, $signature);
+        $keySignature = $request->header('chapa-signature');
+
+        return is_string($keySignature) && hash_equals(
+            hash_hmac('sha256', $secret, $secret),
+            $keySignature,
+        );
     }
 
     /**
@@ -151,7 +171,7 @@ class ChapaService
      */
     public function getBanks(): array
     {
-        $response = Http::withToken((string) $this->secretKey)->acceptJson()->get(rtrim((string) $this->baseUrl, '/').'/banks');
+        $response = Http::withToken($this->resolvedSecretKey())->acceptJson()->get(rtrim((string) $this->baseUrl, '/').'/banks');
 
         return $response->json() ?? [];
     }

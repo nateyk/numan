@@ -75,6 +75,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Prevent payment credentials being copied into the session after
+        // validation errors (including a key/mode mismatch).
+        $exceptions->dontFlash(['public_key', 'secret_key', 'webhook_secret']);
+
         Integration::handles($exceptions);
 
         $exceptions->respond(function (mixed $response, Throwable $e, Request $request) {

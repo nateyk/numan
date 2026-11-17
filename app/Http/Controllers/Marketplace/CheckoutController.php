@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Marketplace;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
+use App\Services\ChapaConfiguration;
 use App\Services\ChapaService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -67,7 +68,7 @@ class CheckoutController extends Controller
             'amount_etb' => $amount,
             'currency' => 'ETB',
             'status' => 'pending',
-            'mode' => config('chapa.mode', 'test'),
+            'mode' => app(ChapaConfiguration::class)->mode(),
             'billing_interval' => $data['billing_interval'],
         ]);
 
