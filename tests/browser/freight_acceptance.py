@@ -131,6 +131,9 @@ def transporter_contact_privacy(browser, fixtures):
         guest_page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
         expect(guest_page.get_by_text("Consignor Poster")).to_be_visible()
         assert fixtures["consignor_phone"] not in guest_page.content()
+        assert fixtures["consignor_secondary_phone"] not in guest_page.content()
+        assert fixtures["consignor_whatsapp"] not in guest_page.content()
+        assert fixtures["consignor_secondary_whatsapp"] not in guest_page.content()
         assert fixtures["consignor_email"] not in guest_page.content()
         RESULTS["guest_privacy"] = "passed"
     finally:
@@ -150,6 +153,8 @@ def transporter_contact_privacy(browser, fixtures):
         page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
         expect(page.get_by_text("Consignor Poster")).to_be_visible()
         assert fixtures["consignor_phone"] not in page.content()
+        assert fixtures["consignor_secondary_phone"] not in page.content()
+        assert fixtures["consignor_whatsapp"] not in page.content()
         assert fixtures["consignor_email"] not in page.content()
         expect(page.get_by_role("button", name="Reveal contact").first).to_be_visible()
 
@@ -159,6 +164,19 @@ def transporter_contact_privacy(browser, fixtures):
         dialog.get_by_role("button", name="Reveal contact").click()
         expect(page.locator('a[href^="tel:"]').first).to_be_visible(timeout=20000)
         assert fixtures["consignor_phone"] in page.content()
+        expect(page.locator('a[href="tel:+251900111222"]')).to_have_count(1)
+        expect(page.locator('a[href="tel:+251900222333"]')).to_have_count(1)
+        expect(page.locator('a[href="https://wa.me/251900444555"]')).to_have_count(1)
+        expect(page.locator('a[href="https://wa.me/251911777888"]')).to_have_count(1)
+        expect(page.locator('a[href="mailto:consignor-browser@numan.invalid"]')).to_have_count(1)
+        expect(page.get_by_role("button", name="Copy phone +251900111222")).to_be_visible()
+
+        context.grant_permissions(["clipboard-read", "clipboard-write"])
+        page.get_by_role("button", name="Copy phone +251900111222").click()
+        assert page.evaluate("navigator.clipboard.readText()") == "+251900111222"
+        assert page.evaluate(
+            "document.documentElement.scrollWidth <= window.innerWidth + 2"
+        ), "Revealed contact actions introduce horizontal overflow at 390px"
         page.screenshot(path=str(EVIDENCE / "mobile-after-reveal.png"), full_page=True)
         RESULTS["transporter_reveal"] = "passed"
     except Exception:
@@ -166,6 +184,24 @@ def transporter_contact_privacy(browser, fixtures):
         raise
     finally:
         context.close()
+
+    desktop = browser.new_context(viewport={"width": 1280, "height": 900})
+    page = desktop.new_page()
+    try:
+        sign_in(page, fixtures["transporter_email"])
+        page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
+        expect(page.locator('a[href="https://wa.me/251911777888"]')).to_be_visible()
+        expect(page.locator('a[href="tel:+251900111222"]')).to_be_visible()
+        assert page.evaluate(
+            "document.documentElement.scrollWidth <= window.innerWidth + 2"
+        ), "Desktop contact actions introduce horizontal overflow"
+        page.screenshot(path=str(EVIDENCE / "desktop-after-reveal.png"), full_page=True)
+        RESULTS["desktop_contacts"] = "passed"
+    except Exception:
+        page.screenshot(path=str(EVIDENCE / "desktop-contacts-failed.png"), full_page=True)
+        raise
+    finally:
+        desktop.close()
 
 
 def main():
