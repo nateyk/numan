@@ -23,6 +23,7 @@ jobs:
       CACHE_STORE: array
       MAIL_MAILER: array
       QUEUE_CONNECTION: sync
+      BROADCAST_CONNECTION: 'null'
       MARKETPLACE_INTERESTS_ENABLED: 'false'
       BROWSER_ACCEPTANCE_ENABLED: 'true'
       BROWSER_ACCEPTANCE_PASSWORD: synthetic-browser-fixture-only
