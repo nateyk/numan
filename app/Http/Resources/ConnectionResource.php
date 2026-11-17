@@ -33,6 +33,7 @@ class ConnectionResource extends JsonResource
                 'status' => (string) $this->freightPost->status,
                 'arrived_at' => $this->freightPost->arrived_at?->toIso8601String(),
                 'closed_at' => $this->freightPost->closed_at?->toIso8601String(),
+                'published_at' => $this->freightPost->published_at?->toIso8601String(),
                 'origin' => $this->freightPost->originLocation?->name,
                 'destination' => $this->freightPost->destinationLocation?->name,
             ]),

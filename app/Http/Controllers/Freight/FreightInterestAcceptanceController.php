@@ -64,6 +64,7 @@ class FreightInterestAcceptanceController extends Controller
             $post->update([
                 'status' => FreightPostStatus::Closed->value,
                 'closed_at' => now(),
+                'closure_reason' => 'matched',
             ]);
             $post->moderationLogs()->create([
                 'from_status' => FreightPostStatus::Active->value,

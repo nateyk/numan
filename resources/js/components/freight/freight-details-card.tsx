@@ -5,7 +5,10 @@ import {
     formatDistance,
     formatDuration,
 } from '@/components/freight/format-route';
-import { formatFreightDate } from '@/lib/freight-dates';
+import {
+    freightLifecycleLabel,
+    freightPublicationLabel,
+} from '@/lib/freight-dates';
 import { CalendarDays, Package, Route, Truck } from 'lucide-react';
 
 /**
@@ -36,6 +39,8 @@ export type FreightDetailsPost = {
     pickup_time: string | null;
     pickup_date_flexibility_days: number | null;
     expires_on: string | null;
+    published_at: string | null;
+    closure_reason: string | null;
     arrived_at: string | null;
     closed_at: string | null;
     created_at: string | null;
@@ -185,15 +190,7 @@ export default function FreightDetailsCard({
             .filter(Boolean)
             .join(' · ') || undefined;
 
-    const createdValue = post.created_at
-        ? new Date(post.created_at).toLocaleString(undefined, {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-          })
-        : 'Not stated';
+    const postedLabel = freightPublicationLabel(post);
 
     return (
         <section
@@ -244,18 +241,9 @@ export default function FreightDetailsCard({
                                 .join(' · ')}
                         />
                         <Fact
-                            label="Listing closes"
-                            value={formatFreightDate(post.expires_on)}
-                            detail="End of the pickup window"
+                            label="Listing status"
+                            value={freightLifecycleLabel(post)}
                         />
-                        {post.arrived_at && (
-                            <Fact
-                                label="Cargo arrival"
-                                value={new Date(
-                                    post.arrived_at,
-                                ).toLocaleDateString()}
-                            />
-                        )}
                         <Fact
                             label="Distance / time"
                             value={laneFact || 'Not calculated'}
@@ -393,7 +381,7 @@ export default function FreightDetailsCard({
                     className="size-3.5 shrink-0"
                     aria-hidden="true"
                 />
-                Posted {createdValue}
+                {postedLabel}
             </p>
         </section>
     );

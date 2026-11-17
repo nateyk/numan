@@ -36,7 +36,11 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
-import { formatFreightDate, formatPostedDate } from '@/lib/freight-dates';
+import {
+    formatFreightDate,
+    freightLifecycleLabel,
+    freightPublicationLabel,
+} from '@/lib/freight-dates';
 import { freightRoute, routeLabel } from '@/lib/freight-route';
 import { type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -81,6 +85,9 @@ interface Freight {
     pickup_date: string | null;
     expires_on?: string | null;
     created_at?: string | null;
+    published_at?: string | null;
+    closed_at?: string | null;
+    closure_reason?: string | null;
     arrived_at?: string | null;
     completion_score: number;
     interests_count?: number | null;
@@ -152,7 +159,10 @@ function LifecycleMenuItems({
     const canClose = ['submitted', 'under_review', 'active'].includes(
         post.status,
     );
-    const canArrive = post.status === 'closed' && !post.arrived_at;
+    const canArrive =
+        post.status === 'closed' &&
+        !post.arrived_at &&
+        post.closure_reason !== 'cancelled';
 
     if (!canClose && !canArrive) return null;
 
@@ -224,6 +234,9 @@ export default function FreightIndex({
     const [lifecycleTarget, setLifecycleTarget] =
         useState<LifecycleTarget | null>(null);
     const [processingLifecycle, setProcessingLifecycle] = useState(false);
+    const [closureReason, setClosureReason] = useState<'matched' | 'cancelled'>(
+        'matched',
+    );
     const { addToast } = useToast();
 
     const confirmDelete = () => {
@@ -249,7 +262,9 @@ export default function FreightIndex({
         setProcessingLifecycle(true);
         router.post(
             `/my-freight/${lifecycleTarget.ulid}/${lifecycleTarget.action}`,
-            {},
+            lifecycleTarget.action === 'close'
+                ? { closure_reason: closureReason }
+                : {},
             {
                 preserveScroll: true,
                 onSuccess: () =>
@@ -270,6 +285,7 @@ export default function FreightIndex({
                 onFinish: () => {
                     setProcessingLifecycle(false);
                     setLifecycleTarget(null);
+                    setClosureReason('matched');
                 },
             },
         );
@@ -539,9 +555,9 @@ export default function FreightIndex({
                                                                 ''}{' '}
                                                             •{' '}
                                                             {p.ulid.slice(0, 8)}
-                                                            {' · Posted '}
-                                                            {formatPostedDate(
-                                                                p.created_at,
+                                                            {' · '}
+                                                            {freightPublicationLabel(
+                                                                p,
                                                             )}
                                                         </div>
                                                     </TableCell>
@@ -572,9 +588,8 @@ export default function FreightIndex({
                                                             )}
                                                         </div>
                                                         <div className="text-xs text-muted-foreground">
-                                                            Closes{' '}
-                                                            {formatFreightDate(
-                                                                p.expires_on,
+                                                            {freightLifecycleLabel(
+                                                                p,
                                                             )}
                                                         </div>
                                                     </TableCell>
@@ -586,10 +601,13 @@ export default function FreightIndex({
                                                             >
                                                                 {p.arrived_at
                                                                     ? 'Arrived'
-                                                                    : p.status.replaceAll(
-                                                                          '_',
-                                                                          ' ',
-                                                                      )}
+                                                                    : p.closure_reason ===
+                                                                        'cancelled'
+                                                                      ? 'Cancelled'
+                                                                      : p.status.replaceAll(
+                                                                            '_',
+                                                                            ' ',
+                                                                        )}
                                                             </Badge>
                                                             {p.hidden_at && (
                                                                 <Badge
@@ -806,7 +824,13 @@ export default function FreightIndex({
                                         >
                                             {p.arrived_at
                                                 ? 'Arrived'
-                                                : p.status.replaceAll('_', ' ')}
+                                                : p.closure_reason ===
+                                                    'cancelled'
+                                                  ? 'Cancelled'
+                                                  : p.status.replaceAll(
+                                                        '_',
+                                                        ' ',
+                                                    )}
                                         </Badge>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -832,9 +856,9 @@ export default function FreightIndex({
                                         )}
                                     </div>
                                     <p className="mt-2 text-xs text-muted-foreground">
-                                        Posted {formatPostedDate(p.created_at)}
-                                        {' · Closes '}
-                                        {formatFreightDate(p.expires_on)}
+                                        {freightPublicationLabel(p)}
+                                        {' · '}
+                                        {freightLifecycleLabel(p)}
                                     </p>
                                     <div className="mt-3 flex gap-2">
                                         <Button
@@ -1014,6 +1038,42 @@ export default function FreightIndex({
                                     : ' will be recorded as arrived at its destination.'}
                             </DialogDescription>
                         </DialogHeader>
+                        {lifecycleTarget?.action === 'close' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="freight-closure-reason">
+                                    Why are you closing this listing?
+                                </Label>
+                                <Select
+                                    value={closureReason}
+                                    onValueChange={(value) =>
+                                        setClosureReason(
+                                            value as 'matched' | 'cancelled',
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="freight-closure-reason"
+                                        className="w-full"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="matched">
+                                            Transport arranged
+                                        </SelectItem>
+                                        <SelectItem value="cancelled">
+                                            Cancelled / no longer needed
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {closureReason === 'cancelled' && (
+                                    <p className="text-xs text-muted-foreground">
+                                        A cancelled freight cannot be marked as
+                                        arrived.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                         <DialogFooter className="gap-2">
                             <Button
                                 variant="outline"

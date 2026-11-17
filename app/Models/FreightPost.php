@@ -55,6 +55,8 @@ class FreightPost extends Model
         'hidden_at',
         'closed_at',
         'arrived_at',
+        'published_at',
+        'closure_reason',
         'completion_score',
     ];
 
@@ -70,6 +72,7 @@ class FreightPost extends Model
             'hidden_at' => 'datetime',
             'closed_at' => 'datetime',
             'arrived_at' => 'datetime',
+            'published_at' => 'datetime',
             'pickup_date' => 'date',
             'truck_count' => 'integer',
             'pickup_date_flexibility_days' => 'integer',

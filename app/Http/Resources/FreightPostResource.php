@@ -44,6 +44,8 @@ class FreightPostResource extends JsonResource
             'pickup_time' => $this->pickup_time,
             'expires_on' => $this->pickupWindowEndsAt()?->toDateString(),
             'closed_at' => $this->closed_at?->toIso8601String(),
+            'closure_reason' => $this->closure_reason,
+            'published_at' => $this->published_at?->toIso8601String(),
             'arrived_at' => $this->arrived_at?->toIso8601String(),
             'pickup_date_flexibility_days' => $this->pickup_date_flexibility_days,
             'origin_site_note' => $this->origin_site_note,

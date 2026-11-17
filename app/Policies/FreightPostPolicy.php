@@ -99,7 +99,8 @@ class FreightPostPolicy
     public function markArrived(User $user, FreightPost $post): bool
     {
         return $user->id === $post->user_id
-            && $post->status === FreightPostStatus::Closed->value;
+            && $post->status === FreightPostStatus::Closed->value
+            && $post->closure_reason !== 'cancelled';
     }
 
     public function delete(User $user, FreightPost $post): bool

@@ -116,7 +116,7 @@ class PublicFreightDiscoveryController extends Controller
             'distance_asc' => $this->orderByDistance($query, 'asc'),
             'distance_desc' => $this->orderByDistance($query, 'desc'),
             'pickup_asc' => $query->orderBy('pickup_date', 'asc')->orderBy('created_at', 'asc'),
-            default => $query->orderByDesc('pickup_date')->orderByDesc('created_at'),
+            default => $query->orderByDesc('published_at')->orderByDesc('created_at'),
         };
 
         $posts = $query->paginate(12)->withQueryString();

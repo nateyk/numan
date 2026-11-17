@@ -295,7 +295,13 @@ export default function FreightShow({
                                     >
                                         {post.arrived_at
                                             ? 'Arrived'
-                                            : post.status.replaceAll('_', ' ')}
+                                            : post.closure_reason ===
+                                                'cancelled'
+                                              ? 'Cancelled'
+                                              : post.status.replaceAll(
+                                                    '_',
+                                                    ' ',
+                                                )}
                                     </Badge>
                                 )}
                             </div>
