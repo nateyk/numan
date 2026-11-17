@@ -82,27 +82,6 @@ function longitudeOf(place: FreightDetailsPost['origin']): number | null {
     return Number(place.longitude);
 }
 
-/**
- * The product's own names for the two ways a load can be awarded. The API
- * stores `one_time` / `recurring`; neither belongs on a public page.
- */
-const scheduleCopy: Record<string, { label: string; detail: string }> = {
-    one_time: {
-        label: 'Direct offer',
-        detail: 'One-time freight, first suitable transporter gets it.',
-    },
-    recurring: {
-        label: 'Tender',
-        detail: 'Recurring need, collect multiple offers.',
-    },
-};
-
-function humanize(value: string): string {
-    const words = value.replaceAll('_', ' ');
-
-    return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
 /** Brief label-above-value facts keep long values out of narrow table cells. */
 function Fact({
     label,
