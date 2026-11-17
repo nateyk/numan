@@ -31,6 +31,8 @@ class FreightBrowserAcceptanceSeeder extends Seeder
 
         $consignor = $this->createUser('consignor-browser@numan.invalid', 'Browser Test Consignor', '+251900111222', $addis, false);
         $transporter = $this->createUser('transporter-browser@numan.invalid', 'Browser Test Transporter', '+251900333444', $adama, true);
+        $admin = $this->createUser('admin-browser@numan.invalid', 'Browser Test Admin', '+251900555666', $addis, false);
+        $admin->update(['is_superadmin' => true]);
 
         // Multiple channels exercise both contact actions and de-duplication.
         // These numbers belong only to disposable browser-test accounts.
@@ -111,6 +113,7 @@ class FreightBrowserAcceptanceSeeder extends Seeder
             'cancelled_ulid' => $cancelled->ulid,
             'consignor_email' => $consignor->email,
             'transporter_email' => $transporter->email,
+            'admin_email' => $admin->email,
             'consignor_phone' => $consignor->profile->phone,
             'consignor_secondary_phone' => '+251900222333',
             'consignor_whatsapp' => '+251900444555',

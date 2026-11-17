@@ -9,7 +9,7 @@ export function LandingFooter({
     const { t } = useTranslations();
 
     return (
-        <footer className="border-t bg-[#0F294A] text-white">
+        <footer className="border-t bg-brand-navy text-white">
             <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8">
                 <div className="space-y-4">
                     <Link href="/" aria-label="Numan Freight home">

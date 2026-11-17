@@ -73,6 +73,8 @@ jobs:
           exit 1
       - name: Run consignor and transporter Chromium acceptance
         run: python tests/browser/freight_acceptance.py
+      - name: Run light/dark and responsive UI acceptance
+        run: python tests/browser/brand_theme_acceptance.py
       - name: Upload synthetic browser screenshots and results
         if: always()
         uses: actions/upload-artifact@v4

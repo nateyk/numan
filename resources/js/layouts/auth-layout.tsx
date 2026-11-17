@@ -41,7 +41,13 @@ function CenteredAuthLayout({
                     <img
                         src="/brand/numanfreight-wordmark.svg"
                         alt="Numan Freight"
-                        className="h-6 w-auto max-w-32"
+                        className="h-6 w-auto max-w-32 dark:hidden"
+                    />
+                    <img
+                        src="/brand/numanfreight-wordmark-white.svg"
+                        alt=""
+                        aria-hidden="true"
+                        className="hidden h-6 w-auto max-w-32 dark:block"
                     />
                 </Link>
                 <AppearanceToggleDropdown />
