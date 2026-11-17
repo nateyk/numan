@@ -28,7 +28,9 @@ type ContactEntry = {
 };
 
 function uniqueValues(values: Array<string | null | undefined>): string[] {
-    return [...new Set(values.map((value) => value?.trim() ?? '').filter(Boolean))];
+    return [
+        ...new Set(values.map((value) => value?.trim() ?? '').filter(Boolean)),
+    ];
 }
 
 /**
@@ -161,7 +163,7 @@ export default function ContactChannels({
                             <p className="text-xs text-muted-foreground">
                                 {entry.label}
                             </p>
-                            <p className="break-all text-sm font-medium tabular-nums text-foreground">
+                            <p className="text-sm font-medium break-all text-foreground tabular-nums">
                                 {entry.value}
                             </p>
                         </div>
@@ -171,7 +173,9 @@ export default function ContactChannels({
                                     asChild
                                     variant="outline"
                                     size="sm"
-                                    className={compact ? 'h-8 px-2' : 'h-9 px-3'}
+                                    className={
+                                        compact ? 'h-8 px-2' : 'h-9 px-3'
+                                    }
                                 >
                                     <a
                                         href={entry.href}
