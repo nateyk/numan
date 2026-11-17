@@ -44,11 +44,11 @@ import {
     AlertTriangle,
     ArrowRight,
     Calendar,
-    CheckCircle2,
     CheckCheck,
-    LockKeyhole,
+    CheckCircle2,
     ExternalLink,
     Eye,
+    LockKeyhole,
     MapPin,
     MoreHorizontal,
     Package,
@@ -506,13 +506,15 @@ export default function FreightIndex({
                                             // and finished posts can go; live posts
                                             // (submitted / under review / active)
                                             // carry other users' interests.
-                                            const canDelete = [
-                                                'draft',
-                                                'rejected',
-                                                'closed',
-                                                'expired',
-                                            ].includes(p.status) &&
-                                                (p.interests_count ?? 0) === 0 &&
+                                            const canDelete =
+                                                [
+                                                    'draft',
+                                                    'rejected',
+                                                    'closed',
+                                                    'expired',
+                                                ].includes(p.status) &&
+                                                (p.interests_count ?? 0) ===
+                                                    0 &&
                                                 !p.arrived_at;
                                             return (
                                                 <TableRow key={p.ulid}>
@@ -538,7 +540,9 @@ export default function FreightIndex({
                                                             •{' '}
                                                             {p.ulid.slice(0, 8)}
                                                             {' · Posted '}
-                                                            {formatPostedDate(p.created_at)}
+                                                            {formatPostedDate(
+                                                                p.created_at,
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -563,10 +567,15 @@ export default function FreightIndex({
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                             <Calendar className="size-4 text-muted-foreground" />{' '}
-                                                            {formatFreightDate(p.pickup_date)}
+                                                            {formatFreightDate(
+                                                                p.pickup_date,
+                                                            )}
                                                         </div>
                                                         <div className="text-xs text-muted-foreground">
-                                                            Closes {formatFreightDate(p.expires_on)}
+                                                            Closes{' '}
+                                                            {formatFreightDate(
+                                                                p.expires_on,
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -577,7 +586,10 @@ export default function FreightIndex({
                                                             >
                                                                 {p.arrived_at
                                                                     ? 'Arrived'
-                                                                    : p.status.replaceAll('_', ' ')}
+                                                                    : p.status.replaceAll(
+                                                                          '_',
+                                                                          ' ',
+                                                                      )}
                                                             </Badge>
                                                             {p.hidden_at && (
                                                                 <Badge
@@ -707,10 +719,12 @@ export default function FreightIndex({
                                                                         )}
                                                                     <LifecycleMenuItems
                                                                         post={p}
-                                                                        onAction={setLifecycleTarget}
+                                                                        onAction={
+                                                                            setLifecycleTarget
+                                                                        }
                                                                     />
                                                                     <DropdownMenuSeparator />
-                                                {canDelete && (
+                                                                    {canDelete && (
                                                                         <DropdownMenuItem
                                                                             className="cursor-pointer text-destructive"
                                                                             onSelect={(
@@ -766,14 +780,15 @@ export default function FreightIndex({
                                 freightRoute(p);
                             const isDraft = p.status === 'draft';
                             // Same rule as the desktop table and the policy.
-                            const canDelete = [
-                                'draft',
-                                'rejected',
-                                'closed',
-                                'expired',
-                            ].includes(p.status) &&
-                                                (p.interests_count ?? 0) === 0 &&
-                                                !p.arrived_at;
+                            const canDelete =
+                                [
+                                    'draft',
+                                    'rejected',
+                                    'closed',
+                                    'expired',
+                                ].includes(p.status) &&
+                                (p.interests_count ?? 0) === 0 &&
+                                !p.arrived_at;
                             return (
                                 <Card key={p.ulid} className="p-4">
                                     <div className="flex items-start justify-between gap-3">
@@ -789,7 +804,9 @@ export default function FreightIndex({
                                             variant="secondary"
                                             className={`${statusColor(p.arrived_at ? 'arrived' : p.status)} text-xs capitalize`}
                                         >
-                                            {p.arrived_at ? 'Arrived' : p.status.replaceAll('_', ' ')}
+                                            {p.arrived_at
+                                                ? 'Arrived'
+                                                : p.status.replaceAll('_', ' ')}
                                         </Badge>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -874,7 +891,9 @@ export default function FreightIndex({
                                                 )}
                                                 <LifecycleMenuItems
                                                     post={p}
-                                                    onAction={setLifecycleTarget}
+                                                    onAction={
+                                                        setLifecycleTarget
+                                                    }
                                                 />
                                                 {canDelete && (
                                                     <DropdownMenuItem
