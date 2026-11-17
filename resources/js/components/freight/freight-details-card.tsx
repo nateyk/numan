@@ -251,7 +251,9 @@ export default function FreightDetailsCard({
                         {post.arrived_at && (
                             <Fact
                                 label="Cargo arrival"
-                                value={new Date(post.arrived_at).toLocaleDateString()}
+                                value={new Date(
+                                    post.arrived_at,
+                                ).toLocaleDateString()}
                             />
                         )}
                         <Fact
