@@ -156,7 +156,9 @@ def transporter_contact_privacy(browser, fixtures):
         expect(guest_page.get_by_text("Consignor Poster")).to_be_visible()
         expect(guest_page.get_by_role("heading", name="Route & pickup")).to_be_visible()
         expect(guest_page.get_by_role("heading", name="Cargo & truck")).to_be_visible()
-        expect(guest_page.get_by_text("400 quintal")).to_have_count(1)
+        expect(
+            guest_page.get_by_text(re.compile(r"400(?:\\.0+)? quintal"))
+        ).to_have_count(1)
         expect(guest_page.get_by_text("Tariff weight", exact=True)).to_have_count(0)
         expect(guest_page.get_by_text("Warehouse loading entrance")).to_be_visible()
         expect(guest_page.get_by_text("Receiver gate")).to_be_visible()
