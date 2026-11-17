@@ -48,6 +48,7 @@ class PublicFreightDiscoveryController extends Controller
         $query = FreightPost::query()
             ->with(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
             ->active()
+            ->withinPickupWindow()
             ->visible()
             ->when($request->query('origin'), function ($q, $origin) {
                 $this->whereLocationId($q, 'origin_location_id', $origin);
