@@ -29,7 +29,8 @@ class ChapaConfiguration
 
         if (Schema::hasTable('chapa_payment_settings')) {
             $setting = ChapaPaymentSetting::query()->find(1);
-            $saved = $setting?->{self::FIELDS[$key]};
+            $column = self::FIELDS[$key];
+            $saved = $setting?->$column;
 
             if (is_string($saved) && trim($saved) !== '') {
                 return $saved;
