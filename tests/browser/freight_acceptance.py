@@ -29,6 +29,29 @@ def sign_in(page, email):
     page.wait_for_url(lambda url: "/login" not in str(url), timeout=20000)
 
 
+def assert_public_brand(page):
+    brand = page.locator(
+        'header a[aria-label="Numan Freight — browse freight"]'
+    )
+    expect(brand).to_be_visible()
+    symbol = brand.locator('img[src="/brand/numanfreight-symbol.svg"]')
+    expect(symbol).to_be_visible()
+    assert symbol.evaluate(
+        "(img) => img.complete && img.naturalWidth > 0"
+    ), "Numan Freight's brand symbol must load"
+    wordmark = brand.locator(
+        'img[src="/brand/numanfreight-wordmark.svg"], '
+        'img[src="/brand/numanfreight-wordmark-white.svg"]'
+    )
+    expect(wordmark).to_have_count(2)
+    assert wordmark.evaluate_all(
+        "(images) => images.some(img => img.complete && img.naturalWidth > 0 "
+        "&& img.getBoundingClientRect().width > 0 "
+        "&& getComputedStyle(img).display !== 'none')"
+    ), "The official wordmark must be visible"
+    expect(brand.locator('svg.lucide-truck')).to_have_count(0)
+
+
 def owner_row(page, ulid):
     return page.locator("tbody tr").filter(
         has=page.locator(f'a[href="/freight/{ulid}"]')
@@ -129,6 +152,7 @@ def transporter_contact_privacy(browser, fixtures):
     guest_page = guest.new_page()
     try:
         guest_page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
+        assert_public_brand(guest_page)
         expect(guest_page.get_by_text("Consignor Poster")).to_be_visible()
         assert fixtures["consignor_phone"] not in guest_page.content()
         assert fixtures["consignor_secondary_phone"] not in guest_page.content()
@@ -144,6 +168,7 @@ def transporter_contact_privacy(browser, fixtures):
     try:
         sign_in(page, fixtures["transporter_email"])
         page.goto(f"{BASE_URL}/freight")
+        assert_public_brand(page)
         expect(page.locator(f'a[href="/freight/{fixtures["contact_ulid"]}"]:visible').first).to_be_visible()
         assert page.evaluate(
             "document.documentElement.scrollWidth <= window.innerWidth + 2"
