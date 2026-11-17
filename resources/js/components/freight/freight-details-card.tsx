@@ -82,7 +82,7 @@ function longitudeOf(place: FreightDetailsPost['origin']): number | null {
     return Number(place.longitude);
 }
 
-/** Brief label-above-value facts keep long values out of narrow table cells. */
+/** One full-width list row per fact; no paired mini-fields within a section. */
 function Fact({
     label,
     value,
@@ -93,14 +93,18 @@ function Fact({
     detail?: string;
 }) {
     return (
-        <div className="min-w-0 space-y-1">
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="min-w-0 text-sm leading-snug font-medium break-words">
+        <div className="grid min-w-0 grid-cols-[6.25rem_minmax(0,1fr)] items-start gap-x-3 py-2.5 first:pt-0 last:pb-0 sm:grid-cols-[7rem_minmax(0,1fr)]">
+            <dt className="text-xs leading-relaxed text-muted-foreground">
+                {label}
+            </dt>
+            <dd className="min-w-0 text-sm leading-relaxed font-medium break-words whitespace-pre-line">
                 {value}
+                {detail && (
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                        {detail}
+                    </span>
+                )}
             </dd>
-            {detail && (
-                <dd className="text-xs text-muted-foreground">{detail}</dd>
-            )}
         </div>
     );
 }
@@ -181,7 +185,7 @@ export default function FreightDetailsCard({
                         />
                         Route &amp; pickup
                     </h2>
-                    <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+                    <dl className="divide-y divide-border/50">
                         <Fact
                             label="Pickup date"
                             value={pickup}
@@ -200,12 +204,10 @@ export default function FreightDetailsCard({
                                 value={routeEstimate}
                             />
                         )}
-                        <div className="col-span-2">
-                            <Fact
-                                label="Listing"
-                                value={freightLifecycleLabel(post)}
-                            />
-                        </div>
+                        <Fact
+                            label="Listing"
+                            value={freightLifecycleLabel(post)}
+                        />
                     </dl>
                 </section>
 
@@ -233,7 +235,7 @@ export default function FreightDetailsCard({
                             </p>
                         )}
                     </div>
-                    <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+                    <dl className="divide-y divide-border/50">
                         {post.cargo_type && (
                             <Fact
                                 label="Cargo type"
@@ -302,26 +304,15 @@ export default function FreightDetailsCard({
                         />
                         Pickup &amp; delivery notes
                     </h2>
-                    <dl className="grid min-w-0 gap-4 @min-[38rem]:grid-cols-2">
+                    <dl className="divide-y divide-border/50">
                         {post.origin_site_note && (
-                            <div className="min-w-0 space-y-1">
-                                <dt className="text-xs text-muted-foreground">
-                                    Pickup
-                                </dt>
-                                <dd className="text-sm leading-relaxed break-words whitespace-pre-line">
-                                    {post.origin_site_note}
-                                </dd>
-                            </div>
+                            <Fact label="Pickup" value={post.origin_site_note} />
                         )}
                         {post.destination_site_note && (
-                            <div className="min-w-0 space-y-1">
-                                <dt className="text-xs text-muted-foreground">
-                                    Delivery
-                                </dt>
-                                <dd className="text-sm leading-relaxed break-words whitespace-pre-line">
-                                    {post.destination_site_note}
-                                </dd>
-                            </div>
+                            <Fact
+                                label="Delivery"
+                                value={post.destination_site_note}
+                            />
                         )}
                     </dl>
                 </section>
