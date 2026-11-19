@@ -372,7 +372,9 @@ export default function PlansPage({
                                         : 'Check status'}
                                 </Button>
                                 <Button size="sm" variant="outline" asChild>
-                                    <Link href="/billing">Billing overview</Link>
+                                    <Link href="/billing">
+                                        Billing overview
+                                    </Link>
                                 </Button>
                             </div>
                         </div>
