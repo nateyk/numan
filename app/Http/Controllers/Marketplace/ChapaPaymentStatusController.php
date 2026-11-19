@@ -56,6 +56,10 @@ class ChapaPaymentStatusController extends Controller
                 'status' => 'canceled',
                 'message' => 'This payment attempt is canceled. Contact support if money was collected.',
             ], 409),
+            'failed' => response()->json([
+                'status' => 'failed',
+                'message' => 'Chapa confirmed this payment failed. You can start a new checkout.',
+            ], 409),
             default => response()->json([
                 'status' => 'pending',
                 'message' => 'No confirmed payment yet. If you paid, check again later before starting a new checkout.',
