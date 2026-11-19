@@ -308,9 +308,9 @@ it('extends a canceled but still paid period without losing remaining days', fun
     $next = MarketplaceSubscription::where('chapa_tx_ref', $transaction->tx_ref)->firstOrFail();
 
     expect($previous->fresh()->status)->toBe('superseded')
-        ->and($previous->fresh()->ends_at->equalTo($paidUntil))->toBeTrue()
-        ->and($next->current_period_start->equalTo($paidUntil))->toBeTrue()
-        ->and($next->ends_at->equalTo($paidUntil->copy()->addDays(7)))->toBeTrue()
+        ->and($previous->fresh()->ends_at->toDateTimeString())->toBe($paidUntil->toDateTimeString())
+        ->and($next->current_period_start->toDateTimeString())->toBe($paidUntil->toDateTimeString())
+        ->and($next->ends_at->toDateTimeString())->toBe($paidUntil->copy()->addDays(7)->toDateTimeString())
         ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->count())->toBe(1)
         ->and($workspace->activeMarketplaceSubscription()?->id)->toBe($next->id);
 });
