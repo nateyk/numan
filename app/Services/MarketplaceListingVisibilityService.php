@@ -21,12 +21,12 @@ class MarketplaceListingVisibilityService
     /**
      * Flip lapsed subscriptions to 'expired'.
      *
-     * Only rows still marked active/trialing are touched, so 'superseded' and
-     * already 'expired' rows are left alone. Nothing is deleted.
+     * Canceled rows become expired only once their prepaid grace ends.
+     * Superseded and already expired rows remain untouched. Nothing is deleted.
      */
     public function expireLapsedSubscriptions(): int
     {
-        return MarketplaceSubscription::whereIn('status', ['active', 'trialing'])
+        return MarketplaceSubscription::whereIn('status', ['active', 'trialing', 'canceled'])
             ->whereNotNull('ends_at')
             ->where('ends_at', '<=', now())
             ->update(['status' => 'expired']);
@@ -127,7 +127,7 @@ class MarketplaceListingVisibilityService
         return MarketplaceSubscription::where(function ($query): void {
             $query->where('status', 'expired')
                 ->orWhere(function ($inner): void {
-                    $inner->whereIn('status', ['active', 'trialing'])
+                    $inner->whereIn('status', ['active', 'trialing', 'canceled'])
                         ->whereNotNull('ends_at')
                         ->where('ends_at', '<=', now());
                 });
@@ -181,7 +181,7 @@ class MarketplaceListingVisibilityService
             ->where(function ($query): void {
                 $query->where('status', 'expired')
                     ->orWhere(function ($inner): void {
-                        $inner->whereIn('status', ['active', 'trialing'])
+                        $inner->whereIn('status', ['active', 'trialing', 'canceled'])
                             ->whereNotNull('ends_at')
                             ->where('ends_at', '<=', now());
                     });
@@ -195,12 +195,7 @@ class MarketplaceListingVisibilityService
         }
 
         // Renewal case (A): an active subscription exists, so nothing is hidden.
-        $hasActive = MarketplaceSubscription::where('workspace_id', $workspace->id)
-            ->whereIn('status', ['active', 'trialing'])
-            ->where(function ($query) {
-                $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
-            })
-            ->exists();
+        $hasActive = $this->entitlement->activeSubscription($workspace) !== null;
 
         if ($hasActive) {
             return null;

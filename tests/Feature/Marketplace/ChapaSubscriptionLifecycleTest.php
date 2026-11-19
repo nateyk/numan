@@ -219,3 +219,58 @@ it('returns the saved transaction reference after a checkout initialization time
     expect(MarketplacePaymentTransaction::where('tx_ref', 'NF-checkout-recoverable')
         ->value('status'))->toBe('pending');
 });
+
+it('restores uninterrupted freight access after a verified Chapa grace-period renewal', function () {
+    [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-chapa-grace-renewal');
+    $paidUntil = now()->addDays(5);
+    $previous = MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $transaction->plan_id,
+        'user_id' => $user->id,
+        'status' => 'canceled',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now()->subDays(25),
+        'current_period_ends_at' => $paidUntil,
+        'ends_at' => $paidUntil,
+        'provider' => 'chapa',
+    ]);
+
+    // One ordered mock sequence: a second Http::fake() would leave the first
+    // callback registered and make every provider check appear pending.
+    Http::fake([
+        'api.chapa.co/v1/transaction/verify/*' => Http::sequence()
+            ->push([
+                'status' => 'success',
+                'data' => ['status' => 'pending', 'tx_ref' => $transaction->tx_ref],
+            ], 200)
+            ->push([
+                'status' => 'success',
+                'data' => [
+                    'status' => 'paid',
+                    'tx_ref' => $transaction->tx_ref,
+                    'reference' => 'chapa-'.$transaction->tx_ref,
+                    'currency' => 'ETB',
+                    'amount' => '449.00',
+                    'mode' => 'test',
+                ],
+            ], 200),
+    ]);
+
+    $this->get('/chapa/notify/'.$transaction->tx_ref)->assertSuccessful();
+    expect($transaction->fresh()->verified_at)->toBeNull()
+        ->and($previous->fresh()->status)->toBe('canceled')
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(1);
+    $this->get('/chapa/notify/'.$transaction->tx_ref)->assertSuccessful();
+    $this->get('/chapa/notify/'.$transaction->tx_ref)->assertSuccessful();
+
+    $renewed = MarketplaceSubscription::where('chapa_tx_ref', $transaction->tx_ref)->firstOrFail();
+
+    expect($transaction->fresh()->status)->toBe('verified')
+        ->and($previous->fresh()->status)->toBe('superseded')
+        ->and($renewed->current_period_start->toDateTimeString())->toBe($paidUntil->toDateTimeString())
+        ->and($renewed->current_period_ends_at->toDateTimeString())->toBe($paidUntil->copy()->addDays(30)->toDateTimeString())
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->count())->toBe(1);
+
+    $this->actingAs($user)->get('/freight')
+        ->assertOk()->assertInertia(fn ($page) => $page->component('discover/index'));
+});

@@ -56,16 +56,13 @@ class MarketplaceFulfillmentService
 
             // A renewal extends the current period instead of overwriting it, so
             // an early upgrade never loses the days already paid for.
-            $current = MarketplaceSubscription::where('workspace_id', $workspace->id)
-                ->whereIn('status', ['active', 'trialing'])
-                ->where(function ($query) {
-                    $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
-                })
-                ->latest('ends_at')
-                ->first();
+            $current = app(MarketplaceEntitlementService::class)->activeSubscription($workspace);
 
             $periodStart = $current?->ends_at?->isFuture() ? $current->ends_at->copy() : now();
 
+            // Canceled-with-grace subscriptions are also prepaid. Superseding
+            // one here ensures early renewal extends the paid-through date
+            // rather than charging again for days already purchased.
             // The previous subscription keeps its original ends_at so access is
             // continuous; only the status changes.
             if ($current) {

@@ -228,9 +228,18 @@ class Workspace extends Model
 
     public function activeMarketplaceSubscription(): ?MarketplaceSubscription
     {
-        return $this->marketplaceSubscriptions()->whereIn('status', ['active', 'trialing'])->where(function ($q) {
-            $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
-        })->latest()->first();
+        // Match MarketplaceEntitlementService: a canceled plan retains paid
+        // benefits until its ends_at, while an elapsed period never does.
+        return $this->marketplaceSubscriptions()->where(function ($query) {
+            $query->where(function ($active) {
+                $active->whereIn('status', ['active', 'trialing'])
+                    ->where(function ($period) {
+                        $period->whereNull('ends_at')->orWhere('ends_at', '>', now());
+                    });
+            })->orWhere(function ($grace) {
+                $grace->where('status', 'canceled')->where('ends_at', '>', now());
+            });
+        })->latest('ends_at')->first();
     }
 
     /**
