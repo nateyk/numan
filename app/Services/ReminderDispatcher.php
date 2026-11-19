@@ -15,11 +15,12 @@ use Illuminate\Support\Facades\Notification;
  * Claim before send, never the other way round. The row is written first so that
  * two concurrent command runs cannot both decide a reminder is due and both send
  * it -- the second insert hits the unique key and is dropped. The cost of that
- * ordering is a claim with a null sent_at when the queue is down, which
- * reclaim() exists to clean up.
+ * ordering is a claim with a null sent_at if the process dies or synchronous
+ * notification delivery throws; reclaim() exists to recover those claims.
  *
- * Every payload is ids. The notification is rebuilt from the subscription when it
- * is finally sent, so nothing personal is ever serialised into a queue row.
+ * The reminder claim stores subscription identifiers, not payer contact data.
+ * MarketplacePlanReminder does not implement ShouldQueue: mail and database
+ * notifications are dispatched inline, not through a queued notification job.
  */
 class ReminderDispatcher
 {
@@ -107,17 +108,16 @@ class ReminderDispatcher
 
         $log->increment('attempts');
 
-        // Queued, not sent inline. The in-app notification is part of the same
-        // call, so a queue worker being down takes both channels together rather
-        // than leaving the database row behind a delivered email.
+        // MarketplacePlanReminder is dispatched inline to the database and
+        // mail channels. A failure leaves the claim to be reclaimed, rather than
+        // marking an undelivered reminder as sent.
         Notification::send(
             $recipients,
             new MarketplacePlanReminder($subscription, $log->reminder_type)
         );
 
-        // The claim is marked delivered once the notification has been handed to
-        // the queue. NOT when the recipient opens it -- a reminder that is only
-        // counted once somebody reads it is a reminder that re-sends for a week.
+        // Mark delivered after the synchronous dispatch completes, not when the
+        // recipient opens it. Read receipts must never cause repeat sends.
         $this->markSent($log);
 
         return $recipients->count();
@@ -126,10 +126,9 @@ class ReminderDispatcher
     /**
      * Re-dispatch claims that never completed.
      *
-     * A claim is written before the queue is touched, so a queue outage leaves
-     * rows with a null sent_at. Without this they would sit there forever and the
-     * reminder would be silently lost -- the claim exists to prevent a double
-     * send, not to swallow one.
+     * A claim is written before the synchronous dispatch. A process crash or
+     * thrown notification error can leave sent_at null; reclaiming after the
+     * timeout prevents the claim from swallowing a reminder forever.
      *
      * @return array{reclaimed: int, abandoned: int}
      */
