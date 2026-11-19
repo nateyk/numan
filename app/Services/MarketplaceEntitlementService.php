@@ -85,9 +85,16 @@ class MarketplaceEntitlementService
         }
 
         return MarketplaceSubscription::where('workspace_id', $workspace->id)
-            ->whereIn('status', ['active', 'trialing'])
             ->where(function ($query) {
-                $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
+                $query->where(function ($active) {
+                    $active->whereIn('status', ['active', 'trialing'])
+                        ->where(function ($period) {
+                            $period->whereNull('ends_at')->orWhere('ends_at', '>', now());
+                        });
+                })->orWhere(function ($grace) {
+                    // Cancellation ends future renewals, not prepaid access.
+                    $grace->where('status', 'canceled')->where('ends_at', '>', now());
+                });
             })
             ->latest('ends_at')
             ->first();
