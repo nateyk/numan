@@ -36,7 +36,8 @@ interface FreightDashboardProps {
         drafts: number;
         arrived: number;
     };
-    availableFreight: number;
+    availableFreight: number | null;
+    freightAccessLocked: boolean;
     recentFreight: Array<{
         ulid: string;
         title: string;
@@ -63,6 +64,7 @@ export default function PersonalDashboard() {
         freightStats,
         recentFreight,
         availableFreight,
+        freightAccessLocked,
     } = usePage<SharedData & FreightDashboardProps>().props;
     const { t } = useTranslations();
     const firstName = auth.user.name?.trim().split(/\s+/)[0] || '';
@@ -227,25 +229,41 @@ export default function PersonalDashboard() {
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    {t(
-                                        'dashboard.discover_description',
-                                        'Browse available loads and find opportunities.',
-                                    )}
+                                    {freightAccessLocked
+                                        ? 'Your paid plan has ended. Renew to see available freight.'
+                                        : t(
+                                              'dashboard.discover_description',
+                                              'Browse available loads and find opportunities.',
+                                          )}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="flex flex-wrap items-center justify-between gap-3">
                                 <span className="text-sm text-muted-foreground">
-                                    <span className="font-semibold text-foreground tabular-nums">
-                                        {availableFreight.toLocaleString()}
-                                    </span>{' '}
-                                    available now
+                                    {freightAccessLocked || availableFreight === null ? (
+                                        'Subscription expired'
+                                    ) : (
+                                        <>
+                                            <span className="font-semibold text-foreground tabular-nums">
+                                                {availableFreight.toLocaleString()}
+                                            </span>{' '}
+                                            available now
+                                        </>
+                                    )}
                                 </span>
                                 <Button variant="outline" size="sm" asChild>
-                                    <Link href="/freight">
-                                        {t(
-                                            'dashboard.browse_freight',
-                                            'Browse freight',
-                                        )}
+                                    <Link
+                                        href={
+                                            freightAccessLocked
+                                                ? '/billing/plans'
+                                                : '/freight'
+                                        }
+                                    >
+                                        {freightAccessLocked
+                                            ? 'Renew plan'
+                                            : t(
+                                                  'dashboard.browse_freight',
+                                                  'Browse freight',
+                                              )}
                                         <ArrowRight
                                             className="size-4"
                                             aria-hidden="true"
