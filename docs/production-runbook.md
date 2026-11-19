@@ -38,7 +38,7 @@ Read this once. Each step is safe to stop after.
 | 6 | `marketplace:backfill-contact-reveals --dry-run`, then for real | §5 — `written today` must be `0` |
 | 7 | `marketplace:expire-subscriptions --dry-run`, then for real | §6 — check the keep limit against what an admin set |
 | 8 | `marketplace:expire-manual-payments --dry-run`, then for real | §6 |
-| 9 | Confirm the queue worker is supervised and running | §9 — **hard gate for step 12** |
+| 9 | Confirm the queue worker is supervised and running | §9 — required for queued manual-payment expiry and other `ShouldQueue` notifications |
 | 10 | Configure a payment instruction account if offering manual payment | §7 |
 | 11 | `marketplace:send-reminders --dry-run` | §14 — works with the flag off |
 | 12 | Turn on `MARKETPLACE_EXPIRY_ENABLED`, then `MARKETPLACE_REMINDERS_ENABLED` | §12, §14 — **separately** |
@@ -618,8 +618,8 @@ SELECT reminder_type, status, COUNT(*) FROM marketplace_reminder_logs GROUP BY 1
 ```
 
 → one `sent` row per reminder, plus `skipped` rows for the windows it passed
-over. A `claimed` row older than an hour means the queue worker is not running —
-go back to §9 before trusting any of this.
+over. A `claimed` row older than the recovery threshold points to an interrupted
+inline send or a mailer failure; inspect the reminder log and command errors (§14).
 23. Confirm the email arrived, and that the end date is in the reader's timezone
     rather than UTC. Then check the log file for the address:
 
@@ -636,9 +636,12 @@ and §11 has passed.
 `MARKETPLACE_REMINDERS_ENABLED` is a **separate** decision — see §14. Turning on
 the expiry sweep does not turn on reminders.
 
-The worker is a hard gate here, not a nice-to-have: the expiry sweep sends
-`FreightPostsHiddenNotification`, which is queued. Enabling the flag with no worker
-means workspaces get silently hidden with nobody told.
+The queue worker is needed for **queued manual-payment expiry notifications**
+(`ManualPaymentExpired` implements `ShouldQueue`), which are also scheduled
+when this flag is enabled. By contrast, `FreightPostsHiddenNotification` is
+dispatched inline to the database channel and does not require a queue worker.
+Keep the worker running for the separate queued work, not because freight
+visibility itself depends on it.
 
 ```dotenv
 MARKETPLACE_EXPIRY_ENABLED=true
@@ -879,10 +882,12 @@ php artisan config:clear
 php artisan schedule:clear-cache
 ```
 
-Verify nothing is still queued to run:
+Verify the **flag-controlled marketplace jobs** are no longer registered.
+Unrelated scheduled jobs, including `freight:expire` and legacy billing
+reminders, can still legitimately appear:
 
 ```bash
-php artisan schedule:list | grep -E "expire|reminder"   # expect no output
+php artisan schedule:list | grep -E "marketplace:(expire-subscriptions|expire-manual-payments|send-reminders)" || echo "OK: marketplace tasks disabled"
 ```
 
 ### 15b. Roll back the code — instant, no data loss
