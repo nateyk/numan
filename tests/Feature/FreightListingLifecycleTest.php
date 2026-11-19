@@ -85,7 +85,7 @@ it('keeps expired pickup windows off the public board even before the scheduler 
         'pickup_date_flexibility_days' => 2,
     ]);
 
-    $this->get('/freight')->assertOk()->assertInertia(fn (Assert $page) => $page
+    $this->actingAs(User::factory()->create())->get('/freight')->assertOk()->assertInertia(fn (Assert $page) => $page
         ->component('discover/index')
         ->where('freight.total', 1)
         ->etc());
@@ -208,7 +208,7 @@ it('shows the publication timestamp and closure reason without exposing contact 
         'published_at' => now()->subHours(2),
     ]);
 
-    $this->get('/freight')->assertOk()->assertInertia(fn (Assert $page) => $page
+    $this->actingAs(User::factory()->create())->get('/freight')->assertOk()->assertInertia(fn (Assert $page) => $page
         ->component('discover/index')
         ->where('freight.data.0.published_at', $post->published_at->toIso8601String())
         ->missing('freight.data.0.owner')
