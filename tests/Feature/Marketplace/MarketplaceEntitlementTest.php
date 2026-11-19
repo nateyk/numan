@@ -319,3 +319,33 @@ it('exposes free limits through the settings service', function () {
     expect($settings)->toHaveKeys(['free_active_posts', 'free_interests_per_week', 'free_contact_reveals']);
     expect($settings['free_active_posts'])->toBe(1);
 });
+
+it('preserves paid limits during a canceled grace period then locks discovery at expiry', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $endsAt = now()->addDays(3);
+    $subscription = MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => MarketplacePlan::where('slug', 'standard')->firstOrFail()->id,
+        'user_id' => $user->id,
+        'status' => 'canceled',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now()->subDays(27),
+        'current_period_ends_at' => $endsAt,
+        'ends_at' => $endsAt,
+        'provider' => 'chapa',
+    ]);
+
+    expect($this->entitlement->canBrowseFreight($workspace))->toBeTrue()
+        ->and($this->entitlement->hasPaidSubscription($workspace))->toBeTrue()
+        ->and($this->entitlement->getLimitValue($workspace, 'active_freight_posts'))->toBe(-1)
+        ->and($this->entitlement->getLimitValue($workspace, 'contact_reveals'))->toBe(-1)
+        ->and($workspace->activeMarketplaceSubscription()?->id)->toBe($subscription->id);
+
+    $this->travelTo($endsAt->copy()->addSecond());
+
+    expect($this->entitlement->canBrowseFreight($workspace))->toBeFalse()
+        ->and($this->entitlement->hasPaidSubscription($workspace))->toBeFalse()
+        ->and($this->entitlement->getLimitValue($workspace, 'active_freight_posts'))->toBe(1)
+        ->and($this->entitlement->getLimitValue($workspace, 'contact_reveals'))->toBe(5)
+        ->and($workspace->activeMarketplaceSubscription())->toBeNull();
+});
