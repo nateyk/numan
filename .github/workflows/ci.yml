@@ -103,6 +103,13 @@ jobs:
       - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
       - run: pnpm run format:check
+      # Diagnostic only: print Prettier's exact suggestion when check fails.
+      # This edits the disposable runner checkout, never the PR branch.
+      - name: Show suggested freight-screen formatting
+        if: failure()
+        run: |
+          pnpm exec prettier --write resources/js/pages/discover/subscription-required.tsx
+          git diff -- resources/js/pages/discover/subscription-required.tsx
       # Lint maintained repository files; exclude bundled tools and disabled workspace UI via eslint.config.js.
       - run: pnpm exec eslint .
 
