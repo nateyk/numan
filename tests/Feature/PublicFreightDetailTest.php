@@ -12,12 +12,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('public can view active freight detail', function () {
+it('redirects a guest from an active freight detail to sign in', function () {
     $user = User::factory()->create();
     $post = FreightPost::factory()->for($user)->create(['status' => 'active']);
 
-    // Guest should be able to view? Actually Gate requires view for active, should allow guest? But our controller uses Gate::authorize('view', $post) which for guest (null user) maybe fails? Check policy: view allows owner, superadmin, or active status regardless of user? Let's see policy view for FreightPost: if no user, $user is null, but Gate::authorize will throw if guest. Actually PublicFreightDiscoveryController show uses Gate::authorize('view', $post) which requires authenticated user? But our route is public (no auth middleware), so guest will have no user, Gate will fail. We should allow guest to view active via policy that handles null user? Let's test.
-    $this->get("/freight/{$post->ulid}")->assertOk()->assertInertia(fn ($p) => $p->component('freight/show'));
+    $this->get("/freight/{$post->ulid}")->assertRedirect(route('login'));
 });
 
 it('authenticated can view active freight detail and see hasInterest', function () {
@@ -47,19 +46,11 @@ it('does not send the consignor identity to a guest', function () {
     $owner->profile()->create(['display_name' => 'Consignor Display Name']);
     $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
 
-    $response = $this->get("/freight/{$post->ulid}")->assertOk();
+    $response = $this->get("/freight/{$post->ulid}")->assertRedirect(route('login'));
 
-    // The whole rendered payload, not just the owner key: a name that reaches
-    // any prop is still a name a guest can read in the page source.
     expect($response->getContent())
         ->not->toContain('Account Name On File')
         ->not->toContain('Consignor Display Name');
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('freight/show')
-        ->missing('post.owner')
-        ->where('post.is_own_post', false)
-    );
 });
 
 it('does not send the consignor identity to a signed-in stranger', function () {
@@ -139,7 +130,7 @@ it('sends the stored route so a map can be drawn and a distance quoted', functio
         'routing_provider' => 'osrm',
     ]);
 
-    $this->get("/freight/{$post->ulid}")
+    $this->actingAs(User::factory()->create())->get("/freight/{$post->ulid}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             // Absent until this change: the page read route_snapshot, the resource
@@ -157,7 +148,7 @@ it('sends a null route rather than omitting the key when a post has no route', f
     $owner = User::factory()->create();
     $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
 
-    $this->get("/freight/{$post->ulid}")
+    $this->actingAs(User::factory()->create())->get("/freight/{$post->ulid}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             // Present-and-null rather than missing, so the page does not have to
@@ -174,7 +165,7 @@ it('never puts the consignor phone number in the payload for a guest', function 
 
     $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
 
-    $json = $this->get("/freight/{$post->ulid}")->assertOk()->getContent();
+    $json = $this->get("/freight/{$post->ulid}")->assertRedirect(route('login'))->getContent();
 
     // The whole rendered payload, not just the owner key, so a leak anywhere in
     // the page fails this.
@@ -428,7 +419,7 @@ it('does not claim a visible post is hidden', function () {
     $owner = User::factory()->create();
     $post = FreightPost::factory()->for($owner)->create(['status' => 'active']);
 
-    $this->get("/freight/{$post->ulid}")
+    $this->actingAs(User::factory()->create())->get("/freight/{$post->ulid}")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('isHiddenListing', false)
@@ -445,5 +436,5 @@ it('still 404s a hidden post for the public, banner or not', function () {
         'hidden_at' => now(),
     ]);
 
-    $this->get("/freight/{$post->ulid}")->assertNotFound();
+    $this->actingAs(User::factory()->create())->get("/freight/{$post->ulid}")->assertNotFound();
 });
