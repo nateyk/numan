@@ -240,3 +240,21 @@ it('orders the reminder types most urgent first', function () {
     expect(MarketplaceReminderWindow::types())
         ->toBe(['plan_expired', 'renewal_1d', 'renewal_3d', 'renewal_7d']);
 });
+
+it('sends a recent expiry notice even after the expiry sweep changed the status', function (string $status) {
+    [$subscription, $now] = subEndingIn(-1, 'monthly', $status);
+
+    expect(dueFor($subscription, $now)['types'])->toBe(['plan_expired']);
+})->with(['expired', 'canceled']);
+
+it('does not send a renewal warning for a canceled but still-paid grace period', function () {
+    [$subscription, $now] = subEndingIn(0.5, 'monthly', 'canceled');
+
+    expect(dueFor($subscription, $now)['types'])->toBe([]);
+});
+
+it('keeps historical expired records outside the notice window silent', function () {
+    [$subscription, $now] = subEndingIn(-20, 'monthly', 'expired');
+
+    expect(dueFor($subscription, $now)['types'])->toBe([]);
+});
