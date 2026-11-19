@@ -614,3 +614,33 @@ it('downgrades expired plans to free limits and restores listings after paid ren
     expect(app(MarketplaceEntitlementService::class)->hasPaidSubscription($workspace))->toBeTrue();
     expect($oldest->fresh()->hidden_at)->toBeNull();
 });
+
+it('keeps canceled grace listings visible until the paid end then expires and hides excess', function () {
+    [$user, $workspace] = ownerWithWorkspace();
+    $subscription = grantLapsedSubscription($workspace, $user);
+    $endsAt = now()->addDay();
+
+    $subscription->update([
+        'status' => 'canceled',
+        'current_period_ends_at' => $endsAt,
+        'ends_at' => $endsAt,
+    ]);
+
+    $older = makeLivePost($workspace, $user);
+    $older->update(['created_at' => now()->subDays(3)]);
+    makeLivePost($workspace, $user);
+
+    expect($this->visibility->expireLapsedSubscriptions())->toBe(0)
+        ->and($this->visibility->hideExcessPosts())->toBe([])
+        ->and($older->fresh()->hidden_at)->toBeNull();
+
+    $this->travelTo($endsAt->copy()->addSecond());
+
+    expect($this->visibility->expireLapsedSubscriptions())->toBe(1)
+        ->and($subscription->fresh()->status)->toBe('expired');
+
+    $this->visibility->hideExcessPosts();
+
+    expect($older->fresh()->hidden_at)->not->toBeNull()
+        ->and(app(MarketplaceEntitlementService::class)->canBrowseFreight($workspace))->toBeFalse();
+});
