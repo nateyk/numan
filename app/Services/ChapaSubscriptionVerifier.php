@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\MarketplacePaymentTransaction;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Reconcile one Chapa subscription attempt from a verified provider response.
@@ -19,7 +20,7 @@ class ChapaSubscriptionVerifier
     ) {}
 
     /**
-     * @return 'verified'|'pending'|'mismatch'|'canceled'
+     * @return 'verified'|'pending'|'failed'|'mismatch'|'canceled'
      */
     public function verify(MarketplacePaymentTransaction $transaction): string
     {
@@ -39,6 +40,42 @@ class ChapaSubscriptionVerifier
 
         $verified = $this->chapa->verifyTransaction($transaction->tx_ref);
         $data = $verified['data'] ?? null;
+
+        // Only a definitive transaction-level failure from the authenticated
+        // verification endpoint can release the checkout retry guard. An API
+        // error (top-level failed) and a pending payment remain unresolved.
+        if (($verified['status'] ?? null) === 'success'
+            && is_array($data)
+            && in_array($data['status'] ?? null, ['failed', 'cancelled', 'canceled'], true)) {
+            if ((isset($data['tx_ref']) && (string) $data['tx_ref'] !== $transaction->tx_ref)
+                || (isset($data['mode']) && $data['mode'] !== $transaction->mode)) {
+                return 'mismatch';
+            }
+
+            return DB::transaction(function () use ($transaction, $verified): string {
+                // A successful callback may have settled this payment while our
+                // failed-status verification was in flight. Never overwrite
+                // its verified ledger status or the already-issued receipt.
+                $current = MarketplacePaymentTransaction::whereKey($transaction->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($current->status === 'canceled') {
+                    return 'canceled';
+                }
+
+                if ($current->status === 'verified' && $current->verified_at !== null) {
+                    return $current->receipt()->exists() ? 'verified' : 'mismatch';
+                }
+
+                $current->update([
+                    'status' => 'failed',
+                    'provider_response' => $verified,
+                ]);
+
+                return 'failed';
+            });
+        }
 
         if (! is_array($data)
             || ($verified['status'] ?? null) !== 'success'

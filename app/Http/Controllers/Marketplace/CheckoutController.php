@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Marketplace;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
+use App\Models\Workspace;
 use App\Services\ChapaConfiguration;
 use App\Services\ChapaService;
+use App\Services\PendingChapaCheckoutService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
@@ -58,19 +61,50 @@ class CheckoutController extends Controller
             return back()->withErrors(['plan' => 'This duration has no price. Please choose Weekly, Monthly or Yearly.']);
         }
 
-        $txRef = $this->chapa->generateReference('NF-'.$plan->slug.'-'.$data['billing_interval']);
+        // Serialise attempt creation for this billing owner. Two requests made
+        // together must not initialize two provider payments before either
+        // response comes back. Never hold a database lock across Chapa I/O.
+        $attempt = DB::transaction(function () use ($workspace, $user, $plan, $amount, $data): array {
+            $lockedWorkspace = Workspace::whereKey($workspace->id)->lockForUpdate()->firstOrFail();
+            $pending = app(PendingChapaCheckoutService::class)->find($lockedWorkspace, $user);
 
-        $transaction = MarketplacePaymentTransaction::create([
-            'workspace_id' => $workspace->id,
-            'plan_id' => $plan->id,
-            'user_id' => $user->id,
-            'tx_ref' => $txRef,
-            'amount_etb' => $amount,
-            'currency' => 'ETB',
-            'status' => 'pending',
-            'mode' => app(ChapaConfiguration::class)->mode(),
-            'billing_interval' => $data['billing_interval'],
-        ]);
+            if ($pending) {
+                return ['pending' => $pending];
+            }
+
+            $txRef = $this->chapa->generateReference('NF-'.$plan->slug.'-'.$data['billing_interval']);
+
+            return ['transaction' => MarketplacePaymentTransaction::create([
+                'workspace_id' => $lockedWorkspace->id,
+                'plan_id' => $plan->id,
+                'user_id' => $user->id,
+                'tx_ref' => $txRef,
+                'amount_etb' => $amount,
+                'currency' => 'ETB',
+                'status' => 'pending',
+                'mode' => app(ChapaConfiguration::class)->mode(),
+                'provider' => MarketplacePaymentTransaction::PROVIDER_CHAPA,
+                'billing_interval' => $data['billing_interval'],
+            ])];
+        });
+
+        if (isset($attempt['pending'])) {
+            $message = 'A previous Chapa checkout is still unresolved. Check that payment before starting another to avoid a duplicate charge.';
+
+            if ($request->wantsJson() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $message,
+                    'retryable' => true,
+                    'tx_ref' => $attempt['pending']->tx_ref,
+                ], 409);
+            }
+
+            return back()->withErrors(['plan' => $message]);
+        }
+
+        $transaction = $attempt['transaction'];
+        $txRef = $transaction->tx_ref;
 
         $callback = route('chapa.server-callback', ['tx_ref' => $txRef]);
         $return = route('chapa.callback', ['tx_ref' => $txRef]);

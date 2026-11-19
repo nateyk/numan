@@ -238,3 +238,28 @@ it('serializes acceptance and owner cancellation on the same freight row', funct
             ->and($interest->fresh()->status)->toBe(FreightInterestStatus::Selected->value);
     }
 });
+
+it('does not create two Chapa payment attempts from simultaneous checkout requests', function () {
+    $this->seed(MarketplacePlanSeeder::class);
+
+    $payer = User::factory()->create();
+    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($payer);
+    $payer->switchWorkspace($workspace);
+
+    // Hold the owner's workspace row so both independent PHP processes enter
+    // the checkout race together. Provider initialization is fake in workers.
+    raceMySqlWorkers('checkout', 'workspaces', $workspace->id, [
+        ['id' => $workspace->id, 'actor' => $payer->id],
+        ['id' => $workspace->id, 'actor' => $payer->id],
+    ]);
+
+    $attempts = MarketplacePaymentTransaction::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('provider', MarketplacePaymentTransaction::PROVIDER_CHAPA)
+        ->get();
+
+    expect($attempts)->toHaveCount(1)
+        ->and($attempts->first()->status)->toBe('initialized')
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse()
+        ->and(MarketplacePaymentReceipt::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});

@@ -6,6 +6,8 @@ use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\User;
 use App\Services\ChapaService;
+use App\Services\ChapaSubscriptionVerifier;
+use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -273,4 +275,149 @@ it('restores uninterrupted freight access after a verified Chapa grace-period re
 
     $this->actingAs($user)->get('/freight')
         ->assertOk()->assertInertia(fn ($page) => $page->component('discover/index'));
+});
+
+it('allows a new checkout only after Chapa confirms a terminal failed payment', function () {
+    [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-provider-confirmed-failure');
+
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return [
+                'status' => 'success',
+                'data' => [
+                    'status' => 'failed',
+                    'tx_ref' => $txRef,
+                    'mode' => 'test',
+                ],
+            ];
+        }
+
+        public function generateReference(?string $prefix = null): string
+        {
+            return 'NF-retry-after-confirmed-failure';
+        }
+
+        public function initializePayment(array $data): array
+        {
+            return [
+                'status' => 'success',
+                'data' => ['checkout_url' => 'https://checkout.chapa.co/test-retry'],
+            ];
+        }
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/payments/'.$transaction->tx_ref.'/verify')
+        ->assertStatus(409)
+        ->assertJsonPath('status', 'failed');
+
+    expect($transaction->fresh()->status)->toBe('failed')
+        ->and($transaction->fresh()->verified_at)->toBeNull()
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->exists())->toBeFalse()
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+
+    $this->actingAs($user)->get('/billing/plans')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('pendingChapaReference', null)->etc());
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])
+        ->assertOk()
+        ->assertJsonPath('checkout_url', 'https://checkout.chapa.co/test-retry');
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(2);
+});
+
+it('does not release a checkout when the verify API itself fails without transaction status', function () {
+    [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-provider-api-failure');
+
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return ['status' => 'failed', 'data' => null];
+        }
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/payments/'.$transaction->tx_ref.'/verify')
+        ->assertOk()
+        ->assertJsonPath('status', 'pending');
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'weekly',
+    ])
+        ->assertStatus(409)
+        ->assertJsonPath('tx_ref', $transaction->tx_ref);
+
+    expect($transaction->fresh()->status)->toBe('initialized')
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('does not accept a terminal failure claimed for a different Chapa environment', function () {
+    [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-failure-mode-mismatch');
+
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return [
+                'status' => 'success',
+                'data' => [
+                    'status' => 'failed',
+                    'tx_ref' => $txRef,
+                    'mode' => 'live',
+                ],
+            ];
+        }
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/payments/'.$transaction->tx_ref.'/verify')
+        ->assertStatus(409)
+        ->assertJsonPath('status', 'mismatch');
+
+    expect($transaction->fresh()->status)->toBe('initialized')
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('never overwrites an already verified and receipted payment with a stale failure response', function () {
+    [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-stale-failure-after-settlement');
+
+    app(MarketplaceFulfillmentService::class)->fulfill($transaction, [
+        'status' => 'success',
+        'data' => [
+            'status' => 'paid',
+            'currency' => 'ETB',
+            'amount' => '449.00',
+            'mode' => 'test',
+            'tx_ref' => $transaction->tx_ref,
+        ],
+    ]);
+
+    // The original Eloquent object still has the initialized state that an
+    // overlapping request could have loaded before the successful callback.
+    expect($transaction->status)->toBe('initialized');
+
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return [
+                'status' => 'success',
+                'data' => [
+                    'status' => 'failed',
+                    'tx_ref' => $txRef,
+                    'mode' => 'test',
+                ],
+            ];
+        }
+    });
+
+    expect(app(ChapaSubscriptionVerifier::class)->verify($transaction))->toBe('verified')
+        ->and($transaction->fresh()->status)->toBe('verified')
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(1)
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->count())->toBe(1);
 });
