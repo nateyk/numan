@@ -49,6 +49,31 @@ the only ones that email anybody.
 
 ---
 
+## Freight discovery and renewal acceptance gate
+
+The login and paid-expiry restrictions are **request-time rules**, not scheduled
+tasks. Do not wait for the expiry sweep to confirm they work. Test the following
+on a disposable account before any live rollout:
+
+| Account state | Required result |
+|---|---|
+| Guest | `/freight`, `/discover` and direct `/freight/{ulid}` prompt for login; no freight payload is returned |
+| Signed-in Free account without a paid history | Freight discovery remains available within Free plan limits |
+| Verified active Chapa subscription | Freight discovery, contact rules and paid limits remain available |
+| Canceled plan still inside the paid-through period | Paid benefits remain available until `ends_at` |
+| Paid term past `ends_at` | Discovery and direct third-party freight details are restricted immediately; the dashboard withholds market-wide freight counts |
+| Expired owner | Can still view and manage their **own** freight records |
+| Successful provider-verified renewal | Browsing returns, with unused prepaid days preserved and one payment receipt |
+| Pending, failed or mismatched Chapa verification | Must not grant access or issue a receipt |
+
+Private freight responses use `Cache-Control: no-store`. An expired member
+should see a renewal route at `/billing/plans`, not a stale freight card.
+Run synthetic/Chapa Test Mode checks before considering live-money acceptance.
+The CI tests cover these paths, but **they do not execute real provider test
+payments or a production deployment**.
+
+---
+
 ## 1. Before you touch anything: back up
 
 The migrations in §3 write to real rows. Take a database backup *and* a copy of
