@@ -62,10 +62,11 @@ class MarketplaceReminderWindow
      */
     public static function due(MarketplaceSubscription $subscription, CarbonInterface $now): array
     {
-        // Superseded rows are excluded by status alone. A renewal marks the prior
-        // row superseded and creates a new one, so this needs no date arithmetic
-        // to avoid reminding a workspace about a period it has already renewed.
-        if (! in_array($subscription->status, ['active', 'trialing'], true)) {
+        // Expiry sweeps may already have switched a lapsed row to 'expired'.
+        // That bookkeeping must not silence the one-time expiry reminder.
+        // Canceled paid periods also expire, but should not get pre-expiry
+        // renewal prompts after the owner explicitly chose to cancel.
+        if (! in_array($subscription->status, ['active', 'trialing', 'canceled', 'expired'], true)) {
             return ['types' => [], 'skipped' => []];
         }
 
@@ -78,6 +79,10 @@ class MarketplaceReminderWindow
 
         if ($endsAt->lessThanOrEqualTo($now)) {
             return self::expiredDue($endsAt, $now);
+        }
+
+        if (! in_array($subscription->status, ['active', 'trialing'], true)) {
+            return ['types' => [], 'skipped' => []];
         }
 
         return self::renewalDue($endsAt, $interval, $now);
