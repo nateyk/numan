@@ -31,6 +31,12 @@ class PublicFreightDiscoveryController extends Controller
 
     public function index(Request $request): Response
     {
+        // No search, count, page links, or freight JSON reaches a viewer whose
+        // paid access has expired. Anonymous visitors are rejected at the route.
+        if (! app(MarketplaceEntitlementService::class)->canBrowseFreight($request->user()?->currentWorkspace)) {
+            return Inertia::render('discover/subscription-required');
+        }
+
         // Bound public free-text search so a pasted paragraph cannot produce
         // arbitrarily many relationship checks on the discovery board.
         $rawSearch = $request->query('search');
@@ -203,6 +209,13 @@ class PublicFreightDiscoveryController extends Controller
         $post->load(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
         Gate::authorize('view', $post);
+
+        // A lapsed member can still manage their own posts. Every other
+        // listing detail must follow the same access rule as discovery.
+        if (! $this->mayManageHidden($request, $post)
+            && ! app(MarketplaceEntitlementService::class)->canBrowseFreight($request->user()?->currentWorkspace)) {
+            abort(403);
+        }
 
         // Interest state is only collected when the loop is enabled. The board
         // reveal below is independent of it.
