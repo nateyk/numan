@@ -11,7 +11,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('only lists active freight publicly', function () {
+beforeEach(function () {
+    $this->actingAs(User::factory()->create());
+});
+
+it('only lists active freight for signed-in members', function () {
     FreightPost::factory()->create(['status' => FreightPostStatus::Active->value]);
     FreightPost::factory()->create(['status' => FreightPostStatus::Draft->value]);
 
