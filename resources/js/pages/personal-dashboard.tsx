@@ -239,7 +239,8 @@ export default function PersonalDashboard() {
                             </CardHeader>
                             <CardContent className="flex flex-wrap items-center justify-between gap-3">
                                 <span className="text-sm text-muted-foreground">
-                                    {freightAccessLocked || availableFreight === null ? (
+                                    {freightAccessLocked ||
+                                    availableFreight === null ? (
                                         'Subscription expired'
                                     ) : (
                                         <>
