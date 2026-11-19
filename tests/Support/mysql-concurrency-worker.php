@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Freight\FreightInterestAcceptanceController;
+use App\Http\Controllers\Freight\FreightPostLifecycleController;
+use App\Models\FreightPost;
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\MarketplaceFulfillmentService;
 use Illuminate\Contracts\Console\Kernel;
@@ -26,11 +28,11 @@ try {
     $actorId = (int) ($argv[3] ?? 0);
     $readyFile = $argv[4] ?? '';
 
-    if ($id < 1 || $readyFile === '' || ! in_array($mode, ['accept', 'fulfill'], true)) {
+    if ($id < 1 || $readyFile === '' || ! in_array($mode, ['accept', 'close', 'fulfill'], true)) {
         throw new InvalidArgumentException('Invalid MySQL test worker arguments.');
     }
 
-    if ($mode === 'accept') {
+    if (in_array($mode, ['accept', 'close'], true)) {
         Auth::loginUsingId($actorId);
     }
 
@@ -44,6 +46,15 @@ try {
 
         app(FreightInterestAcceptanceController::class)
             ->accept($request, $id);
+    } elseif ($mode === 'close') {
+        $post = FreightPost::findOrFail($id);
+        $request = Request::create('/my-freight/'.$post->ulid.'/close', 'POST', [
+            'closure_reason' => 'cancelled',
+        ]);
+        $request->setUserResolver(fn () => Auth::user());
+
+        app(FreightPostLifecycleController::class)
+            ->close($request, $post->ulid);
     } else {
         $transaction = MarketplacePaymentTransaction::findOrFail($id);
 

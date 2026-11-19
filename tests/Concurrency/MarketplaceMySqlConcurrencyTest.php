@@ -71,7 +71,7 @@ function raceMySqlWorkers(string $mode, string $lockTable, int $lockRowId, array
             $child = new Process([
                 PHP_BINARY,
                 base_path('tests/Support/mysql-concurrency-worker.php'),
-                $mode,
+                $operation['mode'] ?? $mode,
                 (string) $operation['id'],
                 (string) $operation['actor'],
                 $marker,
@@ -206,4 +206,35 @@ it('serializes two separate renewals of one payer without losing paid days', fun
         ->toBe($subscriptions[1]->current_period_start->toDateTimeString());
     expect((int) $subscriptions[0]->current_period_start->diffInDays($subscriptions[1]->ends_at))
         ->toBe(60);
+});
+
+it('serializes acceptance and owner cancellation on the same freight row', function () {
+    $consignor = User::factory()->create();
+    $carrier = User::factory()->create();
+
+    Profile::factory()->consignor()->create(['user_id' => $consignor->id]);
+    Profile::factory()->transporter()->approved()->create(['user_id' => $carrier->id]);
+
+    $post = FreightPost::factory()->for($consignor)->active()->create();
+    $interest = FreightInterest::factory()->for($post)->for($carrier)->create();
+
+    raceMySqlWorkers('accept', 'freight_posts', $post->id, [
+        ['id' => $interest->id, 'actor' => $consignor->id],
+        ['id' => $post->id, 'actor' => $consignor->id, 'mode' => 'close'],
+    ]);
+
+    $post->refresh();
+    $connections = MarketplaceConnection::where('freight_post_id', $post->id)->get();
+
+    expect($post->status)->toBe(FreightPostStatus::Closed->value)
+        ->and($connections->count())->toBeLessThanOrEqual(1)
+        ->and($post->moderationLogs()->where('to_status', FreightPostStatus::Closed->value)->count())->toBe(1);
+
+    if ($connections->isEmpty()) {
+        expect($post->closure_reason)->toBe('cancelled')
+            ->and($interest->fresh()->status)->not->toBe(FreightInterestStatus::Selected->value);
+    } else {
+        expect($post->closure_reason)->toBe('matched')
+            ->and($interest->fresh()->status)->toBe(FreightInterestStatus::Selected->value);
+    }
 });
