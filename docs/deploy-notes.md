@@ -14,10 +14,14 @@ second.
 `--dry-run` works on all three with their flags off. Always run it before running
 anything for real, and see `docs/production-runbook.md` for the full deploy order.
 
-The reminder command additionally needs a running queue worker, and a mailer that
-is not `log`. It claims a row in `marketplace_reminder_logs` before queuing the
-notification, so with no worker the claim is written and nothing is sent; the
-command reclaims claims older than an hour, up to three attempts.
+`marketplace:send-reminders` sends `MarketplacePlanReminder` through the
+database and mail channels **synchronously**; it does not implement `ShouldQueue`.
+A claim is written first to prevent duplicate sends. If the process exits or
+notification delivery fails before the claim is marked sent, the command reclaims
+it after the configured timeout (60 minutes by default), up to three attempts.
+Configure a real mailer rather than `log` for email delivery. **Separate queued
+notifications**, including manual-payment status updates, still require a
+running queue worker.
 
 ## Marketplace expiry — disabled by default
 
