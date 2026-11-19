@@ -6,6 +6,12 @@ Two independent flags. Expiring a subscription and emailing somebody about it ar
 different decisions, and a site should be able to do the first without doing the
 second.
 
+**Important:** These flags do not disable freight browsing authorization. On
+deployment, guests must sign in, and a previously paid member with an expired
+term loses access to freight discovery immediately even if the hourly sweep has
+not run. Free members without paid history can still browse; canceled paid
+periods retain access through `ends_at`.
+
 | Flag | Gates | Default |
 |---|---|---|
 | `MARKETPLACE_EXPIRY_ENABLED` | `marketplace:expire-subscriptions` (hourly), `marketplace:expire-manual-payments` (daily 03:30) | `false` |
