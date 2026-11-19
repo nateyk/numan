@@ -229,7 +229,7 @@ export default function PlansPage({
                 data?.message ??
                     'Payment confirmation is still pending. Keep your reference and check later.',
             );
-            if (data?.status === 'canceled') {
+            if (data?.status === 'canceled' || data?.status === 'failed') {
                 setPendingReference(null);
             }
         } catch {
