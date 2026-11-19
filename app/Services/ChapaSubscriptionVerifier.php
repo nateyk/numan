@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\MarketplacePaymentTransaction;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Reconcile one Chapa subscription attempt from a verified provider response.
@@ -51,12 +52,29 @@ class ChapaSubscriptionVerifier
                 return 'mismatch';
             }
 
-            $transaction->update([
-                'status' => 'failed',
-                'provider_response' => $verified,
-            ]);
+            return DB::transaction(function () use ($transaction, $verified): string {
+                // A successful callback may have settled this payment while our
+                // failed-status verification was in flight. Never overwrite
+                // its verified ledger status or the already-issued receipt.
+                $current = MarketplacePaymentTransaction::whereKey($transaction->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            return 'failed';
+                if ($current->status === 'canceled') {
+                    return 'canceled';
+                }
+
+                if ($current->status === 'verified' && $current->verified_at !== null) {
+                    return $current->receipt()->exists() ? 'verified' : 'mismatch';
+                }
+
+                $current->update([
+                    'status' => 'failed',
+                    'provider_response' => $verified,
+                ]);
+
+                return 'failed';
+            });
         }
 
         if (! is_array($data)
