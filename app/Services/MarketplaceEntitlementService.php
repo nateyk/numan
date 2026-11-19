@@ -93,6 +93,40 @@ class MarketplaceEntitlementService
             ->first();
     }
 
+    /**
+     * Free members can discover freight, but a lapsed paid subscription
+     * suspends access until renewed. This is checked at request time: the
+     * hourly expiry job is not a security boundary.
+     *
+     * Ignore superseded payment periods and pending checkout attempts. A
+     * newer active renewal wins over historical expired rows; cancellation
+     * preserves access through the paid-for grace period.
+     */
+    public function canBrowseFreight(?Workspace $workspace): bool
+    {
+        if (! $workspace || ! Schema::hasTable('marketplace_subscriptions')) {
+            return true;
+        }
+
+        if ($this->activeSubscription($workspace)) {
+            return true;
+        }
+
+        $latest = MarketplaceSubscription::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('status', ['active', 'trialing', 'canceled', 'expired'])
+            ->latest('id')
+            ->first();
+
+        if (! $latest || $latest->onGracePeriod()) {
+            return true;
+        }
+
+        return $latest->status !== 'expired'
+            && $latest->status !== 'canceled'
+            && ($latest->ends_at === null || $latest->ends_at->isFuture());
+    }
+
     public function hasPaidSubscription(?Workspace $workspace): bool
     {
         return $workspace !== null && $this->activeSubscription($workspace)?->plan !== null;
