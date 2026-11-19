@@ -66,7 +66,7 @@ on a disposable account before any live rollout:
 | Successful provider-verified renewal | Browsing returns, with unused prepaid days preserved and one payment receipt |
 | Pending, failed or mismatched Chapa verification | Must not grant access or issue a receipt |
 
-Private freight responses use `Cache-Control: no-store`. An expired member
+Authenticated discovery and freight public-detail responses use `Cache-Control: no-store`. An expired member
 should see a renewal route at `/billing/plans`, not a stale freight card.
 Run synthetic/Chapa Test Mode checks before considering live-money acceptance.
 The CI tests cover these paths, but **they do not execute real provider test
