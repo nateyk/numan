@@ -133,3 +133,24 @@ it('lets an expired consignor view their own post without opening the browse boa
     $this->actingAs($owner)->get('/freight')->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('discover/subscription-required')->missing('freight')->etc());
 });
+
+it('prevents HTTP caching of authenticated freight list, alias and detail responses', function () {
+    $viewer = User::factory()->create();
+    $post = FreightPost::factory()->active()->create();
+
+    foreach (['/freight', '/discover', "/freight/{$post->ulid}"] as $url) {
+        $response = $this->actingAs($viewer)->get($url)->assertOk();
+        expect($response->headers->get('Cache-Control'))->toContain('no-store')
+            ->and($response->headers->get('Cache-Control'))->toContain('private');
+    }
+});
+
+it('prevents caching even when an expired account receives the locked page', function () {
+    [$viewer, $workspace] = browsingMember();
+    browsingSubscription($viewer, $workspace, 'expired', now()->subDay());
+
+    $response = $this->actingAs($viewer)->get('/freight')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('discover/subscription-required')->missing('freight')->etc());
+
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+});
