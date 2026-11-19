@@ -235,19 +235,31 @@ it('restores uninterrupted freight access after a verified Chapa grace-period re
         'provider' => 'chapa',
     ]);
 
+    // One ordered mock sequence: a second Http::fake() would leave the first
+    // callback registered and make every provider check appear pending.
     Http::fake([
-        'api.chapa.co/v1/transaction/verify/*' => Http::response([
-            'status' => 'success',
-            'data' => ['status' => 'pending', 'tx_ref' => $transaction->tx_ref],
-        ], 200),
+        'api.chapa.co/v1/transaction/verify/*' => Http::sequence()
+            ->push([
+                'status' => 'success',
+                'data' => ['status' => 'pending', 'tx_ref' => $transaction->tx_ref],
+            ], 200)
+            ->push([
+                'status' => 'success',
+                'data' => [
+                    'status' => 'paid',
+                    'tx_ref' => $transaction->tx_ref,
+                    'reference' => 'chapa-'.$transaction->tx_ref,
+                    'currency' => 'ETB',
+                    'amount' => '449.00',
+                    'mode' => 'test',
+                ],
+            ], 200),
     ]);
 
     $this->get('/chapa/notify/'.$transaction->tx_ref)->assertSuccessful();
     expect($transaction->fresh()->verified_at)->toBeNull()
         ->and($previous->fresh()->status)->toBe('canceled')
         ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(1);
-
-    fakeSuccessfulChapaSubscription($transaction->tx_ref);
     $this->get('/chapa/notify/'.$transaction->tx_ref)->assertSuccessful();
     $this->get('/chapa/notify/'.$transaction->tx_ref)->assertSuccessful();
 
@@ -255,8 +267,8 @@ it('restores uninterrupted freight access after a verified Chapa grace-period re
 
     expect($transaction->fresh()->status)->toBe('verified')
         ->and($previous->fresh()->status)->toBe('superseded')
-        ->and($renewed->current_period_start->equalTo($paidUntil))->toBeTrue()
-        ->and($renewed->current_period_ends_at->equalTo($paidUntil->copy()->addDays(30)))->toBeTrue()
+        ->and($renewed->current_period_start->toDateTimeString())->toBe($paidUntil->toDateTimeString())
+        ->and($renewed->current_period_ends_at->toDateTimeString())->toBe($paidUntil->copy()->addDays(30)->toDateTimeString())
         ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->count())->toBe(1);
 
     $this->actingAs($user)->get('/freight')
