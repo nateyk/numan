@@ -46,6 +46,7 @@ interface PlansPageProps {
     freeLimits?: FreeLimits;
     currentMarketplacePlan?: string;
     currentMarketplaceBillingPeriod?: BillingPeriod | null;
+    pendingChapaReference?: string | null;
     marketplaceAccess?: {
         status: 'free' | 'active' | 'grace' | 'expired';
         plan: string | null;
@@ -86,6 +87,7 @@ export default function PlansPage({
     freeLimits,
     currentMarketplacePlan,
     currentMarketplaceBillingPeriod,
+    pendingChapaReference,
     marketplaceAccess,
     recommendedBillingPeriod,
     fromOnboarding,
@@ -102,9 +104,13 @@ export default function PlansPage({
     );
     const [processing, setProcessing] = useState<string | null>(null);
     const [pendingReference, setPendingReference] = useState<string | null>(
-        null,
+        pendingChapaReference ?? null,
     );
-    const [pendingNotice, setPendingNotice] = useState<string | null>(null);
+    const [pendingNotice, setPendingNotice] = useState<string | null>(
+        pendingChapaReference
+            ? 'A previous Chapa checkout is unresolved. Check its status before attempting another payment.'
+            : null,
+    );
     const [checkingPayment, setCheckingPayment] = useState(false);
     const { addToast } = useToast();
     const isOwner = userRole === 'owner';
@@ -223,6 +229,9 @@ export default function PlansPage({
                 data?.message ??
                     'Payment confirmation is still pending. Keep your reference and check later.',
             );
+            if (data?.status === 'canceled') {
+                setPendingReference(null);
+            }
         } catch {
             setPendingNotice(
                 'Unable to check Chapa right now. Keep your reference and try later.',
@@ -362,15 +371,8 @@ export default function PlansPage({
                                         ? 'Checking…'
                                         : 'Check status'}
                                 </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                        setPendingReference(null);
-                                        setPendingNotice(null);
-                                    }}
-                                >
-                                    Dismiss
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link href="/billing">Billing overview</Link>
                                 </Button>
                             </div>
                         </div>
