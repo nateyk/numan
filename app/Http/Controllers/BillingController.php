@@ -11,6 +11,7 @@ use App\Services\ManualPaymentExpiryService;
 use App\Services\MarketplaceEntitlementService;
 use App\Services\MarketplaceSettingsService;
 use App\Services\MarketplaceTextSettingsService;
+use App\Services\PendingChapaCheckoutService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -179,6 +180,7 @@ class BillingController extends Controller
             'marketplaceAccess' => $this->marketplaceAccessState($workspace, $marketplaceEntitlement),
             'currentBillingPeriod' => $workspace->billing_period,
             'currentMarketplaceBillingPeriod' => $marketplaceSub?->billing_interval,
+            'pendingChapaReference' => app(PendingChapaCheckoutService::class)->find($workspace, $user)?->tx_ref,
             'recommendedPlan' => $recommendedPlan,
             'recommendedBillingPeriod' => $recommendedBillingPeriod,
             'fromOnboarding' => $request->query('onboarding') === '1',
