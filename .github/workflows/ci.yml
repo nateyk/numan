@@ -103,11 +103,6 @@ jobs:
       - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
       - run: pnpm run format:check
-      - name: Show checkout recovery Prettier diff
-        if: failure()
-        run: |
-          pnpm exec prettier --write resources/js/pages/Billing/plans.tsx
-          git diff -- resources/js/pages/Billing/plans.tsx
       # Lint maintained repository files; exclude bundled tools and disabled workspace UI via eslint.config.js.
       - run: pnpm exec eslint .
 
