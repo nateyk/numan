@@ -291,7 +291,7 @@ it('the discovery filter never matches an OpenStreetMap id', function () {
         'status' => 'active',
     ]);
 
-    $this->get('/freight?origin=osm_987654')
+    $this->actingAs(\App\Models\User::factory()->create())->get('/freight?origin=osm_987654')
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('freight.data', fn ($posts) => count($posts) === 0));
 });
@@ -304,7 +304,7 @@ it('the discovery filter still matches a real location id', function () {
         'status' => 'active',
     ]);
 
-    $this->get('/freight?origin='.$origin->id)
+    $this->actingAs(\App\Models\User::factory()->create())->get('/freight?origin='.$origin->id)
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('freight.data', fn ($posts) => count($posts) === 2));
 });
