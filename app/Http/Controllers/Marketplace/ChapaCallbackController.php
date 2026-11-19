@@ -45,6 +45,8 @@ class ChapaCallbackController extends Controller
                 ->withErrors(['payment' => 'The provider details did not match this subscription. Contact support.']),
             'canceled' => redirect()->route('billing.index')
                 ->withErrors(['payment' => 'This payment attempt was canceled. If you were charged, contact support for settlement review.']),
+            'failed' => redirect()->route('billing.plans')
+                ->withErrors(['payment' => 'Chapa confirmed this payment failed. You can try a new checkout.']),
             default => redirect()->route('billing.index')
                 ->with('info', 'Payment confirmation is pending. Check your payment status shortly.'),
         };
