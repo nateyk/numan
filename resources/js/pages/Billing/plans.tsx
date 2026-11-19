@@ -46,6 +46,12 @@ interface PlansPageProps {
     freeLimits?: FreeLimits;
     currentMarketplacePlan?: string;
     currentMarketplaceBillingPeriod?: BillingPeriod | null;
+    marketplaceAccess?: {
+        status: 'free' | 'active' | 'grace' | 'expired';
+        plan: string | null;
+        ends_at: string | null;
+        billing_interval: BillingPeriod | null;
+    };
     recommendedBillingPeriod?: BillingPeriod | null;
     fromOnboarding: boolean;
     userRole: WorkspaceRole;
@@ -80,6 +86,7 @@ export default function PlansPage({
     freeLimits,
     currentMarketplacePlan,
     currentMarketplaceBillingPeriod,
+    marketplaceAccess,
     recommendedBillingPeriod,
     fromOnboarding,
     userRole,
@@ -90,6 +97,7 @@ export default function PlansPage({
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>(
         (recommendedBillingPeriod as BillingPeriod) ||
             (currentMarketplaceBillingPeriod as BillingPeriod) ||
+            marketplaceAccess?.billing_interval ||
             'monthly',
     );
     const [processing, setProcessing] = useState<string | null>(null);
@@ -245,6 +253,35 @@ export default function PlansPage({
                 fullWidth
             >
                 <div className="space-y-6">
+                    {marketplaceAccess?.status === 'expired' && (
+                        <div
+                            role="status"
+                            className="mx-auto max-w-5xl rounded-lg border px-4 py-3"
+                        >
+                            <p className="text-sm font-medium">
+                                Your paid access has expired
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Freight discovery is paused until you renew.
+                                Select a duration below to restore access after
+                                Chapa confirms payment.
+                            </p>
+                        </div>
+                    )}
+                    {marketplaceAccess?.status === 'grace' && (
+                        <div
+                            role="status"
+                            className="mx-auto max-w-5xl rounded-lg border px-4 py-3"
+                        >
+                            <p className="text-sm font-medium">
+                                Your plan is canceled but still active
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                You can browse freight until your paid period
+                                ends. Renew now to preserve the days remaining.
+                            </p>
+                        </div>
+                    )}
                     {fromOnboarding && (
                         <Card className="border-primary/40 bg-primary/5">
                             <CardContent className="py-4">
@@ -343,12 +380,14 @@ export default function PlansPage({
                         {/* Free — numbers come from marketplace_settings */}
                         <Card
                             className={`relative flex flex-col ${
-                                currentMarketplacePlan === 'free'
+                                currentMarketplacePlan === 'free' &&
+                                marketplaceAccess?.status !== 'expired'
                                     ? 'border-primary shadow-md ring-2 ring-primary/20'
                                     : ''
                             }`}
                         >
-                            {currentMarketplacePlan === 'free' && (
+                            {currentMarketplacePlan === 'free' &&
+                                marketplaceAccess?.status !== 'expired' && (
                                 <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
                                     <Badge className="gap-1 bg-green-600 px-3 py-1 font-bold shadow-lg">
                                         <Check className="h-3.5 w-3.5 stroke-[3]" />{' '}
@@ -361,7 +400,8 @@ export default function PlansPage({
                                     Free
                                 </CardTitle>
                                 <CardDescription className="font-medium text-muted-foreground/80">
-                                    Browse, search and post as a consignor
+                                    Free accounts can browse and post within
+                                    the plan limits
                                 </CardDescription>
                                 <div className="mt-4">
                                     <span className="text-4xl font-black tracking-tighter">
@@ -397,15 +437,17 @@ export default function PlansPage({
                                 <Button
                                     className="h-11 w-full font-bold"
                                     variant={
-                                        currentMarketplacePlan === 'free'
+                                        currentMarketplacePlan === 'free' &&
+                                        marketplaceAccess?.status !== 'expired'
                                             ? 'secondary'
                                             : 'outline'
                                     }
                                     disabled
                                 >
-                                    {currentMarketplacePlan === 'free'
+                                    {currentMarketplacePlan === 'free' &&
+                                    marketplaceAccess?.status !== 'expired'
                                         ? 'Current Plan'
-                                        : 'Free forever'}
+                                        : 'Free tier'}
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -492,9 +534,9 @@ export default function PlansPage({
                                                     : 'default'
                                             }
                                             disabled={
-                                                isOnPlan ||
                                                 !isOwner ||
-                                                processing !== null
+                                                processing !== null ||
+                                                pendingReference !== null
                                             }
                                             onClick={() =>
                                                 handleSubscribe(plan.slug)
@@ -503,10 +545,11 @@ export default function PlansPage({
                                             {processing === plan.slug && (
                                                 <Spinner className="mr-2" />
                                             )}
-                                            {isCurrent
-                                                ? 'Current Plan'
-                                                : isOnPlan
-                                                  ? 'Renew'
+                                            {isOnPlan
+                                                ? 'Extend plan'
+                                                : marketplaceAccess?.status ===
+                                                    'expired'
+                                                  ? 'Renew plan'
                                                   : `Subscribe — ${price.toLocaleString()} ETB`}
                                         </Button>
                                         {manualPayment?.enabled && (
