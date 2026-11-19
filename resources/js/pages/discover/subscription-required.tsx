@@ -46,10 +46,17 @@ export default function FreightSubscriptionRequired() {
                             <Button asChild className="min-h-11">
                                 <Link href="/billing/plans">
                                     View plans
-                                    <ArrowRight className="ml-1 size-4" aria-hidden="true" />
+                                    <ArrowRight
+                                        className="ml-1 size-4"
+                                        aria-hidden="true"
+                                    />
                                 </Link>
                             </Button>
-                            <Button asChild variant="outline" className="min-h-11">
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="min-h-11"
+                            >
                                 <Link href="/my-freight">Manage my freight</Link>
                             </Button>
                         </div>
