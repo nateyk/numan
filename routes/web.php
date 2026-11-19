@@ -163,9 +163,13 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name('freight.discovery');
-Route::get('/freight/{ulid}', [PublicFreightDiscoveryController::class, 'show'])->name('freight.public.show');
-Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
+// Browsing is a member feature. Keep the familiar URLs, but never send
+// listing payloads to unauthenticated visitors (including /discover and detail).
+Route::middleware('auth')->group(function () {
+    Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name('freight.discovery');
+    Route::get('/freight/{ulid}', [PublicFreightDiscoveryController::class, 'show'])->name('freight.public.show');
+    Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
+});
 
 // The old directory URL now leads to freight discovery; public profile pages
 // remain available through their own URLs.

@@ -12,7 +12,8 @@ permissions:
 
 jobs:
   freight-browser:
-    runs-on: ubuntu-latest
+    # Playwright 1.55 does not support ubuntu-26.04 (new ubuntu-latest).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       APP_ENV: testing

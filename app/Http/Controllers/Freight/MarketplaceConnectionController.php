@@ -9,6 +9,7 @@ use App\Models\FreightPost;
 use App\Models\MarketplaceConnection;
 use App\Models\User;
 use App\Services\ContactRevealService;
+use App\Services\MarketplaceEntitlementService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -158,6 +159,14 @@ class MarketplaceConnectionController extends Controller
         }
 
         Gate::authorize('view', $post);
+
+        // A direct POST to the reveal URL must not bypass a suspended board.
+        // Existing interest and connection workflows are independent.
+        if (! $viewer->is_superadmin
+            && $viewer->id !== $post->user_id
+            && ! app(MarketplaceEntitlementService::class)->canBrowseFreight($viewer->currentWorkspace)) {
+            abort(403);
+        }
 
         $counterparty = $post->user;
 

@@ -92,6 +92,10 @@ class FreightInterestController extends Controller
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
         $user = $request->user();
 
+        if (! app(MarketplaceEntitlementService::class)->canBrowseFreight($user->currentWorkspace)) {
+            return back()->withErrors(['interest' => 'Your subscription has expired. Renew to browse freight and send new interests.']);
+        }
+
         // Detailed checks to return user-friendly errors instead of generic 403
         if ($user->id === $post->user_id) {
             return back()->withErrors(['interest' => 'You cannot express interest on your own freight.']);
@@ -155,6 +159,10 @@ class FreightInterestController extends Controller
 
             if ($exists) {
                 return ['error' => 'You have already expressed interest on this freight.'];
+            }
+
+            if (! app(MarketplaceEntitlementService::class)->canBrowseFreight($workspace)) {
+                return ['error' => 'Your subscription has expired. Renew to send new interests.'];
             }
 
             if ($workspace && ! app(MarketplaceEntitlementService::class)->canExpressInterest($workspace)) {

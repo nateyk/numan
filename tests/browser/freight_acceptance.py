@@ -164,11 +164,14 @@ def mobile_owner_cards(browser, fixtures):
 
 
 def transporter_contact_privacy(browser, fixtures):
-    # Guest and transporter must not receive contact details in the HTML/
-    # Inertia page payload. The phone is intentionally synthetic.
+    # Guests are sent to login. Even after signing in, a non-owner must not
+    # receive unrevealed contact details in the Inertia payload.
     guest = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True)
     guest_page = guest.new_page()
     try:
+        guest_page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
+        expect(guest_page).to_have_url(re.compile(r"/login"))
+        sign_in(guest_page, fixtures["transporter_email"])
         guest_page.goto(f"{BASE_URL}/freight/{fixtures['contact_ulid']}")
         assert_public_brand(guest_page)
         expect(guest_page.get_by_text("Consignor Poster")).to_be_visible()
