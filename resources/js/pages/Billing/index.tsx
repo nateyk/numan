@@ -82,6 +82,12 @@ interface BillingIndexProps {
     usage?: Record<string, UsageMetric>;
     marketplaceUsage?: Record<string, UsageMetric>;
     marketplacePlan?: { slug: string; name: string };
+    marketplaceAccess?: {
+        status: 'free' | 'active' | 'grace' | 'expired';
+        plan: string | null;
+        ends_at: string | null;
+        billing_interval: string | null;
+    };
     invoices: Invoice[];
     marketplaceInvoices?: (Invoice & {
         is_marketplace?: boolean;
@@ -109,6 +115,7 @@ export default function BillingIndex({
     upcoming_invoice,
     marketplaceUsage,
     marketplacePlan,
+    marketplaceAccess,
     invoices,
     marketplaceInvoices,
     marketplaceSubscription,
@@ -203,6 +210,26 @@ export default function BillingIndex({
                 fullWidth
             >
                 <div className="space-y-8 pb-12">
+                    {marketplaceAccess?.status === 'expired' && (
+                        <div
+                            role="status"
+                            className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                            <div className="space-y-1">
+                                <p className="text-sm font-semibold">
+                                    Freight discovery is paused
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Your paid period has ended. Renew to restore
+                                    access after Chapa confirms payment. Your
+                                    own freight records remain available.
+                                </p>
+                            </div>
+                            <Button asChild size="sm">
+                                <Link href="/billing/plans">Renew plan</Link>
+                            </Button>
+                        </div>
+                    )}
                     <div className="grid gap-8 lg:grid-cols-3">
                         {/* Current Plan */}
                         <Card className="glass animate-fade-in-up overflow-hidden border-2 border-primary/10 transition-all hover:border-primary/30 lg:col-span-2">
