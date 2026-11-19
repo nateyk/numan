@@ -388,20 +388,20 @@ export default function PlansPage({
                         >
                             {currentMarketplacePlan === 'free' &&
                                 marketplaceAccess?.status !== 'expired' && (
-                                <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
-                                    <Badge className="gap-1 bg-green-600 px-3 py-1 font-bold shadow-lg">
-                                        <Check className="h-3.5 w-3.5 stroke-[3]" />{' '}
-                                        Your Plan
-                                    </Badge>
-                                </div>
-                            )}
+                                    <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
+                                        <Badge className="gap-1 bg-green-600 px-3 py-1 font-bold shadow-lg">
+                                            <Check className="h-3.5 w-3.5 stroke-[3]" />{' '}
+                                            Your Plan
+                                        </Badge>
+                                    </div>
+                                )}
                             <CardHeader className="pt-8 text-center">
                                 <CardTitle className="text-2xl font-black tracking-tight">
                                     Free
                                 </CardTitle>
                                 <CardDescription className="font-medium text-muted-foreground/80">
-                                    Free accounts can browse and post within
-                                    the plan limits
+                                    Free accounts can browse and post within the
+                                    plan limits
                                 </CardDescription>
                                 <div className="mt-4">
                                     <span className="text-4xl font-black tracking-tighter">
