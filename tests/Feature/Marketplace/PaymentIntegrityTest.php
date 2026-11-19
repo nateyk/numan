@@ -281,3 +281,36 @@ it('renews an expired subscription from now', function () {
 it('no longer writes an idempotency_key column', function () {
     expect(Schema::hasColumn('marketplace_payment_transactions', 'idempotency_key'))->toBeFalse();
 });
+
+it('extends a canceled but still paid period without losing remaining days', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->firstOrFail();
+    $paidUntil = now()->addDays(9);
+
+    $previous = MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'status' => 'canceled',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now()->subDays(21),
+        'current_period_ends_at' => $paidUntil,
+        'ends_at' => $paidUntil,
+        'provider' => 'chapa',
+    ]);
+
+    $transaction = prepTransaction($workspace->id, $user->id, $plan->id, 'weekly', 149, 'NF-renew-grace-period');
+    $verified = prepVerifiedResponse(149);
+
+    $this->fulfillment->fulfill($transaction, $verified);
+    $this->fulfillment->fulfill($transaction, $verified);
+
+    $next = MarketplaceSubscription::where('chapa_tx_ref', $transaction->tx_ref)->firstOrFail();
+
+    expect($previous->fresh()->status)->toBe('superseded')
+        ->and($previous->fresh()->ends_at->equalTo($paidUntil))->toBeTrue()
+        ->and($next->current_period_start->equalTo($paidUntil))->toBeTrue()
+        ->and($next->ends_at->equalTo($paidUntil->copy()->addDays(7)))->toBeTrue()
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->count())->toBe(1)
+        ->and($workspace->activeMarketplaceSubscription()?->id)->toBe($next->id);
+});
