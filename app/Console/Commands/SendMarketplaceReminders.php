@@ -76,6 +76,16 @@ class SendMarketplaceReminders extends Command
                 continue;
             }
 
+            // A subscriber who already renewed must not receive a stale
+            // "plan expired" email just because an earlier row was marked
+            // expired before the new paid period was created.
+            if (in_array(MarketplaceReminderWindow::EXPIRED, $due['types'], true)
+                && $this->hasNewerPaidPeriod($subscription)) {
+                $nothingDue++;
+
+                continue;
+            }
+
             foreach ($due['types'] as $type) {
                 $isNew = ! $this->alreadyDecided($subscription, $type);
 
@@ -142,13 +152,33 @@ class SendMarketplaceReminders extends Command
         $expiryHorizon = (int) config('marketplace.reminder_expired_window_days', 3);
 
         return MarketplaceSubscription::query()
-            ->whereIn('status', ['active', 'trialing'])
+            ->whereIn('status', ['active', 'trialing', 'canceled', 'expired'])
             ->whereNotNull('ends_at')
             ->where('ends_at', '<=', now()->addDays($renewalHorizon))
             ->where('ends_at', '>=', now()->subDays($expiryHorizon))
             ->with(['workspace', 'plan'])
             ->orderBy('ends_at')
             ->get();
+    }
+
+    /**
+     * A newer paid term takes precedence over stale expiry history. The
+     * checkout attempt itself is not a subscription, so pending Chapa payments
+     * cannot suppress a legitimately due expiry notice.
+     */
+    private function hasNewerPaidPeriod(MarketplaceSubscription $subscription): bool
+    {
+        return MarketplaceSubscription::query()
+            ->where('workspace_id', $subscription->workspace_id)
+            ->where('id', '>', $subscription->id)
+            ->whereIn('status', ['active', 'trialing', 'canceled', 'expired'])
+            ->where(function ($query) use ($subscription) {
+                $query->where('ends_at', '>=', $subscription->ends_at)
+                    ->orWhere(function ($active) {
+                        $active->whereNull('ends_at')->whereIn('status', ['active', 'trialing']);
+                    });
+            })
+            ->exists();
     }
 
     /**
