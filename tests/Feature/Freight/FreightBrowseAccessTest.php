@@ -5,6 +5,8 @@ use App\Models\FreightPost;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\User;
+use App\Models\Workspace;
+use Carbon\CarbonInterface;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,7 +18,7 @@ beforeEach(function () {
     $this->seed(MarketplacePlanSeeder::class);
 });
 
-/** @return array{User, \App\Models\Workspace} */
+/** @return array{User, Workspace} */
 function browsingMember(): array
 {
     $user = User::factory()->create(['email_verified_at' => now()]);
@@ -26,7 +28,7 @@ function browsingMember(): array
     return [$user->fresh(), $workspace];
 }
 
-function browsingSubscription(User $user, \App\Models\Workspace $workspace, string $status, \Carbon\CarbonInterface $endsAt): MarketplaceSubscription
+function browsingSubscription(User $user, Workspace $workspace, string $status, CarbonInterface $endsAt): MarketplaceSubscription
 {
     return MarketplaceSubscription::create([
         'workspace_id' => $workspace->id,
