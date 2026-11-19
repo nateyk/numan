@@ -25,7 +25,10 @@ export default function FreightSubscriptionRequired() {
                         className="w-full max-w-lg"
                     >
                         <div className="mb-5 flex size-12 items-center justify-center rounded-xl border bg-muted/50 text-primary">
-                            <LockKeyhole className="size-5" aria-hidden="true" />
+                            <LockKeyhole
+                                className="size-5"
+                                aria-hidden="true"
+                            />
                         </div>
                         <p className="mb-2 text-sm font-medium text-muted-foreground">
                             Subscription expired
@@ -57,7 +60,9 @@ export default function FreightSubscriptionRequired() {
                                 variant="outline"
                                 className="min-h-11"
                             >
-                                <Link href="/my-freight">Manage my freight</Link>
+                                <Link href="/my-freight">
+                                    Manage my freight
+                                </Link>
                             </Button>
                         </div>
                     </section>
