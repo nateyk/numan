@@ -6,6 +6,8 @@ use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\User;
 use App\Services\ChapaService;
+use App\Services\ChapaSubscriptionVerifier;
+use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -379,4 +381,43 @@ it('does not accept a terminal failure claimed for a different Chapa environment
 
     expect($transaction->fresh()->status)->toBe('initialized')
         ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('never overwrites an already verified and receipted payment with a stale failure response', function () {
+    [$user, $workspace, $transaction] = subscriptionChapaAttempt('NF-stale-failure-after-settlement');
+
+    app(MarketplaceFulfillmentService::class)->fulfill($transaction, [
+        'status' => 'success',
+        'data' => [
+            'status' => 'paid',
+            'currency' => 'ETB',
+            'amount' => '449.00',
+            'mode' => 'test',
+            'tx_ref' => $transaction->tx_ref,
+        ],
+    ]);
+
+    // The original Eloquent object still has the initialized state that an
+    // overlapping request could have loaded before the successful callback.
+    expect($transaction->status)->toBe('initialized');
+
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return [
+                'status' => 'success',
+                'data' => [
+                    'status' => 'failed',
+                    'tx_ref' => $txRef,
+                    'mode' => 'test',
+                ],
+            ];
+        }
+    });
+
+    expect(app(ChapaSubscriptionVerifier::class)->verify($transaction))->toBe('verified')
+        ->and($transaction->fresh()->status)->toBe('verified')
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(1)
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->count())->toBe(1);
 });
