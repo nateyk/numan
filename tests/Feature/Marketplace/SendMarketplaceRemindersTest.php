@@ -260,3 +260,57 @@ it('logs no contact data', function () {
         ->not->toContain($subscription->workspace->owner->email)
         ->not->toContain($subscription->workspace->owner->name);
 });
+
+it('sends an expiry reminder after the expiry sweep already marked a subscription expired', function () {
+    [$subscription] = dueSubscription(-1, 'monthly', 'expired');
+
+    $this->artisan('marketplace:send-reminders')->assertSuccessful();
+    $this->artisan('marketplace:send-reminders')->assertSuccessful();
+
+    Notification::assertSentToTimes($subscription->workspace->owner, MarketplacePlanReminder::class, 1);
+
+    expect(MarketplaceReminderLog::where('marketplace_subscription_id', $subscription->id)
+        ->where('reminder_type', 'plan_expired')
+        ->where('status', MarketplaceReminderLog::STATUS_SENT)
+        ->count())->toBe(1);
+});
+
+it('sends a recent expiry notice for canceled grace that ended without a sweep', function () {
+    [$subscription] = dueSubscription(-1, 'monthly', 'canceled');
+
+    $this->artisan('marketplace:send-reminders')->assertSuccessful();
+
+    Notification::assertSentTo($subscription->workspace->owner, MarketplacePlanReminder::class);
+});
+
+it('does not send a stale expiry reminder after a member has renewed', function () {
+    [$expired, $workspace] = dueSubscription(-1, 'monthly', 'expired');
+    $plan = MarketplacePlan::where('slug', 'standard')->firstOrFail();
+
+    MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $workspace->owner?->id,
+        'status' => 'active',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now()->subHour(),
+        'current_period_ends_at' => now()->addDays(30),
+        'ends_at' => now()->addDays(30),
+        'chapa_tx_ref' => 'NF-RECENT-RENEWAL',
+    ]);
+
+    $this->artisan('marketplace:send-reminders')->assertSuccessful();
+
+    Notification::assertNothingSent();
+    expect(MarketplaceReminderLog::where('marketplace_subscription_id', $expired->id)
+        ->where('reminder_type', 'plan_expired')->exists())->toBeFalse();
+});
+
+it('does not replay historical expiry notices from old subscriptions', function () {
+    dueSubscription(-20, 'monthly', 'expired');
+
+    $this->artisan('marketplace:send-reminders')->assertSuccessful();
+
+    Notification::assertNothingSent();
+    expect(MarketplaceReminderLog::count())->toBe(0);
+});
