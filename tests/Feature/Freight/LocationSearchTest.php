@@ -2,6 +2,7 @@
 
 use App\Models\FreightPost;
 use App\Models\Location;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -291,7 +292,7 @@ it('the discovery filter never matches an OpenStreetMap id', function () {
         'status' => 'active',
     ]);
 
-    $this->actingAs(\App\Models\User::factory()->create())->get('/freight?origin=osm_987654')
+    $this->actingAs(User::factory()->create())->get('/freight?origin=osm_987654')
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('freight.data', fn ($posts) => count($posts) === 0));
 });
@@ -304,7 +305,7 @@ it('the discovery filter still matches a real location id', function () {
         'status' => 'active',
     ]);
 
-    $this->actingAs(\App\Models\User::factory()->create())->get('/freight?origin='.$origin->id)
+    $this->actingAs(User::factory()->create())->get('/freight?origin='.$origin->id)
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('freight.data', fn ($posts) => count($posts) === 2));
 });
