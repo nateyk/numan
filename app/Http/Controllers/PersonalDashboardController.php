@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\FreightPostStatus;
 use App\Models\FreightPost;
+use App\Services\MarketplaceEntitlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -46,11 +47,15 @@ class PersonalDashboardController extends Controller
             // Do not serialize entire FreightPost models, contact data, or
             // another account's posts onto the dashboard.
             // The unfiltered public board uses these same visibility scopes.
-            $props['availableFreight'] = FreightPost::query()
-                ->active()
-                ->withinPickupWindow()
-                ->visible()
-                ->count();
+            $canBrowse = app(MarketplaceEntitlementService::class)->canBrowseFreight($workspace);
+            $props['freightAccessLocked'] = ! $canBrowse;
+            $props['availableFreight'] = $canBrowse
+                ? FreightPost::query()
+                    ->active()
+                    ->withinPickupWindow()
+                    ->visible()
+                    ->count()
+                : null;
 
             $props['recentFreight'] = (clone $owned)
                 ->with(['originLocation:id,name', 'destinationLocation:id,name'])

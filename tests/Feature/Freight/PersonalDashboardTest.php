@@ -2,8 +2,11 @@
 
 use App\Enums\FreightPostStatus;
 use App\Models\FreightPost;
+use App\Models\MarketplacePlan;
+use App\Models\MarketplaceSubscription;
 use App\Models\User;
 use App\Services\WorkspaceService;
+use Database\Seeders\MarketplacePlanSeeder;
 
 beforeEach(function () {
     config()->set('features.workspace.ui', false);
@@ -79,4 +82,48 @@ it('redirects legacy workspace usage to the freight dashboard in single-profile 
     $user->switchWorkspace($workspace);
 
     $this->actingAs($user)->get('/usage')->assertRedirect('/dashboard');
+});
+
+it('does not expose marketplace availability to an expired paid member on dashboard', function () {
+    $this->seed(MarketplacePlanSeeder::class);
+
+    $viewer = User::factory()->create();
+    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($viewer);
+    $viewer->switchWorkspace($workspace);
+
+    $owner = User::factory()->create();
+    FreightPost::factory()->for($owner)->active()->create(['item_name' => 'Other member freight']);
+
+    $subscription = MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => MarketplacePlan::where('slug', 'standard')->firstOrFail()->id,
+        'user_id' => $viewer->id,
+        'status' => 'expired',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now()->subDays(31),
+        'current_period_ends_at' => now()->subDay(),
+        'ends_at' => now()->subDay(),
+        'provider' => 'chapa',
+    ]);
+
+    $this->actingAs($viewer)->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('dashboard')
+            ->where('freightAccessLocked', true)
+            ->where('availableFreight', null)
+            ->has('recentFreight', 0));
+
+    $subscription->update([
+        'status' => 'active',
+        'current_period_start' => now(),
+        'current_period_ends_at' => now()->addDays(30),
+        'ends_at' => now()->addDays(30),
+    ]);
+
+    $this->actingAs($viewer)->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('freightAccessLocked', false)
+            ->where('availableFreight', 1));
 });
