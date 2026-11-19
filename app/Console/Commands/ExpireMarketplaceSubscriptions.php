@@ -96,7 +96,7 @@ class ExpireMarketplaceSubscriptions extends Command
 
     private function countLapsedSubscriptions(): int
     {
-        return MarketplaceSubscription::whereIn('status', ['active', 'trialing'])
+        return MarketplaceSubscription::whereIn('status', ['active', 'trialing', 'canceled'])
             ->whereNotNull('ends_at')
             ->where('ends_at', '<=', now())
             ->count();
