@@ -4,6 +4,7 @@ use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
+use App\Services\ChapaSubscriptionVerifier;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -200,4 +201,106 @@ it('flags successful canceled Chapa charges for human settlement without changin
     expect($canceled->fresh()->verified_at)->toBeNull();
     expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
     expect(MarketplacePaymentReceipt::where('transaction_id', $canceled->id)->exists())->toBeFalse();
+});
+
+it('previews historical pending Chapa references without provider access or database writes', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->firstOrFail();
+
+    $tx = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-reconcile-read-only-preview',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'status' => 'pending',
+        'provider' => 'chapa',
+        'mode' => 'test',
+        'billing_interval' => 'monthly',
+    ]);
+    DB::table('marketplace_payment_transactions')->where('id', $tx->id)
+        ->update(['created_at' => now()->subDays(5)]);
+
+    Http::fake();
+
+    $this->artisan('chapa:reconcile', ['--all' => true, '--dry-run' => true])
+        ->expectsOutputToContain('DRY RUN')
+        ->expectsOutputToContain($tx->tx_ref)
+        ->assertSuccessful();
+
+    Http::assertNothingSent();
+    expect($tx->fresh()->status)->toBe('pending')
+        ->and($tx->fresh()->verified_at)->toBeNull()
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $tx->id)->exists())->toBeFalse()
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('closes a confirmed failed payment during reconciliation without granting a subscription', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->firstOrFail();
+
+    $tx = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-reconcile-confirmed-failed',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'status' => 'initialized',
+        'provider' => 'chapa',
+        'mode' => 'test',
+        'billing_interval' => 'monthly',
+    ]);
+
+    Http::fake([
+        'api.chapa.co/v1/transaction/verify/NF-reconcile-confirmed-failed' => Http::response([
+            'status' => 'success',
+            'data' => [
+                'status' => 'failed',
+                'tx_ref' => $tx->tx_ref,
+                'mode' => 'test',
+            ],
+        ]),
+    ]);
+
+    $this->artisan('chapa:reconcile')
+        ->expectsOutputToContain('Chapa confirmed payment failed')
+        ->assertSuccessful();
+
+    expect($tx->fresh()->status)->toBe('failed')
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $tx->id)->exists())->toBeFalse()
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('does not report a canceled payment as successfully fulfilled', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->firstOrFail();
+
+    $tx = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-reconcile-concurrent-cancel',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'status' => 'pending',
+        'provider' => 'chapa',
+        'mode' => 'test',
+        'billing_interval' => 'monthly',
+    ]);
+
+    $this->mock(ChapaSubscriptionVerifier::class, function ($mock) use ($tx): void {
+        $mock->shouldReceive('verify')->once()->withArgs(
+            fn ($transaction) => $transaction->id === $tx->id
+        )->andReturn('canceled');
+    });
+
+    $this->artisan('chapa:reconcile')
+        ->expectsOutputToContain('Canceled; no entitlement restored')
+        ->expectsOutputToContain('0 fulfilled, 1 failed')
+        ->assertSuccessful();
+
+    expect(MarketplacePaymentReceipt::where('transaction_id', $tx->id)->exists())->toBeFalse()
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
 });
