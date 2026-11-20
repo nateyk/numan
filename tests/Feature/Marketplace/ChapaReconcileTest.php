@@ -4,6 +4,7 @@ use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
+use App\Services\ChapaSubscriptionVerifier;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -289,7 +290,7 @@ it('does not report a canceled payment as successfully fulfilled', function () {
         'billing_interval' => 'monthly',
     ]);
 
-    $this->mock(\App\Services\ChapaSubscriptionVerifier::class, function ($mock) use ($tx): void {
+    $this->mock(ChapaSubscriptionVerifier::class, function ($mock) use ($tx): void {
         $mock->shouldReceive('verify')->once()->withArgs(
             fn ($transaction) => $transaction->id === $tx->id
         )->andReturn('canceled');
