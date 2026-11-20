@@ -124,14 +124,14 @@ export default function Notifications({
                             />
                         </div>
 
-
                         <div className="flex items-center justify-between rounded-lg border p-4">
                             <div className="space-y-0.5">
                                 <Label htmlFor="channel-telegram">
                                     Telegram notifications
                                 </Label>
                                 <p className="text-sm text-muted-foreground">
-                                    Receive freight approvals, new interests, and connection updates in your bot chat.
+                                    Receive freight approvals, new interests,
+                                    and connection updates in your bot chat.
                                 </p>
                             </div>
                             <Switch
@@ -311,10 +311,11 @@ export default function Notifications({
                     </div>
                 </form>
 
-
                 <div className="mt-6 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
-                        <p className="font-medium">Numan Freight Telegram bot</p>
+                        <p className="font-medium">
+                            Numan Freight Telegram bot
+                        </p>
                         <p className="text-sm text-muted-foreground">
                             {telegram.connected
                                 ? 'Your Telegram account is linked. Send /stop to the bot or disconnect here to end alerts.'
@@ -327,13 +328,19 @@ export default function Notifications({
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => router.delete('/settings/telegram', { preserveScroll: true })}
+                            onClick={() =>
+                                router.delete('/settings/telegram', {
+                                    preserveScroll: true,
+                                })
+                            }
                         >
                             Disconnect Telegram
                         </Button>
                     ) : telegram.available ? (
                         <Button asChild>
-                            <a href="/settings/telegram/connect">Connect Telegram</a>
+                            <a href="/settings/telegram/connect">
+                                Connect Telegram
+                            </a>
                         </Button>
                     ) : null}
                 </div>
