@@ -39,6 +39,10 @@ The report checks Chapa v1 mode/API origin, key and webhook secret **presence on
 
 **It is not a production go-live certificate.** A clean preflight does not verify real Chapa Test Mode payments, webhook delivery, cron execution, a running queue worker, actual outbound mail, Telegram BotFather setup, or backup restoration. Require evidence for each before enabling live processing. Use `chapa:reconcile --all --dry-run` for a read-only reference-level payment backlog and `chapa:accept-renewal` only after two genuine Chapa Test Mode hosted checkouts.
 
+## Telegram rollout is a separate manual gate
+
+Merging Telegram notification code does **not** register a Telegram bot, add it as an administrator to the current Numan Freight channel, register its secret-verified webhook, or supervise queue workers. Before enabling Telegram environment credentials, follow [Telegram channel rollout](telegram-channel-rollout.md): verify the actual existing bot, grant only channel-posting permission, test private `/start` linking and `/stop`, verify no contact leakage, and retain a rollback plan.
+
 ## Deploy order
 
 Read this once. Each step is safe to stop after.
