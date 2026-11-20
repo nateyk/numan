@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Marketplace;
 
 use App\Http\Controllers\Controller;
+use App\Models\ChapaWebhookDelivery;
 use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\ChapaService;
@@ -52,6 +53,23 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Missing tx_ref'], 422);
         }
 
+        // The old processing row is intentionally one per (tx_ref, event).
+        // Multiple partial refunds legitimately share both fields, so record
+        // each DISTINCT authenticated delivery before its summary is deduped.
+        // Persist only allowlisted accounting fields; no payer identity.
+        $bodyHash = hash('sha256', $request->getContent());
+        ChapaWebhookDelivery::firstOrCreate(
+            ['payload_hash' => $bodyHash],
+            [
+                'tx_ref' => $txRef,
+                'event' => $event,
+                'webhook_type' => $webhookType,
+                'payload' => $payload,
+                'signature' => $request->header('x-chapa-signature') ?? $request->header('chapa-signature'),
+                'received_at' => now(),
+            ],
+        );
+
         $existing = ChapaWebhookEvent::where('tx_ref', $txRef)->where('event', $event)->first();
         if ($existing && $existing->status === 'processed') {
             return response()->json(['message' => 'Already processed'], 200);
@@ -64,7 +82,7 @@ class ChapaWebhookController extends Controller
                 'payload' => $payload,
                 'signature' => $request->header('x-chapa-signature') ?? $request->header('chapa-signature'),
                 // Digest the exact signed bytes, not JSON re-encoded by Laravel.
-                'payload_hash' => hash('sha256', $request->getContent()),
+                'payload_hash' => $bodyHash,
                 'status' => 'pending',
             ]
         );
