@@ -25,6 +25,7 @@ interface Tx {
     currency: string;
     status: string;
     mode: string;
+    provider: string;
     verified_at: string | null;
     created_at: string;
     review: { id: number; status: string; reason: string } | null;
@@ -175,21 +176,26 @@ export default function AdminMarketplacePayments({
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            router.post(
-                                                                `/admin/marketplace-payments/${t.id}/reconcile`,
-                                                                {},
-                                                                {
-                                                                    preserveScroll: true,
-                                                                },
-                                                            )
-                                                        }
-                                                    >
-                                                        Reconcile
-                                                    </Button>
+                                                    {t.provider === 'chapa' &&
+                                                    ['pending', 'initialized'].includes(
+                                                        t.status,
+                                                    ) ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                router.post(
+                                                                    `/admin/marketplace-payments/${t.id}/reconcile`,
+                                                                    {},
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                )
+                                                            }
+                                                        >
+                                                            Verify Chapa
+                                                        </Button>
+                                                    ) : null}
                                                     {t.review ? (
                                                         <Badge variant="secondary">
                                                             Review #
