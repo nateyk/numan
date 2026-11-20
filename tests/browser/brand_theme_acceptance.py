@@ -103,6 +103,12 @@ def check_mobile_landing_drawer(page, name, signed_in, admin):
     page.get_by_role("button", name="Open menu").click()
     drawer = page.get_by_role("dialog", name="Navigation menu")
     expect(drawer).to_be_visible()
+    page.wait_for_function("""() => {
+        const panel = document.querySelector('[data-slot="sheet-content"]');
+        if (!panel) return false;
+        const bounds = panel.getBoundingClientRect();
+        return Math.abs(bounds.right - window.innerWidth) <= 2;
+    }""")
 
     bounds = drawer.bounding_box()
     assert bounds is not None
@@ -112,6 +118,9 @@ def check_mobile_landing_drawer(page, name, signed_in, admin):
         f"{name}: mobile drawer wider than available viewport"
     )
     assert bounds["x"] >= -1, f"{name}: mobile drawer starts offscreen"
+    assert abs(bounds["x"] - (viewport["width"] - bounds["width"])) <= 2, (
+        f"{name}: mobile drawer did not finish opening"
+    )
 
     expect(drawer.get_by_role("link", name="Browse freight")).to_be_visible()
     expect(drawer.get_by_role("link", name="How it works")).to_be_visible()
