@@ -69,12 +69,15 @@ class ChapaWebhookController extends Controller
             ]
         );
 
-        // Refund and payout notifications must NEVER enter payment
-        // fulfillment. v2 refund events can reuse payment.* event names and
-        // merchant references; they are review evidence, not new purchases.
+        // Never use an arbitrary "success" substring or the payload's
+        // top-level status alone to identify a new charge. Chapa v1 emits
+        // charge.success; v2 payment.success is included for event routing,
+        // but must still pass our v1 provider verification before fulfillment.
+        // Refund events may share the payment.* namespace and payout/refund
+        // notifications may also say status=success.
         $isSuccess = $webhookType === 'payment'
-            && (str_contains((string) $event, 'success') || ($payload['status'] ?? null) === 'success')
-            && ! in_array($event, ['payment.partially_refunded', 'payment.fully_refunded'], true);
+            && in_array($event, ['charge.success', 'payment.success'], true)
+            && ($payload['status'] ?? null) === 'success';
         if (! $isSuccess) {
             $webhookEvent->update(['status' => 'processed', 'processed_at' => now()]);
 
