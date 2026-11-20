@@ -23,6 +23,8 @@ comments say why: *"A Chapa webhook carries the payer's first name, last name, e
 and phone number"* and *"the payer's name, email and phone number, which have no
 business in a log file that outlives the request."*
 
+A third, new `chapa_webhook_deliveries.payload` column stores **only sanitized payment/refund metadata** for distinct signed deliveries. Its `payload_hash` is a fingerprint of the original authenticated bytes, not raw payer data. This table does not backfill historical event deliveries. Its retention and legal-hold behavior are also awaiting approval; the 90/180-day proposal below does not silently authorize purging this new evidence.
+
 The write path now minimizes newly stored provider content. A separately approved retention process is still needed to deal with already-stored personal data and implement a maximum lifetime.
 
 ## Open refund/dispute cases are a legal-hold decision
