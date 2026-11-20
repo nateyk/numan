@@ -177,9 +177,10 @@ export default function AdminMarketplacePayments({
                                             <TableCell>
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     {t.provider === 'chapa' &&
-                                                    ['pending', 'initialized'].includes(
-                                                        t.status,
-                                                    ) ? (
+                                                    [
+                                                        'pending',
+                                                        'initialized',
+                                                    ].includes(t.status) ? (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
