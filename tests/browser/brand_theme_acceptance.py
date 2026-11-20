@@ -114,14 +114,20 @@ def check_mobile_landing_drawer(page, name, signed_in, admin):
     assert bounds is not None
     viewport = page.viewport_size
     assert viewport is not None
-    assert bounds["width"] <= min(368, viewport["width"] - 16) + 2, (
-        f"{name}: mobile drawer wider than available viewport"
+    expected_width = min(viewport["width"] * 0.78, 336)
+    assert abs(bounds["width"] - expected_width) <= 2, (
+        f"{name}: mobile drawer width {bounds['width']} should be {expected_width}"
     )
     assert bounds["x"] >= -1, f"{name}: mobile drawer starts offscreen"
     assert abs(bounds["x"] - (viewport["width"] - bounds["width"])) <= 2, (
         f"{name}: mobile drawer did not finish opening"
     )
 
+    expect(drawer.get_by_role("link", name="Numan Freight home")).to_be_visible()
+    overlay = page.locator('[data-slot="sheet-overlay"]')
+    assert "blur" in overlay.evaluate(
+        "(element) => getComputedStyle(element).backdropFilter"
+    ), f"{name}: landing drawer should soften the visible page behind it"
     expect(drawer.get_by_role("link", name="Browse freight")).to_be_visible()
     expect(drawer.get_by_role("link", name="How it works")).to_be_visible()
     expect(drawer.get_by_role("link", name="Features")).to_be_visible()
@@ -140,6 +146,12 @@ def check_mobile_landing_drawer(page, name, signed_in, admin):
             expect(drawer.get_by_role("link", name="Admin")).to_have_count(1)
     else:
         expect(drawer.get_by_role("link", name="Sign In")).to_be_visible()
+        expect(drawer.get_by_role("link", name="Post a load")).to_be_visible()
+        actions = drawer.get_by_role("link", name="Post a load").bounding_box()
+        sign_in = drawer.get_by_role("link", name="Sign In").bounding_box()
+        assert actions and sign_in and actions["y"] < sign_in["y"], (
+            f"{name}: main load action should precede sign in"
+        )
 
     page.screenshot(path=str(EVIDENCE / f"theme-{name}-drawer.png"))
     if signed_in:
@@ -240,6 +252,7 @@ def main():
         ("landing-light-desktop", "/", None, "light", 1280, 800),
         ("landing-dark-mobile", "/", None, "dark", 390, 844),
         ("landing-guest-small-mobile", "/", None, "light", 320, 640),
+        ("landing-guest-medium-mobile", "/", None, "light", 375, 740),
         ("landing-admin-mobile", "/", "admin_email", "light", 390, 640),
         ("login-dark-mobile", "/login", None, "dark", 390, 844),
         ("freight-list-light-mobile", "/freight", "transporter_email", "light", 390, 844),
