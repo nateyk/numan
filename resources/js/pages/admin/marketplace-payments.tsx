@@ -34,6 +34,7 @@ interface Wh {
     id: number;
     event: string | null;
     tx_ref: string;
+    delivery_count: number;
     status: string;
     processed_at: string | null;
     created_at: string;
@@ -512,6 +513,7 @@ export default function AdminMarketplacePayments({
                                     <TableRow>
                                         <TableHead>Event</TableHead>
                                         <TableHead>TX</TableHead>
+                                        <TableHead title="Distinct signed deliveries captured">Deliveries</TableHead>
                                         <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -523,6 +525,9 @@ export default function AdminMarketplacePayments({
                                             </TableCell>
                                             <TableCell className="font-mono text-xs">
                                                 {w.tx_ref.slice(0, 12)}…
+                                            </TableCell>
+                                            <TableCell className="text-xs tabular-nums">
+                                                {w.delivery_count || '—'}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
@@ -541,7 +546,7 @@ export default function AdminMarketplacePayments({
                                     {webhooks.length === 0 && (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={3}
+                                                colSpan={4}
                                                 className="py-6 text-center text-sm text-muted-foreground"
                                             >
                                                 No webhooks.
