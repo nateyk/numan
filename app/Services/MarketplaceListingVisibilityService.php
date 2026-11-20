@@ -7,8 +7,8 @@ use App\Models\MarketplaceSubscription;
 use App\Models\Workspace;
 use App\Notifications\FreightPostsHiddenNotification;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
 
