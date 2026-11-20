@@ -237,4 +237,10 @@ it('keeps distinct partial-refund delivery evidence without duplicating identica
         expect($stored)->not->toContain('should-not-persist@example.test')
             ->not->toContain('other-private@example.test');
     }
+
+    $this->actingAs($admin)->get(route('admin.marketplace-payments.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('webhooks.0.delivery_count', 2)
+            ->etc());
 });
