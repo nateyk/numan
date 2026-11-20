@@ -25,6 +25,12 @@ A future versioned v2 migration requires separate initialization, verification, 
 
 **Release gate:** all acceptance steps and external provider evidence must pass before saying “Chapa sandbox accepted.” A green unit-test run or successful cPanel deploy is insufficient.
 
+## Webhook event boundary
+
+Signed webhook delivery is only a message, not permission to issue a subscription. The current Chapa v1 integration allows **only** the explicit `charge.success` (or `payment.success`) payment event with matching `webhook_type=payment` (or absent v1 `webhook_type`) and top-level `status=success` to trigger a fresh provider verification. A successful **refund**, **payout**, or unknown event must never be interpreted as a payment. Every successful subscription also requires a complete, matching v1 verify response and a durable receipt.
+
+Refund webhooks are currently stored as minimized audit evidence and acknowledged. They do **not** automatically refund, reverse a receipt, change an entitlement, or certify final customer settlement. Use the superadmin review workflow and Chapa's provider dashboard for those decisions.
+
 ## Refund and dispute review (superadmin)
 
 Open **Admin → Marketplace Payments**, locate the Chapa transaction and open exactly one review case with a classified reason. The case is unique by transaction and has append-only decision history.
