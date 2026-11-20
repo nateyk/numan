@@ -7,7 +7,9 @@ use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentReview;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplaceSubscription;
-use App\Services\ChapaService;
+use App\Services\ChapaSubscriptionVerifier;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,6 +32,7 @@ class MarketplacePaymentController extends Controller
                 'currency' => $t->currency,
                 'status' => $t->status,
                 'mode' => $t->mode,
+                'provider' => $t->provider,
                 'review' => $t->paymentReview ? [
                     'id' => $t->paymentReview->id,
                     'reason' => $t->paymentReview->reason,
@@ -83,15 +86,34 @@ class MarketplacePaymentController extends Controller
         ]);
     }
 
-    public function reconcile(Request $request, MarketplacePaymentTransaction $transaction, ChapaService $chapa)
+    public function reconcile(MarketplacePaymentTransaction $transaction, ChapaSubscriptionVerifier $verifier)
     {
-        $verified = $chapa->verifyTransaction($transaction->tx_ref);
+        // The admin list also includes manual transfers. Only the manual
+        // approval flow may confirm those; never send their reference to Chapa.
+        if (! $transaction->isChapa()) {
+            return back()->withErrors(['payment' => 'This is not a Chapa transaction. Review manual payments separately.']);
+        }
 
-        $transaction->update([
-            'provider_response' => $verified,
-            'chapa_ref' => $verified['data']['reference'] ?? $verified['data']['tx_ref'] ?? $transaction->chapa_ref,
-        ]);
+        if (! in_array($transaction->status, ['pending', 'initialized'], true)) {
+            return back()->withErrors([
+                'payment' => 'This payment is not awaiting Chapa settlement. Open a review case for a canceled, failed or already verified transaction.',
+            ]);
+        }
 
-        return back()->with('success', 'Reconciled: '.($verified['status'] ?? 'unknown'));
+        try {
+            $status = $verifier->verify($transaction);
+        } catch (ConnectionException|RequestException $e) {
+            report($e);
+
+            return back()->withErrors(['payment' => 'Chapa verification is temporarily unavailable. Keep the original reference and retry later.']);
+        }
+
+        return match ($status) {
+            'verified' => back()->with('success', 'Chapa payment verified, subscription and receipt recorded.'),
+            'failed' => back()->withErrors(['payment' => 'Chapa confirmed the payment failed. No subscription was granted.']),
+            'mismatch' => back()->withErrors(['payment' => 'Provider amount, currency, mode or receipt is inconsistent. Review before another checkout.']),
+            'canceled' => back()->withErrors(['payment' => 'Checkout was canceled while verification was pending. Review any late charge without granting access.']),
+            default => back()->with('info', 'Payment is still pending at Chapa. No entitlement was changed.'),
+        };
     }
 }
