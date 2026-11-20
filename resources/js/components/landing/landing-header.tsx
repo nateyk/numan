@@ -2,12 +2,25 @@ import AppearanceToggleDropdown from '@/components/appearance-dropdown';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { PublicAccountMenu } from '@/components/public-account-menu';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from '@/components/ui/sheet';
 import { useTranslations } from '@/hooks/use-translations';
 import { login, register } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { CreditCard, HelpCircle, LayoutGrid, Menu, Route, Truck } from 'lucide-react';
+import {
+    CreditCard,
+    HelpCircle,
+    LayoutGrid,
+    Menu,
+    Route,
+    Truck,
+} from 'lucide-react';
 import { useState } from 'react';
 
 interface LandingHeaderProps {
@@ -150,7 +163,10 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                aria-label={t('brand.home.nav.open_menu', 'Open menu')}
+                                aria-label={t(
+                                    'brand.home.nav.open_menu',
+                                    'Open menu',
+                                )}
                                 aria-expanded={mobileMenuOpen}
                                 className="size-10"
                             >
@@ -167,11 +183,17 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                         >
                             <SheetHeader className="shrink-0 border-b border-border px-5 py-4 pr-14">
                                 <SheetTitle className="sr-only">
-                                    {t('brand.home.nav.menu', 'Navigation menu')}
+                                    {t(
+                                        'brand.home.nav.menu',
+                                        'Navigation menu',
+                                    )}
                                 </SheetTitle>
                                 <Link
                                     href="/"
-                                    aria-label={t('brand.home.nav.home', 'Numan Freight home')}
+                                    aria-label={t(
+                                        'brand.home.nav.home',
+                                        'Numan Freight home',
+                                    )}
                                     onClick={() => setMobileMenuOpen(false)}
                                     className="inline-flex w-fit items-center gap-2"
                                 >
@@ -202,7 +224,10 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                     {t('brand.home.nav.explore', 'Explore')}
                                 </p>
                                 <nav
-                                    aria-label={t('brand.home.nav.site', 'Site navigation')}
+                                    aria-label={t(
+                                        'brand.home.nav.site',
+                                        'Site navigation',
+                                    )}
                                     className="mt-2 flex flex-col gap-1"
                                 >
                                     <Link
@@ -210,8 +235,14 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                         onClick={() => setMobileMenuOpen(false)}
                                         className={mobileNavItemClass}
                                     >
-                                        <Truck aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                                        {t('brand.home.nav.browse', 'Browse freight')}
+                                        <Truck
+                                            aria-hidden="true"
+                                            className="size-4 shrink-0 text-muted-foreground"
+                                        />
+                                        {t(
+                                            'brand.home.nav.browse',
+                                            'Browse freight',
+                                        )}
                                     </Link>
                                     {navLinks.map((link) => {
                                         const Icon = link.icon;
@@ -223,15 +254,29 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                                     event.preventDefault();
                                                     setMobileMenuOpen(false);
                                                     window.setTimeout(() => {
-                                                        document.getElementById(link.href.slice(1))?.scrollIntoView({
-                                                            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-                                                            block: 'start',
-                                                        });
+                                                        document
+                                                            .getElementById(
+                                                                link.href.slice(
+                                                                    1,
+                                                                ),
+                                                            )
+                                                            ?.scrollIntoView({
+                                                                behavior:
+                                                                    window.matchMedia(
+                                                                        '(prefers-reduced-motion: reduce)',
+                                                                    ).matches
+                                                                        ? 'auto'
+                                                                        : 'smooth',
+                                                                block: 'start',
+                                                            });
                                                     }, 100);
                                                 }}
                                                 className={mobileNavItemClass}
                                             >
-                                                <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                                                <Icon
+                                                    aria-hidden="true"
+                                                    className="size-4 shrink-0 text-muted-foreground"
+                                                />
                                                 {link.label}
                                             </a>
                                         );
@@ -242,25 +287,46 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                     {auth.user ? (
                                         <PublicAccountMenu
                                             display="inline"
-                                            onNavigate={() => setMobileMenuOpen(false)}
+                                            onNavigate={() =>
+                                                setMobileMenuOpen(false)
+                                            }
                                         />
                                     ) : (
                                         <div className="flex flex-col gap-2">
-                                            <Button variant="outline" asChild className="h-11 w-full">
+                                            <Button
+                                                variant="outline"
+                                                asChild
+                                                className="h-11 w-full"
+                                            >
                                                 <Link
                                                     href={login()}
-                                                    onClick={() => setMobileMenuOpen(false)}
+                                                    onClick={() =>
+                                                        setMobileMenuOpen(false)
+                                                    }
                                                 >
-                                                    {t('landing.nav.signin', 'Sign In')}
+                                                    {t(
+                                                        'landing.nav.signin',
+                                                        'Sign In',
+                                                    )}
                                                 </Link>
                                             </Button>
                                             {canRegister && (
-                                                <Button asChild className="h-11 w-full">
+                                                <Button
+                                                    asChild
+                                                    className="h-11 w-full"
+                                                >
                                                     <Link
                                                         href={register()}
-                                                        onClick={() => setMobileMenuOpen(false)}
+                                                        onClick={() =>
+                                                            setMobileMenuOpen(
+                                                                false,
+                                                            )
+                                                        }
                                                     >
-                                                        {t('brand.home.nav.post_load', 'Post a load')}
+                                                        {t(
+                                                            'brand.home.nav.post_load',
+                                                            'Post a load',
+                                                        )}
                                                     </Link>
                                                 </Button>
                                             )}
@@ -271,7 +337,10 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
 
                             <div className="shrink-0 border-t border-border bg-muted/30 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                                 <p className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                    {t('brand.home.nav.preferences', 'Preferences')}
+                                    {t(
+                                        'brand.home.nav.preferences',
+                                        'Preferences',
+                                    )}
                                 </p>
                                 <div className="flex items-center justify-between gap-3">
                                     <LanguageSwitcher currentLocale={locale} />
