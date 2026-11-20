@@ -24,6 +24,21 @@ delivery; they do not disable request-time access checks or Chapa reconciliation
 | 6 | Renewal and expiry reminders | `MARKETPLACE_REMINDERS_ENABLED` (§14) |
 | 7 | Freight discovery login and paid-expiry access enforcement | deploy (request time) |
 
+## Read-only release preflight
+
+Before activating expiry, reminders, a real bot, or Chapa production keys, run:
+
+```bash
+php artisan marketplace:release-check
+php artisan marketplace:release-check --strict
+```
+
+Both variants are **read-only**: they make no provider calls, issue no subscription, refund or receipt, never print secrets, and never send notifications. The first variant reports warnings but returns a successful command status; `--strict` fails when a required configuration or database prerequisite is missing or outstanding financial cases require review.
+
+The report checks Chapa v1 mode/API origin, key and webhook secret **presence only**, HTTPS application URL, mail/queue transports, marketplace migration tables, old unresolved Chapa attempts, and open refund/dispute cases. It also shows the independent expiry/reminder schedule flags.
+
+**It is not a production go-live certificate.** A clean preflight does not verify real Chapa Test Mode payments, webhook delivery, cron execution, a running queue worker, actual outbound mail, Telegram BotFather setup, or backup restoration. Require evidence for each before enabling live processing. Use `chapa:reconcile --all --dry-run` for a read-only reference-level payment backlog and `chapa:accept-renewal` only after two genuine Chapa Test Mode hosted checkouts.
+
 ## Deploy order
 
 Read this once. Each step is safe to stop after.
