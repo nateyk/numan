@@ -11,11 +11,12 @@ import { LandingCapabilities, LandingJourney, LandingRouteStrip } from '@/compon
 import { useTranslations } from '@/hooks/use-translations';
 import { type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
+import type { ComponentProps } from 'react';
 
 interface WelcomeProps {
     canRegister?: boolean;
     appUrl: string;
-    marketplacePlans?: React.ComponentProps<typeof LandingPricing>['plans'];
+    marketplacePlans?: ComponentProps<typeof LandingPricing>['plans'];
     freeLimits?: React.ComponentProps<typeof LandingPricing>['freeLimits'];
 }
 
