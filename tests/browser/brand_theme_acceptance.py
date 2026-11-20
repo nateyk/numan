@@ -128,7 +128,7 @@ def check_mobile_landing_drawer(page, name, signed_in, admin):
         expect(drawer.get_by_role("link", name="Settings")).to_have_count(1)
         expect(drawer.get_by_role("button", name="Account menu")).to_have_count(0)
         if admin:
-            expect(drawer.get_by_role("link", name="Admin")).to_be_visible()
+            expect(drawer.get_by_role("link", name="Admin")).to_have_count(1)
     else:
         expect(drawer.get_by_role("link", name="Sign In")).to_be_visible()
 
