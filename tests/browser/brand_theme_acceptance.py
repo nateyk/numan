@@ -97,6 +97,76 @@ def login(page, email):
     page.wait_for_url(lambda url: "/login" not in str(url), timeout=20000)
 
 
+
+def check_mobile_landing_drawer(page, name, signed_in, admin):
+    """Exercise the real landing navigation as a touch and keyboard user."""
+    page.get_by_role("button", name="Open menu").click()
+    drawer = page.get_by_role("dialog", name="Navigation menu")
+    expect(drawer).to_be_visible()
+    page.wait_for_function("""() => {
+        const panel = document.querySelector('[data-slot="sheet-content"]');
+        if (!panel) return false;
+        const bounds = panel.getBoundingClientRect();
+        return Math.abs(bounds.right - window.innerWidth) <= 2;
+    }""")
+
+    bounds = drawer.bounding_box()
+    assert bounds is not None
+    viewport = page.viewport_size
+    assert viewport is not None
+    expected_width = min(viewport["width"] * 0.78, 336)
+    assert abs(bounds["width"] - expected_width) <= 2, (
+        f"{name}: mobile drawer width {bounds['width']} should be {expected_width}"
+    )
+    assert bounds["x"] >= -1, f"{name}: mobile drawer starts offscreen"
+    assert abs(bounds["x"] - (viewport["width"] - bounds["width"])) <= 2, (
+        f"{name}: mobile drawer did not finish opening"
+    )
+
+    expect(drawer.get_by_role("link", name="Numan Freight home")).to_be_visible()
+    overlay = page.locator('[data-slot="sheet-overlay"]')
+    assert "blur" in overlay.evaluate(
+        "(element) => getComputedStyle(element).backdropFilter"
+    ), f"{name}: landing drawer should soften the visible page behind it"
+    expect(drawer.get_by_role("link", name="Browse freight")).to_be_visible()
+    expect(drawer.get_by_role("link", name="How it works")).to_be_visible()
+    expect(drawer.get_by_role("link", name="Features")).to_be_visible()
+    expect(drawer.get_by_role("link", name="Plans")).to_be_visible()
+    expect(drawer.get_by_role("link", name="FAQ")).to_be_visible()
+    expect(drawer.get_by_text("Preferences", exact=True)).to_be_visible()
+    expect(drawer.locator('[data-slot="select-trigger"]')).to_be_visible()
+
+    if signed_in:
+        expect(drawer.get_by_text("Signed in as")).to_be_visible()
+        expect(drawer.get_by_role("link", name="My Freight")).to_be_visible()
+        expect(drawer.get_by_role("link", name="My Profile")).to_be_visible()
+        expect(drawer.get_by_role("link", name="Settings")).to_have_count(1)
+        expect(drawer.get_by_role("button", name="Account menu")).to_have_count(0)
+        if admin:
+            expect(drawer.get_by_role("link", name="Admin")).to_have_count(1)
+    else:
+        expect(drawer.get_by_role("link", name="Sign In")).to_be_visible()
+        expect(drawer.get_by_role("link", name="Post a load")).to_be_visible()
+        actions = drawer.get_by_role("link", name="Post a load").bounding_box()
+        sign_in = drawer.get_by_role("link", name="Sign In").bounding_box()
+        assert actions and sign_in and actions["y"] < sign_in["y"], (
+            f"{name}: main load action should precede sign in"
+        )
+
+    page.screenshot(path=str(EVIDENCE / f"theme-{name}-drawer.png"))
+    if signed_in:
+        drawer.get_by_role("link", name="Settings").scroll_into_view_if_needed()
+        expect(drawer.get_by_role("link", name="Settings")).to_be_visible()
+
+    drawer.get_by_role("button", name="Close").click()
+    expect(drawer).to_have_count(0)
+    page.get_by_role("button", name="Open menu").click()
+    expect(page.get_by_role("dialog", name="Navigation menu")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Navigation menu")).to_have_count(0)
+    assert_fit(page, name)
+
+
 def check_page(browser, spec, fixtures):
     name, route, email_key, mode, width, height = spec
     mobile = width < 768
@@ -124,6 +194,11 @@ def check_page(browser, spec, fixtures):
         )
         assert_theme(page, mode, name)
         assert_fit(page, name)
+
+        if path == "/" and mobile:
+            check_mobile_landing_drawer(
+                page, name, signed_in=bool(email_key), admin=email_key == "admin_email"
+            )
 
         if path == "/login":
             expect(page.locator('img[src="/brand/numanfreight-wordmark-white.svg"]')).to_be_visible()
@@ -176,6 +251,9 @@ def main():
     specs = [
         ("landing-light-desktop", "/", None, "light", 1280, 800),
         ("landing-dark-mobile", "/", None, "dark", 390, 844),
+        ("landing-guest-small-mobile", "/", None, "light", 320, 640),
+        ("landing-guest-medium-mobile", "/", None, "light", 375, 740),
+        ("landing-admin-mobile", "/", "admin_email", "light", 390, 640),
         ("login-dark-mobile", "/login", None, "dark", 390, 844),
         ("freight-list-light-mobile", "/freight", "transporter_email", "light", 390, 844),
         ("freight-list-dark-desktop", "/freight", "transporter_email", "dark", 1280, 800),
