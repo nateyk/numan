@@ -26,7 +26,7 @@ export function LandingHero() {
                         )}
                     </div>
 
-                    <h1 className="max-w-2xl text-balance text-4xl leading-[1.12] font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem]">
+                    <h1 className="max-w-2xl text-4xl leading-[1.12] font-bold tracking-tight text-balance text-foreground sm:text-5xl lg:text-[3.5rem]">
                         {t(
                             'brand.home.hero.title',
                             'A clearer way to move freight.',

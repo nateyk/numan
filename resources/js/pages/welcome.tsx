@@ -7,7 +7,11 @@ import {
     LandingHero,
     LandingPricing,
 } from '@/components/landing';
-import { LandingCapabilities, LandingJourney, LandingRouteStrip } from '@/components/landing/landing-journey';
+import {
+    LandingCapabilities,
+    LandingJourney,
+    LandingRouteStrip,
+} from '@/components/landing/landing-journey';
 import { useTranslations } from '@/hooks/use-translations';
 import { type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
@@ -20,7 +24,12 @@ interface WelcomeProps {
     freeLimits?: React.ComponentProps<typeof LandingPricing>['freeLimits'];
 }
 
-export default function Welcome({ canRegister = true, appUrl, marketplacePlans = [], freeLimits }: WelcomeProps) {
+export default function Welcome({
+    canRegister = true,
+    appUrl,
+    marketplacePlans = [],
+    freeLimits,
+}: WelcomeProps) {
     const { t } = useTranslations();
     const { locale = 'en' } = usePage<SharedData>().props;
     const canonicalUrl = appUrl.replace(/\/$/, '');
@@ -96,7 +105,10 @@ export default function Welcome({ canRegister = true, appUrl, marketplacePlans =
                     <LandingJourney />
                     <LandingFeatures />
                     <LandingCapabilities />
-                    <LandingPricing plans={marketplacePlans} freeLimits={freeLimits} />
+                    <LandingPricing
+                        plans={marketplacePlans}
+                        freeLimits={freeLimits}
+                    />
                     <LandingFaq />
                     <LandingCta />
                 </main>
