@@ -103,11 +103,6 @@ jobs:
       - run: php artisan wayfinder:generate --with-form
       - run: vendor/bin/pint --test
       - run: pnpm run format:check
-      - name: Diagnose admin reconcile Prettier formatting
-        if: failure()
-        run: |
-          pnpm exec prettier --write resources/js/pages/admin/marketplace-payments.tsx
-          git diff -- resources/js/pages/admin/marketplace-payments.tsx
       # Lint maintained repository files; exclude bundled tools and disabled workspace UI via eslint.config.js.
       - run: pnpm exec eslint .
 
