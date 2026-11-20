@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ChapaWebhookDelivery;
 use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentReview;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -188,4 +190,57 @@ it('never grants subscriptions from signed refund notifications', function () {
     expect($event->status)->toBe('processed');
     expect($event->payload['webhook_type'])->toBe('refund');
     expect(json_encode($event->payload))->not->toContain('private@example.test');
+});
+
+it('keeps distinct partial-refund delivery evidence without duplicating identical signed retries', function () {
+    [$payer, $admin, $transaction] = refundReviewFixture();
+
+    Http::fake();
+
+    $first = [
+        'webhook_type' => 'refund',
+        'event' => 'payment.partially_refunded',
+        'merchant_reference' => $transaction->tx_ref,
+        'status' => 'success',
+        'refunded_amount' => '100.00',
+        'reference' => 'refund-proof-a',
+        'customer' => ['email' => 'should-not-persist@example.test'],
+    ];
+    $second = array_merge($first, [
+        'refunded_amount' => '149.00',
+        'reference' => 'refund-proof-b',
+        'customer' => ['email' => 'other-private@example.test'],
+    ]);
+
+    foreach ([$first, $second, $first] as $payload) {
+        $this->postJson('/webhooks/chapa', $payload, [
+            'x-chapa-signature' => hash_hmac(
+                'sha256',
+                json_encode($payload),
+                config('chapa.webhookSecret'),
+            ),
+        ])->assertOk();
+    }
+
+    Http::assertNothingSent();
+
+    expect(ChapaWebhookEvent::where('tx_ref', $transaction->tx_ref)
+        ->where('event', 'payment.partially_refunded')->count())->toBe(1)
+        ->and(ChapaWebhookDelivery::where('tx_ref', $transaction->tx_ref)
+            ->where('event', 'payment.partially_refunded')->count())->toBe(2)
+        ->and(ChapaWebhookDelivery::where('tx_ref', $transaction->tx_ref)
+            ->distinct()->count('payload_hash'))->toBe(2)
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $transaction->id)->exists())->toBeFalse()
+        ->and(MarketplaceSubscription::where('workspace_id', $transaction->workspace_id)->exists())->toBeFalse();
+
+    foreach (DB::table('chapa_webhook_deliveries')->pluck('payload') as $stored) {
+        expect($stored)->not->toContain('should-not-persist@example.test')
+            ->not->toContain('other-private@example.test');
+    }
+
+    $this->actingAs($admin)->get(route('admin.marketplace-payments.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('webhooks.0.delivery_count', 2)
+            ->etc());
 });
