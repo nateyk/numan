@@ -10,13 +10,13 @@ export function LandingHero() {
     return (
         <section
             id="top"
-            className="relative isolate overflow-hidden border-b bg-brand-sky-soft"
+            className="relative isolate overflow-hidden border-b border-border bg-background"
         >
             <div
                 aria-hidden="true"
-                className="absolute -top-48 -right-44 -z-10 size-[34rem] rounded-full bg-brand-sky/10 blur-3xl"
+                className="absolute -top-48 -right-44 -z-10 size-[34rem] rounded-full bg-brand-sky-soft/80 blur-3xl dark:bg-brand-sky/10"
             />
-            <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16 lg:px-8 lg:py-28">
+            <div className="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-14 lg:px-8">
                 <div className="max-w-2xl">
                     <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-sky/25 bg-card/80 px-3.5 py-1.5 text-sm font-medium text-foreground">
                         <span className="size-2 rounded-full bg-brand-sky" />
@@ -26,7 +26,7 @@ export function LandingHero() {
                         )}
                     </div>
 
-                    <h1 className="max-w-2xl text-4xl leading-[1.08] font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-2xl text-4xl leading-[1.12] font-bold tracking-tight text-balance text-foreground sm:text-5xl lg:text-[3.5rem]">
                         {t(
                             'brand.home.hero.title',
                             'A clearer way to move freight.',
@@ -77,7 +77,7 @@ export function LandingHero() {
                 </div>
 
                 <div className="relative mx-auto w-full max-w-xl lg:ml-auto">
-                    <div className="absolute -inset-4 rounded-[2rem] bg-brand-sky/10 blur-xl" />
+                    <div className="absolute -inset-3 -z-10 rounded-xl border border-border bg-secondary/70" />
                     <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                         <div className="flex items-center justify-between border-b border-border px-5 py-4 sm:px-6">
                             <div>

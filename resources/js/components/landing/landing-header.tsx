@@ -24,10 +24,28 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
             href: '#how-it-works',
             label: t('brand.home.nav.how_it_works', 'How it works'),
         },
+        {
+            href: '#features',
+            label: t('brand.home.nav.features', 'Features'),
+        },
+        {
+            href: '#pricing',
+            label: t('brand.home.nav.pricing', 'Plans'),
+        },
+        {
+            href: '#faq',
+            label: t('brand.home.nav.faq', 'FAQ'),
+        },
     ];
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
+        <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
+            <a
+                href="#main-content"
+                className="sr-only rounded-md bg-background px-4 py-2 text-foreground focus:not-sr-only focus:absolute focus:top-2 focus:left-3 focus:z-[60] focus:outline-2 focus:outline-ring"
+            >
+                {t('brand.home.nav.skip', 'Skip to content')}
+            </a>
             <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                 {/* Logo */}
                 <Link
@@ -56,7 +74,10 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                 </Link>
 
                 {/* Desktop Navigation */}
-                <nav className="hidden items-center gap-6 md:flex">
+                <nav
+                    aria-label="Main navigation"
+                    className="hidden items-center gap-5 lg:flex"
+                >
                     <Link
                         href="/freight"
                         className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -86,7 +107,7 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                     ))}
                 </nav>
 
-                <div className="hidden items-center gap-3 md:flex">
+                <div className="hidden items-center gap-3 lg:flex">
                     <LanguageSwitcher currentLocale={locale} />
                     <AppearanceToggleDropdown />
                     {auth.user ? (
@@ -113,7 +134,7 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                 </div>
 
                 {/* Mobile Menu */}
-                <div className="flex items-center gap-2 md:hidden">
+                <div className="flex items-center gap-2 lg:hidden">
                     <Sheet
                         open={mobileMenuOpen}
                         onOpenChange={setMobileMenuOpen}

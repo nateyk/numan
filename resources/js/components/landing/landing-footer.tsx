@@ -51,6 +51,18 @@ export function LandingFooter({
                     >
                         {t('brand.home.nav.how_it_works', 'How it works')}
                     </a>
+                    <a
+                        href="/#pricing"
+                        className="text-white/80 transition-colors hover:text-white"
+                    >
+                        {t('brand.home.nav.pricing', 'Plans')}
+                    </a>
+                    <a
+                        href="/#faq"
+                        className="text-white/80 transition-colors hover:text-white"
+                    >
+                        {t('brand.home.nav.faq', 'FAQ')}
+                    </a>
                 </nav>
 
                 <p className="text-xs text-white/50">

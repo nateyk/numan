@@ -1,215 +1,374 @@
+import { PostFreightButton } from '@/components/profile/post-freight-button';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { useTranslations } from '@/hooks/use-translations';
+import { Link } from '@inertiajs/react';
 import {
-    BadgeCheck,
-    Building2,
-    CreditCard,
-    MapPinned,
-    PackagePlus,
-    Route,
-    Search,
+    ArrowRight,
+    LockKeyhole,
+    MapPin,
+    Package,
     ShieldCheck,
-    Star,
     Truck,
-    Users,
-    Zap,
 } from 'lucide-react';
 
 export function LandingFeatures() {
     const { t } = useTranslations();
 
-    const features = [
+    const rows = [
         {
-            icon: PackagePlus,
-            title: t(
-                'landing.features.items.auth.title',
-                'Instant Load Posting',
-            ),
+            eyebrow: t('brand.home.features.shippers.eyebrow', 'For shippers'),
+            title: t('brand.home.shippers.title', 'For people shipping goods'),
             description: t(
-                'landing.features.items.auth.description',
-                'Post loads in seconds — origin, destination, tonnage, truck type, and ETB rate. From Addis to Djibouti, Dire Dawa, Mojo & nationwide.',
+                'brand.home.shippers.description',
+                'Describe your cargo, route, and schedule. Find transporters and compare the responses that fit your load.',
             ),
-            color: 'text-blue-500',
-            bgColor: 'bg-blue-500/10',
+            icon: Package,
+            bullets: [
+                t(
+                    'brand.home.features.shippers.one',
+                    'Pickup and destination details',
+                ),
+                t(
+                    'brand.home.features.shippers.two',
+                    'Cargo requirements and truck type',
+                ),
+                t(
+                    'brand.home.features.shippers.three',
+                    'A clear place to manage your load',
+                ),
+            ],
         },
         {
-            icon: Search,
-            title: t(
-                'landing.features.items.workspaces.title',
-                'Smart Discovery & Matching',
+            eyebrow: t(
+                'brand.home.features.carriers.eyebrow',
+                'For transporters',
             ),
+            title: t('brand.home.carriers.title', 'For transporters'),
             description: t(
-                'landing.features.items.workspaces.description',
-                'Carriers discover loads by route, truck type, and ETB payout. Shippers get matched with verified nearby trucks instantly.',
+                'brand.home.carriers.description',
+                'Browse available freight, find routes that work for your trucks, and respond to shippers in one place.',
             ),
-            color: 'text-purple-500',
-            bgColor: 'bg-purple-500/10',
-        },
-        {
-            icon: CreditCard,
-            title: t(
-                'landing.features.items.billing.title',
-                'Chapa ETB Payments',
-            ),
-            description: t(
-                'landing.features.items.billing.description',
-                'Secure payments in Ethiopian Birr via Chapa — cards, mobile money, and bank transfer. Transparent fees, instant confirmations.',
-            ),
-            color: 'text-orange-500',
-            bgColor: 'bg-orange-500/10',
-        },
-        {
-            icon: MapPinned,
-            title: t('landing.features.items.admin.title', 'Live Tracking'),
-            description: t(
-                'landing.features.items.admin.description',
-                'Track shipments from pickup to delivery with status updates, ETB milestone releases, and proof-of-delivery — Addis–Djibouti corridor and beyond.',
-            ),
-            color: 'text-rose-500',
-            bgColor: 'bg-rose-500/10',
-        },
-        {
-            icon: ShieldCheck,
-            title: t(
-                'landing.features.items.flags.title',
-                'Verification & KYC',
-            ),
-            description: t(
-                'landing.features.items.flags.description',
-                'KYC-verified carriers, truck plates, and driver documents. BadgeCheck system so shippers book with confidence.',
-            ),
-            color: 'text-amber-500',
-            bgColor: 'bg-amber-500/10',
-        },
-        {
-            icon: BadgeCheck,
-            title: t('landing.features.items.audit.title', 'Trusted Reviews'),
-            description: t(
-                'landing.features.items.audit.description',
-                'Ratings and reviews after every trip in ETB. Build reputation for on-time delivery and cargo care across Ethiopia.',
-            ),
-            color: 'text-teal-500',
-            bgColor: 'bg-teal-500/10',
-        },
-        {
-            icon: Route,
-            title: t(
-                'landing.features.items.announcements.title',
-                'Corridor & Nationwide Coverage',
-            ),
-            description: t(
-                'landing.features.items.announcements.description',
-                'Optimized for Addis–Djibouti, with coverage to Dire Dawa, Mojo Dry Port, Kombolcha, Hawassa, Bahir Dar and all major corridors.',
-            ),
-            color: 'text-indigo-500',
-            bgColor: 'bg-indigo-500/10',
-        },
-        {
-            icon: Zap,
-            title: t('landing.features.items.i18n.title', 'Bidding & Offers'),
-            description: t(
-                'landing.features.items.i18n.description',
-                'Carriers bid in ETB, shippers compare offers and lock in the best rate — fast, competitive, and transparent via Chapa.',
-            ),
-            color: 'text-cyan-500',
-            bgColor: 'bg-cyan-500/10',
-        },
-        {
-            icon: Building2,
-            title: t(
-                'landing.features.items.dark_mode.title',
-                'Fleet Workspaces',
-            ),
-            description: t(
-                'landing.features.items.dark_mode.description',
-                'Manage fleets, drivers, and trucks under one workspace. Assign roles, track loads, and centralize ETB payouts.',
-            ),
-            color: 'text-slate-500 dark:text-slate-400',
-            bgColor: 'bg-slate-500/10 dark:bg-slate-400/10',
-        },
-        {
-            icon: Users,
-            title: t(
-                'landing.features.items.stack.title',
-                'Roles & Permissions',
-            ),
-            description: t(
-                'landing.features.items.stack.description',
-                'Owner, admin, and member roles for shippers and transporters. Control who posts loads, accepts bids, and releases ETB.',
-            ),
-            color: 'text-yellow-500',
-            bgColor: 'bg-yellow-500/10',
-        },
-        {
-            icon: Star,
-            title: t(
-                'landing.features.items.ui.title',
-                'Ethiopia-First Experience',
-            ),
-            description: t(
-                'landing.features.items.ui.description',
-                'Built for Ethiopia — ETB by default, Amharic-ready, lightweight for low-bandwidth, and support for local corridors.',
-            ),
-            color: 'text-pink-500',
-            bgColor: 'bg-pink-500/10',
-        },
-        {
             icon: Truck,
-            title: t('landing.features.items.team.title', 'Carrier Network'),
-            description: t(
-                'landing.features.items.team.description',
-                'Grow your business as a carrier. Find consistent loads, get paid fast in ETB via Chapa, and keep your trucks moving.',
+            bullets: [
+                t(
+                    'brand.home.features.carriers.one',
+                    'Find freight based on its route',
+                ),
+                t(
+                    'brand.home.features.carriers.two',
+                    'Review load requirements before responding',
+                ),
+                t(
+                    'brand.home.features.carriers.three',
+                    'Manage access through your account',
+                ),
+            ],
+        },
+        {
+            eyebrow: t(
+                'brand.home.features.privacy.eyebrow',
+                'Built-in privacy',
             ),
-            color: 'text-green-500',
-            bgColor: 'bg-green-500/10',
+            title: t(
+                'brand.home.trust.title',
+                'Clear details. Private contact.',
+            ),
+            description: t(
+                'brand.home.trust.description',
+                'Review freight and public profile details first. Contact information stays private until it is revealed through the platform.',
+            ),
+            icon: ShieldCheck,
+            bullets: [
+                t(
+                    'brand.home.features.privacy.one',
+                    'Protected contact information',
+                ),
+                t(
+                    'brand.home.features.privacy.two',
+                    'Member-only freight discovery',
+                ),
+                t(
+                    'brand.home.features.privacy.three',
+                    'Access checks when plan limits change',
+                ),
+            ],
         },
     ];
 
     return (
-        <section id="features" className="py-20 sm:py-32">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                {/* Section Header */}
-                <div className="mx-auto max-w-3xl text-center">
-                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+        <section
+            id="features"
+            className="scroll-mt-20 border-y border-border bg-muted/30 py-16 sm:py-24"
+        >
+            <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-2xl text-center">
+                    <span className="text-xs font-semibold tracking-widest text-brand-sky-strong uppercase dark:text-brand-sky">
                         {t(
-                            'landing.features.title.part1',
-                            'Everything You Need to',
-                        )}{' '}
-                        <span className="text-primary">
-                            {t('landing.features.title.part2', 'Move Freight')}
-                        </span>
+                            'brand.home.features.eyebrow',
+                            'One marketplace, two sides of the journey',
+                        )}
+                    </span>
+                    <h2 className="mt-4 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+                        {t(
+                            'brand.home.section.title',
+                            'Freight starts moving when the right people connect.',
+                        )}
                     </h2>
-                    <p className="mt-4 text-lg text-muted-foreground">
+                    <p className="mt-4 text-base leading-7 text-muted-foreground">
                         {t(
-                            'landing.features.description',
-                            'From posting a load in Addis to securing a truck to Djibouti, every tool for shippers and carriers — with ETB payments via Chapa and KYC verification built in.',
+                            'brand.home.section.description',
+                            'Whether you need a truck or have one ready, Numan Freight helps you find the next step.',
                         )}
                     </p>
                 </div>
 
-                {/* Features Grid */}
-                <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {features.map((feature) => (
-                        <div
-                            key={feature.title}
-                            className="group relative rounded-md border bg-card p-5 transition-colors hover:border-primary/40 hover:bg-card"
-                        >
+                <div className="mt-12">
+                    {rows.map((row, index) => (
+                        <div key={row.eyebrow}>
                             <div
-                                className={`inline-flex h-10 w-10 items-center justify-center rounded-md ${feature.bgColor}`}
+                                className={
+                                    'grid gap-8 py-10 md:grid-cols-2 md:items-center md:gap-12 lg:gap-16 ' +
+                                    (index % 2
+                                        ? 'md:[&>*:first-child]:order-2'
+                                        : '')
+                                }
                             >
-                                <feature.icon
-                                    className={`h-5 w-5 ${feature.color}`}
-                                />
+                                <div>
+                                    <div className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                                        <span className="flex size-7 items-center justify-center rounded-md border border-border bg-card">
+                                            <row.icon
+                                                aria-hidden="true"
+                                                className="size-4 text-brand-sky-strong dark:text-brand-sky"
+                                            />
+                                        </span>
+                                        {row.eyebrow}
+                                    </div>
+                                    <h3 className="mt-5 text-2xl font-semibold tracking-tight sm:text-3xl">
+                                        {row.title}
+                                    </h3>
+                                    <p className="mt-4 max-w-lg leading-7 text-muted-foreground">
+                                        {row.description}
+                                    </p>
+                                    <ul className="mt-6 space-y-3">
+                                        {row.bullets.map((bullet) => (
+                                            <li
+                                                key={bullet}
+                                                className="flex items-start gap-3 text-sm text-foreground"
+                                            >
+                                                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-brand-sky-strong dark:text-brand-sky">
+                                                    <ShieldCheck
+                                                        aria-hidden="true"
+                                                        className="size-3.5"
+                                                    />
+                                                </span>
+                                                {bullet}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div className="mt-7">
+                                        {index === 0 ? (
+                                            <PostFreightButton
+                                                size="lg"
+                                                className="h-11"
+                                                label={t(
+                                                    'brand.home.nav.post_load',
+                                                    'Post a load',
+                                                )}
+                                            />
+                                        ) : (
+                                            <Button
+                                                asChild
+                                                size="lg"
+                                                variant="outline"
+                                                className="h-11"
+                                            >
+                                                <Link href="/freight">
+                                                    {t(
+                                                        'brand.home.nav.browse',
+                                                        'Browse freight',
+                                                    )}
+                                                    <ArrowRight
+                                                        aria-hidden="true"
+                                                        className="size-4"
+                                                    />
+                                                </Link>
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6">
+                                    <div className="flex items-center justify-between border-b border-border pb-4">
+                                        <span className="text-sm font-semibold">
+                                            {row.eyebrow}
+                                        </span>
+                                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                            <span
+                                                className="size-2 rounded-full bg-brand-sky"
+                                                aria-hidden="true"
+                                            />
+                                            Numan Freight
+                                        </span>
+                                    </div>
+                                    {index === 0 ? (
+                                        <div className="mt-5 space-y-3">
+                                            <IllustratedField
+                                                icon={MapPin}
+                                                label={t(
+                                                    'brand.home.hero.origin_label',
+                                                    'Origin',
+                                                )}
+                                            />
+                                            <IllustratedField
+                                                icon={MapPin}
+                                                label={t(
+                                                    'brand.home.hero.destination_label',
+                                                    'Destination',
+                                                )}
+                                            />
+                                            <IllustratedField
+                                                icon={Package}
+                                                label={t(
+                                                    'brand.home.features.cargo_label',
+                                                    'Cargo & truck',
+                                                )}
+                                            />
+                                            <div className="flex items-center justify-end pt-2">
+                                                <span className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+                                                    {t(
+                                                        'brand.home.nav.post_load',
+                                                        'Post a load',
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ) : index === 1 ? (
+                                        <div className="mt-5 space-y-3">
+                                            <div className="rounded-md border border-border bg-muted/50 p-4">
+                                                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                                    {t(
+                                                        'brand.home.features.route_preview',
+                                                        'Freight route',
+                                                    )}
+                                                </span>
+                                                <div className="mt-3 flex items-center gap-2 text-sm font-medium">
+                                                    <MapPin
+                                                        aria-hidden="true"
+                                                        className="size-4 text-brand-sky-strong dark:text-brand-sky"
+                                                    />
+                                                    <span>
+                                                        {t(
+                                                            'brand.home.hero.origin_label',
+                                                            'Origin',
+                                                        )}
+                                                    </span>
+                                                    <ArrowRight
+                                                        aria-hidden="true"
+                                                        className="size-4 text-muted-foreground"
+                                                    />
+                                                    <span>
+                                                        {t(
+                                                            'brand.home.hero.destination_label',
+                                                            'Destination',
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <IllustratedMini
+                                                    icon={Package}
+                                                    label={t(
+                                                        'brand.home.features.cargo_label',
+                                                        'Cargo & truck',
+                                                    )}
+                                                />
+                                                <IllustratedMini
+                                                    icon={Truck}
+                                                    label={t(
+                                                        'brand.home.features.transport_label',
+                                                        'Transport requirements',
+                                                    )}
+                                                />
+                                            </div>
+                                            <div className="rounded-md bg-secondary px-4 py-3 text-sm font-medium text-secondary-foreground">
+                                                {t(
+                                                    'brand.home.features.discover_label',
+                                                    'Browse eligible freight',
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-5 flex flex-col items-center justify-center rounded-md border border-border bg-muted/40 px-5 py-12 text-center">
+                                            <span className="flex size-14 items-center justify-center rounded-full bg-secondary text-brand-sky-strong dark:text-brand-sky">
+                                                <LockKeyhole
+                                                    aria-hidden="true"
+                                                    className="size-6"
+                                                />
+                                            </span>
+                                            <p className="mt-5 font-semibold">
+                                                {t(
+                                                    'brand.home.features.privacy.preview_title',
+                                                    'Contact details stay protected',
+                                                )}
+                                            </p>
+                                            <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
+                                                {t(
+                                                    'brand.home.features.privacy.preview_description',
+                                                    'The platform checks account access before revealing private information.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <h3 className="mt-3 text-sm font-semibold">
-                                {feature.title}
-                            </h3>
-                            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                                {feature.description}
-                            </p>
+                            {index < rows.length - 1 && <Separator />}
                         </div>
                     ))}
                 </div>
             </div>
         </section>
+    );
+}
+
+function IllustratedField({
+    icon: Icon,
+    label,
+}: {
+    icon: typeof MapPin;
+    label: string;
+}) {
+    return (
+        <div className="flex items-center gap-3 rounded-md border border-border bg-muted/30 px-4 py-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary text-brand-sky-strong dark:text-brand-sky">
+                <Icon aria-hidden="true" className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                    {label}
+                </span>
+                <div
+                    className="mt-1.5 h-2 w-2/3 rounded-full bg-border"
+                    aria-hidden="true"
+                />
+            </div>
+        </div>
+    );
+}
+
+function IllustratedMini({
+    icon: Icon,
+    label,
+}: {
+    icon: typeof MapPin;
+    label: string;
+}) {
+    return (
+        <div className="rounded-md border border-border bg-card p-3">
+            <Icon
+                aria-hidden="true"
+                className="size-4 text-brand-sky-strong dark:text-brand-sky"
+            />
+            <p className="mt-3 text-xs font-medium">{label}</p>
+        </div>
     );
 }
