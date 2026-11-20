@@ -70,6 +70,7 @@ class FreightPost extends Model
             'origin_point_confirmed_at' => 'datetime',
             'destination_point_confirmed_at' => 'datetime',
             'hidden_at' => 'datetime',
+            'telegram_published_at' => 'datetime',
             'closed_at' => 'datetime',
             'arrived_at' => 'datetime',
             'published_at' => 'datetime',

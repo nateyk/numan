@@ -36,7 +36,7 @@ function nonFillableAllowlist(): array
         'marketplace_payment_transactions' => ['id', 'created_at', 'updated_at'],
         'marketplace_payment_receipts' => ['id', 'created_at', 'updated_at'],
         'marketplace_settings' => ['id', 'created_at', 'updated_at'],
-        'freight_posts' => ['id', 'created_at', 'updated_at'],
+        'freight_posts' => ['id', 'created_at', 'updated_at', 'telegram_published_at'],
         'freight_interests' => ['id', 'created_at', 'updated_at'],
     ];
 }
