@@ -344,7 +344,9 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                 </p>
                                 <div className="flex items-center gap-3">
                                     <div className="min-w-0 flex-1 rounded-md border border-border bg-background [&_[data-slot=select-trigger]]:h-11 [&_[data-slot=select-trigger]]:w-full">
-                                        <LanguageSwitcher currentLocale={locale} />
+                                        <LanguageSwitcher
+                                            currentLocale={locale}
+                                        />
                                     </div>
                                     <div className="shrink-0 rounded-md border border-border bg-background [&_button]:size-11">
                                         <AppearanceToggleDropdown />
