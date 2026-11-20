@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceReminderLog;
 use App\Models\MarketplaceSubscription;
+use App\Services\MarketplaceReminderEligibility;
 use App\Services\MarketplaceReminderWindow;
 use App\Services\ReminderDispatcher;
 use Illuminate\Console\Command;
@@ -49,7 +50,7 @@ class SendMarketplaceReminders extends Command
             if ($reclaimed['reclaimed'] > 0 || $reclaimed['abandoned'] > 0) {
                 $this->components->twoColumnDetail(
                     'Reclaimed stale claims',
-                    "{$reclaimed['reclaimed']} re-sent, {$reclaimed['abandoned']} abandoned"
+                    "{$reclaimed['reclaimed']} processed, {$reclaimed['abandoned']} abandoned"
                 );
             }
         }
@@ -80,7 +81,7 @@ class SendMarketplaceReminders extends Command
             // "plan expired" email just because an earlier row was marked
             // expired before the new paid period was created.
             if (in_array(MarketplaceReminderWindow::EXPIRED, $due['types'], true)
-                && $this->hasNewerPaidPeriod($subscription)) {
+                && app(MarketplaceReminderEligibility::class)->hasNewerPaidPeriod($subscription)) {
                 $nothingDue++;
 
                 continue;
@@ -159,26 +160,6 @@ class SendMarketplaceReminders extends Command
             ->with(['workspace', 'plan'])
             ->orderBy('ends_at')
             ->get();
-    }
-
-    /**
-     * A newer paid term takes precedence over stale expiry history. The
-     * checkout attempt itself is not a subscription, so pending Chapa payments
-     * cannot suppress a legitimately due expiry notice.
-     */
-    private function hasNewerPaidPeriod(MarketplaceSubscription $subscription): bool
-    {
-        return MarketplaceSubscription::query()
-            ->where('workspace_id', $subscription->workspace_id)
-            ->where('id', '>', $subscription->id)
-            ->whereIn('status', ['active', 'trialing', 'canceled', 'expired'])
-            ->where(function ($query) use ($subscription) {
-                $query->where('ends_at', '>=', $subscription->ends_at)
-                    ->orWhere(function ($active) {
-                        $active->whereNull('ends_at')->whereIn('status', ['active', 'trialing']);
-                    });
-            })
-            ->exists();
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Marketplace\CheckoutController;
 use App\Models\FreightPost;
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\MarketplaceFulfillmentService;
+use App\Services\MarketplaceListingVisibilityService;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +31,7 @@ try {
     $actorId = (int) ($argv[3] ?? 0);
     $readyFile = $argv[4] ?? '';
 
-    if ($id < 1 || $readyFile === '' || ! in_array($mode, ['accept', 'close', 'fulfill', 'checkout'], true)) {
+    if ($id < 1 || $readyFile === '' || ! in_array($mode, ['accept', 'close', 'fulfill', 'checkout', 'hide-expired'], true)) {
         throw new InvalidArgumentException('Invalid MySQL test worker arguments.');
     }
 
@@ -76,6 +77,9 @@ try {
         if (! in_array($response->getStatusCode(), [200, 409], true)) {
             throw new RuntimeException('Unexpected checkout response: '.$response->getStatusCode());
         }
+    } elseif ($mode === 'hide-expired') {
+        // Runs the real listing expiry work against a payment fulfillment race.
+        app(MarketplaceListingVisibilityService::class)->hideExcessPosts();
     } else {
         $transaction = MarketplacePaymentTransaction::findOrFail($id);
 

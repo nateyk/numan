@@ -265,3 +265,67 @@ it('does not reclaim a skipped row', function () {
 
     expect($dispatcher->reclaim())->toBe(['reclaimed' => 0, 'abandoned' => 0]);
 });
+
+it('never replays a stale expired-plan reminder after a newer paid renewal', function () {
+    [$old, $dispatcher] = dispatcherFixture(-1);
+    $old->update(['status' => 'expired']);
+    $claim = $dispatcher->claim($old, 'plan_expired');
+
+    MarketplaceSubscription::create([
+        'workspace_id' => $old->workspace_id,
+        'plan_id' => $old->plan_id,
+        'user_id' => $old->user_id,
+        'status' => 'active',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now(),
+        'current_period_ends_at' => now()->addDays(30),
+        'ends_at' => now()->addDays(30),
+        'chapa_tx_ref' => 'NF-newer-renewed-period',
+    ]);
+
+    DB::table('marketplace_reminder_logs')->where('id', $claim->id)->update([
+        'created_at' => now()->subMinutes(61),
+        'sent_at' => null,
+    ]);
+
+    $dispatcher->reclaim();
+
+    Notification::assertNothingSent();
+    expect($claim->fresh()->status)->toBe(MarketplaceReminderLog::STATUS_SKIPPED)
+        ->and($claim->fresh()->sent_at)->not->toBeNull();
+});
+
+it('skips an undelivered renewal warning when the owner cancels the remaining period', function () {
+    [$subscription, $dispatcher] = dispatcherFixture(1);
+    $claim = $dispatcher->claim($subscription, 'renewal_1d');
+    $subscription->update(['status' => 'canceled']);
+
+    DB::table('marketplace_reminder_logs')->where('id', $claim->id)->update([
+        'created_at' => now()->subMinutes(61),
+        'sent_at' => null,
+    ]);
+
+    $dispatcher->reclaim();
+
+    Notification::assertNothingSent();
+    expect($claim->fresh()->status)->toBe(MarketplaceReminderLog::STATUS_SKIPPED);
+});
+
+it('skips an outdated seven-day warning instead of sending it in the one-day window', function () {
+    [$subscription, $dispatcher] = dispatcherFixture(7, 'yearly');
+    $claim = $dispatcher->claim($subscription, 'renewal_7d');
+    $subscription->update([
+        'ends_at' => now()->addHours(12),
+        'current_period_ends_at' => now()->addHours(12),
+    ]);
+
+    DB::table('marketplace_reminder_logs')->where('id', $claim->id)->update([
+        'created_at' => now()->subMinutes(61),
+        'sent_at' => null,
+    ]);
+
+    $dispatcher->reclaim();
+
+    Notification::assertNothingSent();
+    expect($claim->fresh()->status)->toBe(MarketplaceReminderLog::STATUS_SKIPPED);
+});

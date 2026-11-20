@@ -11,6 +11,7 @@ use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\MarketplaceSettingsService;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Support\Facades\DB;
@@ -262,4 +263,47 @@ it('does not create two Chapa payment attempts from simultaneous checkout reques
         ->and($attempts->first()->status)->toBe('initialized')
         ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse()
         ->and(MarketplacePaymentReceipt::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('never leaves paid freight hidden when expiry sweep races with Chapa renewal', function () {
+    $this->seed(MarketplacePlanSeeder::class);
+
+    $payer = User::factory()->create();
+    $workspace = app(WorkspaceService::class)->createPersonalWorkspace($payer);
+    $plan = MarketplacePlan::where('slug', 'standard')->firstOrFail();
+
+    // Give expiry a real reason to hide posts while a new receipt restores
+    // them. Both operations lock the same workspace row.
+    app(MarketplaceSettingsService::class)
+        ->setMany(['free_active_posts' => 2]);
+
+    FreightPost::factory()->count(5)->for($payer)->active()->create([
+        'workspace_id' => $workspace->id,
+        'hidden_at' => null,
+    ]);
+
+    MarketplaceSubscription::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $payer->id,
+        'status' => 'expired',
+        'billing_interval' => 'monthly',
+        'current_period_start' => now()->subDays(31),
+        'current_period_ends_at' => now()->subDay(),
+        'ends_at' => now()->subDay(),
+        'provider' => 'chapa',
+        'chapa_tx_ref' => 'NF-mysql-expired-before-renewal',
+    ]);
+
+    $payment = mysqlPaymentFixture($payer, $workspace->id, $plan->id, 'NF-mysql-expiry-renewal-race');
+
+    raceMySqlWorkers('hide-expired', 'workspaces', $workspace->id, [
+        ['id' => $workspace->id, 'actor' => 0, 'mode' => 'hide-expired'],
+        ['id' => $payment->id, 'actor' => 0, 'mode' => 'fulfill'],
+    ]);
+
+    expect($payment->fresh()->status)->toBe('verified')
+        ->and(MarketplacePaymentReceipt::where('transaction_id', $payment->id)->count())->toBe(1)
+        ->and(MarketplaceSubscription::where('chapa_tx_ref', $payment->tx_ref)->count())->toBe(1)
+        ->and(FreightPost::where('workspace_id', $workspace->id)->whereNotNull('hidden_at')->count())->toBe(0);
 });

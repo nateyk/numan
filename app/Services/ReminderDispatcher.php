@@ -98,6 +98,15 @@ class ReminderDispatcher
             return 0;
         }
 
+        // Do not replay a claim after the customer renewed, canceled an
+        // upcoming reminder, or passed the intended delivery window. In
+        // particular, an old "plan expired" claim can outlive a new paid term.
+        if (! app(MarketplaceReminderEligibility::class)->isStillDue($subscription, $log->reminder_type)) {
+            $this->markSkipped($log);
+
+            return 0;
+        }
+
         $recipients = ReminderRecipients::forWorkspace($subscription->workspace);
 
         if ($recipients->isEmpty()) {
@@ -169,6 +178,14 @@ class ReminderDispatcher
     {
         $log->forceFill([
             'status' => MarketplaceReminderLog::STATUS_SENT,
+            'sent_at' => now(),
+        ])->save();
+    }
+
+    private function markSkipped(MarketplaceReminderLog $log): void
+    {
+        $log->forceFill([
+            'status' => MarketplaceReminderLog::STATUS_SKIPPED,
             'sent_at' => now(),
         ])->save();
     }
