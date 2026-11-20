@@ -7,6 +7,7 @@ use App\Models\MarketplaceSubscription;
 use App\Models\Workspace;
 use App\Notifications\FreightPostsHiddenNotification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
@@ -145,26 +146,45 @@ class MarketplaceListingVisibilityService
             return null;
         }
 
-        $preview = $this->evaluate($workspace, $keep);
+        // A Chapa/manual renewal locks this same workspace row before issuing
+        // a receipt and restoring hidden posts. Lock it here too and re-check
+        // eligibility INSIDE the lock: an expiry sweep can never hide posts
+        // after a successful renewal has already restored them.
+        $result = DB::transaction(function () use ($workspace, $keep): ?array {
+            $lockedWorkspace = Workspace::whereKey($workspace->id)->lockForUpdate()->first();
 
-        if ($preview === null || $preview['would_hide'] === 0) {
+            if (! $lockedWorkspace) {
+                return null;
+            }
+
+            $preview = $this->evaluate($lockedWorkspace, $keep);
+
+            if ($preview === null || $preview['would_hide'] === 0) {
+                return $preview;
+            }
+
+            $now = now();
+            $hiddenIds = [];
+
+            foreach ($preview['hide_post_ids'] as $id) {
+                if (FreightPost::whereKey($id)->whereNull('hidden_at')->update(['hidden_at' => $now]) > 0) {
+                    $hiddenIds[] = $id;
+                }
+            }
+
+            $preview['hidden'] = $hiddenIds !== [];
+            $preview['hidden_post_ids'] = $hiddenIds;
+
             return $preview;
-        }
-
-        $now = now();
-
-        $hiddenIds = collect($preview['hide_post_ids'])->map(function (int $id) use ($now) {
-            FreightPost::where('id', $id)->update(['hidden_at' => $now]);
-
-            return $id;
         });
 
-        $this->notifyOwner($workspace, $hiddenIds->count(), $keep);
+        // Email/database notification happens after committing the workspace
+        // lock. Slow notification delivery must not block a payer's renewal.
+        if (($result['hidden'] ?? false) && $this->entitlement->activeSubscription($workspace) === null) {
+            $this->notifyOwner($workspace, count($result['hidden_post_ids']), $keep);
+        }
 
-        $preview['hidden'] = true;
-        $preview['hidden_post_ids'] = $hiddenIds->all();
-
-        return $preview;
+        return $result;
     }
 
     /**
