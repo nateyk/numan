@@ -45,6 +45,12 @@ Signed webhook delivery is only a message, not permission to issue a subscriptio
 
 Refund webhooks are currently stored as minimized audit evidence and acknowledged. They do **not** automatically refund, reverse a receipt, change an entitlement, or certify final customer settlement. Use the superadmin review workflow and Chapa's provider dashboard for those decisions.
 
+## Signed refund-delivery evidence
+
+The `chapa_webhook_events` table is a one-row-per-reference/event processing summary; it cannot represent two distinct partial refunds with the same event name. The `chapa_webhook_deliveries` table now records a minimal, signed-payload fingerprint and sanitized financial summary for **each distinct authenticated delivery**, deduplicating only identical raw signed retries. Admin → Marketplace Payments displays the number of captured deliveries beside each event summary.
+
+This ledger is evidence of notifications received, **not proof that a refund has settled**. It does not issue refunds, change payment receipts, or revoke access. New records contain no payer names, emails, phone numbers or checkout tokens. Historical deliveries were not backfilled, and retention duration for the new sanitized evidence remains subject to the finance/privacy retention policy.
+
 ## Refund and dispute review (superadmin)
 
 Open **Admin → Marketplace Payments**, locate the Chapa transaction and open exactly one review case with a classified reason. The case is unique by transaction and has append-only decision history.
