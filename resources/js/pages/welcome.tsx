@@ -99,7 +99,7 @@ export default function Welcome({
 
             <div className="min-h-svh bg-background text-foreground">
                 <LandingHeader canRegister={canRegister} />
-                <main id="main-content" className="relative">
+                <main id="main-content" tabIndex={-1} className="relative">
                     <LandingHero />
                     <LandingRouteStrip />
                     <LandingJourney />
