@@ -11,6 +11,7 @@ use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\MarketplaceSettingsService;
 use App\Services\WorkspaceService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Support\Facades\DB;
@@ -273,7 +274,7 @@ it('never leaves paid freight hidden when expiry sweep races with Chapa renewal'
 
     // Give expiry a real reason to hide posts while a new receipt restores
     // them. Both operations lock the same workspace row.
-    app(\App\Services\MarketplaceSettingsService::class)
+    app(MarketplaceSettingsService::class)
         ->setMany(['free_active_posts' => 2]);
 
     FreightPost::factory()->count(5)->for($payer)->active()->create([
