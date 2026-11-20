@@ -1,7 +1,7 @@
 import { sendTest } from '@/actions/App/Http/Controllers/Settings/NotificationPreferenceController';
 import { HelpTooltip } from '@/components/help-tooltip';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,11 +13,17 @@ import { Transition } from '@headlessui/react';
 
 export default function Notifications({
     notification_preferences,
+    telegram,
 }: {
+    telegram: {
+        available: boolean;
+        connected: boolean;
+    };
     notification_preferences: {
         channels: {
             email: boolean;
             in_app: boolean;
+            telegram: boolean;
         };
         categories: {
             marketing: boolean;
@@ -118,12 +124,37 @@ export default function Notifications({
                             />
                         </div>
 
+
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="channel-telegram">
+                                    Telegram notifications
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Receive freight approvals, new interests, and connection updates in your bot chat.
+                                </p>
+                            </div>
+                            <Switch
+                                id="channel-telegram"
+                                checked={data.preferences.channels.telegram}
+                                onCheckedChange={(val) =>
+                                    setData('preferences', {
+                                        ...data.preferences,
+                                        channels: {
+                                            ...data.preferences.channels,
+                                            telegram: val,
+                                        },
+                                    })
+                                }
+                            />
+                        </div>
+
                         <div className="rounded-lg border border-dashed p-4">
                             <p className="text-sm font-medium">
                                 Notification categories
                             </p>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Category toggles apply to both enabled channels.
+                                Category toggles apply to enabled channels.
                             </p>
                         </div>
 
@@ -279,6 +310,33 @@ export default function Notifications({
                         </Transition>
                     </div>
                 </form>
+
+
+                <div className="mt-6 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                        <p className="font-medium">Numan Freight Telegram bot</p>
+                        <p className="text-sm text-muted-foreground">
+                            {telegram.connected
+                                ? 'Your Telegram account is linked. Send /stop to the bot or disconnect here to end alerts.'
+                                : telegram.available
+                                  ? 'Connect your private Telegram chat to receive freight updates. The link expires in 10 minutes.'
+                                  : 'Telegram is not configured yet. Ask an administrator to enable the bot.'}
+                        </p>
+                    </div>
+                    {telegram.connected ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => router.delete('/settings/telegram', { preserveScroll: true })}
+                        >
+                            Disconnect Telegram
+                        </Button>
+                    ) : telegram.available ? (
+                        <Button asChild>
+                            <a href="/settings/telegram/connect">Connect Telegram</a>
+                        </Button>
+                    ) : null}
+                </div>
 
                 <div className="mt-6 flex items-center justify-between rounded-lg border p-4">
                     <div className="flex flex-col gap-0.5">

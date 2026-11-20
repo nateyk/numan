@@ -148,6 +148,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ConnectedAccount::class);
     }
 
+    public function telegramAccount(): HasOne
+    {
+        return $this->hasOne(TelegramAccount::class);
+    }
+
+    public function routeNotificationForTelegram(): ?string
+    {
+        return $this->telegramAccount?->chat_id;
+    }
+
     /**
      * Get the user's login activity history.
      */
@@ -351,6 +361,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'channels' => [
                 'email' => true,
                 'in_app' => true,
+                'telegram' => true,
             ],
             'categories' => [
                 'marketing' => true,

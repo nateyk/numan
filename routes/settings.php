@@ -10,6 +10,7 @@ use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SecuritySummaryController;
 use App\Http\Controllers\Settings\SessionController;
 use App\Http\Controllers\Settings\SessionSummaryController;
+use App\Http\Controllers\Settings\TelegramConnectionController;
 use App\Http\Controllers\Settings\TicketController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\Settings\UserAvatarController;
@@ -66,6 +67,13 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/export-data/{filename}', [SecurityController::class, 'downloadExport'])
         ->name('security.export-download')
         ->middleware('signed');
+
+    // Telegram account linking (authenticated user only).
+    Route::get('settings/telegram/connect', [TelegramConnectionController::class, 'connect'])
+        ->middleware('throttle:6,1')
+        ->name('telegram.connect');
+    Route::delete('settings/telegram', [TelegramConnectionController::class, 'disconnect'])
+        ->name('telegram.disconnect');
 
     // Notifications
     Route::get('settings/notifications', [NotificationPreferenceController::class, 'show'])->name('notifications.show');

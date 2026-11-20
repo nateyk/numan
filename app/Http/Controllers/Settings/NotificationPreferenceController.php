@@ -18,6 +18,10 @@ class NotificationPreferenceController extends Controller
     {
         return Inertia::render('settings/notifications', [
             'notification_preferences' => $request->user()->normalizedNotificationPreferences(),
+            'telegram' => [
+                'available' => filled(config('services.telegram.token')) && filled(config('services.telegram.bot_username')),
+                'connected' => $request->user()->telegramAccount()->exists(),
+            ],
         ]);
     }
 
@@ -31,6 +35,7 @@ class NotificationPreferenceController extends Controller
             'preferences.channels' => ['required', 'array'],
             'preferences.channels.email' => ['required', 'boolean'],
             'preferences.channels.in_app' => ['required', 'boolean'],
+            'preferences.channels.telegram' => ['sometimes', 'boolean'],
             'preferences.categories' => ['required', 'array'],
             'preferences.categories.marketing' => ['required', 'boolean'],
             'preferences.categories.security' => ['required', 'boolean'],
