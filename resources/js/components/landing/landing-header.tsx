@@ -76,7 +76,7 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                 {/* Desktop Navigation */}
                 <nav
                     aria-label="Main navigation"
-                    className="hidden items-center gap-5 md:flex"
+                    className="hidden items-center gap-5 lg:flex"
                 >
                     <Link
                         href="/freight"
@@ -107,7 +107,7 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                     ))}
                 </nav>
 
-                <div className="hidden items-center gap-3 md:flex">
+                <div className="hidden items-center gap-3 lg:flex">
                     <LanguageSwitcher currentLocale={locale} />
                     <AppearanceToggleDropdown />
                     {auth.user ? (
@@ -134,7 +134,7 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                 </div>
 
                 {/* Mobile Menu */}
-                <div className="flex items-center gap-2 md:hidden">
+                <div className="flex items-center gap-2 lg:hidden">
                     <Sheet
                         open={mobileMenuOpen}
                         onOpenChange={setMobileMenuOpen}
