@@ -25,6 +25,20 @@ A future versioned v2 migration requires separate initialization, verification, 
 
 **Release gate:** all acceptance steps and external provider evidence must pass before saying “Chapa sandbox accepted.” A green unit-test run or successful cPanel deploy is insufficient.
 
+## Outstanding payment reconciliation
+
+The scheduled `chapa:reconcile` checks recent pending/initialized Chapa payments every five minutes. It uses the same provider-verification and receipt-confirmation rules as the payer status check. A returned provider success without a committed verified transaction **and receipt** is never reported as fulfilled.
+
+For an operator's **read-only** view of outstanding attempts, run:
+
+```bash
+php artisan chapa:reconcile --all --dry-run
+```
+
+The preview reads local payment records only: it **does not call Chapa**, decide whether a payment succeeded, activate a subscription, or update the database. It includes older attempts excluded from the normal 48-hour scheduled window. Treat the listed transaction references as payment data.
+
+After reviewing the pending list and confirming an appropriate environment, use `php artisan chapa:reconcile --all` for an intentional provider-backed financial reconciliation. **This is not a dry run**: verified old payments can activate subscriptions and issue receipts. Chapa-confirmed terminal failures will remain failed without activating a subscription; ambiguous API failures remain pending. Canceled account charges require the separate `chapa:audit-canceled` human-settlement workflow.
+
 ## Refund and dispute review (superadmin)
 
 Open **Admin → Marketplace Payments**, locate the Chapa transaction and open exactly one review case with a classified reason. The case is unique by transaction and has append-only decision history.
