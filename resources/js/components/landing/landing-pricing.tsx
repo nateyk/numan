@@ -8,7 +8,9 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { Check, Sparkles } from 'lucide-react';
+import { useTranslations } from '@/hooks/use-translations';
+import { Link } from '@inertiajs/react';
+import { Check } from 'lucide-react';
 import { useState } from 'react';
 
 interface MarketplacePlan {
@@ -31,8 +33,9 @@ interface FreeLimits {
 
 type Period = 'weekly' | 'monthly' | 'yearly';
 
-const formatLimit = (value: number): string =>
-    value === -1 ? 'Unlimited' : String(value);
+function formatLimit(value: number): string {
+    return value === -1 ? 'Unlimited' : value.toLocaleString('en-ET');
+}
 
 export function LandingPricing({
     plans = [],
@@ -41,192 +44,111 @@ export function LandingPricing({
     plans?: MarketplacePlan[];
     freeLimits?: FreeLimits;
 }) {
+    const { t } = useTranslations();
     const [period, setPeriod] = useState<Period>('monthly');
-
-    const free: FreeLimits = freeLimits ?? {
-        free_active_posts: 5,
-        free_interests_per_week: 3,
-        free_contact_reveals: 5,
-    };
-
-    const priceFor = (plan: MarketplacePlan, chosen: Period): number => {
-        if (chosen === 'weekly') return Number(plan.price_weekly_etb);
-        if (chosen === 'monthly') return Number(plan.price_monthly_etb);
-        return Number(plan.price_yearly_etb);
-    };
-
-    /** Computed from the prices, so it stays right when an admin edits them. */
-    const savingsPercent = (): number | null => {
-        const plan = plans[0];
-        if (!plan) return null;
-
-        const monthly = Number(plan.price_monthly_etb);
-        const yearly = Number(plan.price_yearly_etb);
-        const fullYear = monthly * 12;
-
-        if (fullYear <= 0 || yearly <= 0 || yearly >= fullYear) return null;
-
-        return Math.round(((fullYear - yearly) / fullYear) * 100);
-    };
-
-    const suffix =
-        period === 'weekly' ? '/wk' : period === 'monthly' ? '/mo' : '/yr';
-    const savings = savingsPercent();
+    const periods: Period[] = ['weekly', 'monthly', 'yearly'];
+    const priceKey = {
+        weekly: 'price_weekly_etb',
+        monthly: 'price_monthly_etb',
+        yearly: 'price_yearly_etb',
+    } as const;
 
     return (
-        <section id="pricing" className="bg-muted/30 py-20 sm:py-32">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <section id="pricing" className="scroll-mt-20 border-y border-border bg-muted/30 py-16 sm:py-24">
+            <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-2xl text-center">
-                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                        One plan, three durations
+                    <Badge variant="outline" className="mb-4 uppercase tracking-widest">{t('brand.home.pricing.eyebrow', 'Marketplace access')}</Badge>
+                    <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+                        {t('brand.home.pricing.title', 'Choose the access that works for you.')}
                     </h2>
-                    <p className="mt-4 text-lg text-muted-foreground">
-                        Every duration includes the same features. Pay in ETB
-                        via Chapa (Telebirr, cards). No hidden fees.
+                    <p className="mt-4 text-base leading-7 text-muted-foreground">
+                        {t('brand.home.pricing.description', 'Review current marketplace plans and limits. Prices are displayed in Ethiopian Birr and come from the platform settings.')}
                     </p>
                 </div>
-
-                <div className="mt-10 flex items-center justify-center">
-                    <div className="inline-flex items-center gap-1 rounded-lg border bg-background p-1">
-                        {(['weekly', 'monthly', 'yearly'] as const).map(
-                            (option) => (
-                                <Button
-                                    key={option}
-                                    variant={
-                                        period === option ? 'default' : 'ghost'
-                                    }
-                                    size="sm"
-                                    className="h-8 px-4 text-xs capitalize"
-                                    onClick={() => setPeriod(option)}
-                                    aria-pressed={period === option}
-                                >
-                                    {option === 'weekly'
-                                        ? 'Weekly'
-                                        : option === 'monthly'
-                                          ? 'Monthly'
-                                          : 'Yearly'}
-                                    {option === 'yearly' &&
-                                        savings !== null && (
-                                            <Badge
-                                                variant="secondary"
-                                                className="ml-1 border-none bg-primary/10 px-1 text-[10px] font-bold text-primary"
-                                            >
-                                                Save {savings}%
-                                            </Badge>
-                                        )}
-                                </Button>
-                            ),
-                        )}
+                {plans.length > 0 && (
+                    <div role="group" aria-label={t('brand.home.pricing.period', 'Billing period')} className="mx-auto mt-8 flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-card p-1">
+                        {periods.map((option) => (
+                            <Button
+                                key={option}
+                                type="button"
+                                variant={period === option ? 'default' : 'ghost'}
+                                size="sm"
+                                aria-pressed={period === option}
+                                onClick={() => setPeriod(option)}
+                                className="capitalize"
+                            >
+                                {t('brand.home.pricing.' + option, option)}
+                            </Button>
+                        ))}
                     </div>
-                </div>
+                )}
 
-                <div className="mx-auto mt-10 grid max-w-5xl gap-8 md:grid-cols-2">
-                    {/* Free — values come from marketplace_settings */}
-                    <Card className="relative flex flex-col">
-                        <CardHeader className="text-center">
-                            <CardTitle className="text-2xl font-black tracking-tight">
-                                Free
-                            </CardTitle>
-                            <CardDescription>
-                                Browse, search and post as a consignor
-                            </CardDescription>
-                            <div className="mt-2">
-                                <span className="text-4xl font-black tracking-tighter">
-                                    0 ETB
-                                </span>
-                            </div>
+                <div className={'mx-auto mt-10 grid max-w-5xl gap-4 ' + (plans.length ? 'md:grid-cols-2' : 'max-w-md')}>
+                    <Card className="flex flex-col gap-5">
+                        <CardHeader>
+                            <CardTitle className="text-lg font-semibold">{t('brand.home.pricing.free', 'Free')}</CardTitle>
+                            <CardDescription>{t('brand.home.pricing.free_description', 'Get started with the marketplace and your account.')}</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-1">
-                            <ul className="space-y-3 text-sm">
-                                {[
-                                    `${formatLimit(free.free_active_posts)} active freight post${
-                                        free.free_active_posts === 1 ? '' : 's'
-                                    }`,
-                                    `${formatLimit(free.free_contact_reveals)} contact reveal${
-                                        free.free_contact_reveals === 1
-                                            ? ''
-                                            : 's'
-                                    } (one-time)`,
-                                ].map((label) => (
-                                    <li key={label} className="flex gap-2">
-                                        <Check className="h-4 w-4 shrink-0 text-green-600" />
-                                        <span>{label}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                        <CardContent className="flex flex-1 flex-col gap-6">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-4xl font-bold tracking-tight tabular-nums">0</span>
+                                <span className="text-sm text-muted-foreground">ETB</span>
+                            </div>
+                            {freeLimits && (
+                                <ul className="space-y-3 text-sm">
+                                    {[
+                                        t('brand.home.pricing.free_posts', '{{count}} active posts', { count: formatLimit(freeLimits.free_active_posts) }),
+                                        t('brand.home.pricing.free_reveals', '{{count}} contact reveals', { count: formatLimit(freeLimits.free_contact_reveals) }),
+                                    ].map((feature) => (
+                                        <li key={feature} className="flex items-start gap-2">
+                                            <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-sky-strong dark:text-brand-sky" />
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </CardContent>
                         <CardFooter>
-                            <Button
-                                className="h-10 w-full font-bold"
-                                variant="outline"
-                                disabled
-                            >
-                                Free forever
+                            <Button asChild variant="outline" className="w-full">
+                                <Link href="/freight">{t('brand.home.nav.browse', 'Browse freight')}</Link>
                             </Button>
                         </CardFooter>
                     </Card>
-
                     {plans.map((plan) => {
-                        const price = priceFor(plan, period);
-
+                        const price = Number(plan[priceKey[period]]);
                         return (
-                            <Card
-                                key={plan.slug}
-                                className={`relative flex flex-col ${
-                                    plan.is_popular
-                                        ? 'border-primary shadow-lg ring-1 ring-primary/20'
-                                        : ''
-                                }`}
-                            >
-                                {plan.is_popular && (
-                                    <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
-                                        <Badge className="gap-1 bg-primary px-3 py-1 font-bold shadow-lg">
-                                            <Sparkles className="h-3.5 w-3.5" />{' '}
-                                            Popular
-                                        </Badge>
+                            <Card key={plan.slug} className={'flex flex-col gap-5 ' + (plan.is_popular ? 'border-primary ring-1 ring-primary/20' : '')}>
+                                <CardHeader>
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <CardTitle className="text-lg font-semibold">{plan.name}</CardTitle>
+                                        {plan.is_popular && <Badge variant="secondary">{t('brand.home.pricing.popular', 'Popular')}</Badge>}
                                     </div>
-                                )}
-                                <CardHeader className="text-center">
-                                    <CardTitle className="text-2xl font-black tracking-tight">
-                                        {plan.name}
-                                    </CardTitle>
-                                    <CardDescription>
-                                        {plan.description}
-                                    </CardDescription>
-                                    <div className="mt-2">
-                                        <span className="text-4xl font-black tracking-tighter">
-                                            {price.toLocaleString()} ETB
-                                        </span>
-                                        <span className="text-lg font-bold text-muted-foreground">
-                                            {suffix}
-                                        </span>
-                                    </div>
+                                    {plan.description && <CardDescription>{plan.description}</CardDescription>}
                                 </CardHeader>
-                                <CardContent className="flex-1">
+                                <CardContent className="flex flex-1 flex-col gap-6">
+                                    <div className="flex flex-wrap items-baseline gap-2">
+                                        <span className="text-4xl font-bold tracking-tight tabular-nums">{price.toLocaleString('en-ET')}</span>
+                                        <span className="text-sm text-muted-foreground">ETB {period === 'weekly' ? '/ week' : period === 'monthly' ? '/ month' : '/ year'}</span>
+                                    </div>
                                     <ul className="space-y-3 text-sm">
                                         {plan.features.map((feature, index) => (
-                                            <li
-                                                key={index}
-                                                className="flex gap-2"
-                                            >
-                                                <Check className="h-4 w-4 shrink-0 text-green-600" />
-                                                <span>{feature}</span>
+                                            <li key={index} className="flex items-start gap-2">
+                                                <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-sky-strong dark:text-brand-sky" />
+                                                {feature}
                                             </li>
                                         ))}
                                     </ul>
                                 </CardContent>
                                 <CardFooter>
-                                    <Button
-                                        className="h-10 w-full font-bold"
-                                        asChild
-                                    >
-                                        <a href="/register">Subscribe</a>
-                                    </Button>
+                                    <Button asChild className="w-full"><Link href="/register">{t('brand.home.pricing.choose', 'View plan')}</Link></Button>
                                 </CardFooter>
                             </Card>
                         );
                     })}
                 </div>
+                <p className="mt-6 text-center text-xs leading-6 text-muted-foreground">
+                    {t('brand.home.pricing.note', 'Availability and account entitlements are confirmed after sign-in.')}
+                </p>
             </div>
         </section>
     );
