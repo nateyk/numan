@@ -13,14 +13,7 @@ import { useTranslations } from '@/hooks/use-translations';
 import { login, register } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import {
-    CreditCard,
-    HelpCircle,
-    LayoutGrid,
-    Menu,
-    Route,
-    Truck,
-} from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useState } from 'react';
 
 interface LandingHeaderProps {
@@ -36,27 +29,23 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
         {
             href: '#how-it-works',
             label: t('brand.home.nav.how_it_works', 'How it works'),
-            icon: Route,
         },
         {
             href: '#features',
             label: t('brand.home.nav.features', 'Features'),
-            icon: LayoutGrid,
         },
         {
             href: '#pricing',
             label: t('brand.home.nav.pricing', 'Plans'),
-            icon: CreditCard,
         },
         {
             href: '#faq',
             label: t('brand.home.nav.faq', 'FAQ'),
-            icon: HelpCircle,
         },
     ];
 
     const mobileNavItemClass =
-        'flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium leading-5 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+        'flex min-h-12 w-full items-center rounded-md px-1 py-3 text-base font-medium leading-6 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
@@ -175,13 +164,14 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                         </SheetTrigger>
                         <SheetContent
                             side="right"
-                            className="gap-0 overflow-hidden border-l border-border bg-background p-0 [&>button]:top-3 [&>button]:right-3 [&>button]:flex [&>button]:size-10 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-md [&>button]:opacity-100"
+                            overlayClassName="bg-brand-navy/35 backdrop-blur-[3px] dark:bg-black/65"
+                            className="gap-0 overflow-hidden border-l border-border bg-card p-0 shadow-xl [&>button]:top-3 [&>button]:right-3 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-md [&>button]:opacity-100"
                             style={{
-                                width: 'min(23rem, calc(100vw - 1rem))',
-                                maxWidth: '23rem',
+                                width: 'min(78vw, 21rem)',
+                                maxWidth: '21rem',
                             }}
                         >
-                            <SheetHeader className="shrink-0 border-b border-border px-5 py-4 pr-14">
+                            <SheetHeader className="min-h-17 shrink-0 justify-center border-b border-border px-5 py-4 pr-14">
                                 <SheetTitle className="sr-only">
                                     {t(
                                         'brand.home.nav.menu',
@@ -219,68 +209,52 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                 </Link>
                             </SheetHeader>
 
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5">
-                                <p className="px-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                    {t('brand.home.nav.explore', 'Explore')}
-                                </p>
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-6 pb-5">
                                 <nav
                                     aria-label={t(
                                         'brand.home.nav.site',
                                         'Site navigation',
                                     )}
-                                    className="mt-2 flex flex-col gap-1"
+                                    className="flex flex-col gap-2"
                                 >
                                     <Link
                                         href="/freight"
                                         onClick={() => setMobileMenuOpen(false)}
                                         className={mobileNavItemClass}
                                     >
-                                        <Truck
-                                            aria-hidden="true"
-                                            className="size-4 shrink-0 text-muted-foreground"
-                                        />
                                         {t(
                                             'brand.home.nav.browse',
                                             'Browse freight',
                                         )}
                                     </Link>
-                                    {navLinks.map((link) => {
-                                        const Icon = link.icon;
-                                        return (
-                                            <a
-                                                key={link.href}
-                                                href={link.href}
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-                                                    setMobileMenuOpen(false);
-                                                    window.setTimeout(() => {
-                                                        document
-                                                            .getElementById(
-                                                                link.href.slice(
-                                                                    1,
-                                                                ),
-                                                            )
-                                                            ?.scrollIntoView({
-                                                                behavior:
-                                                                    window.matchMedia(
-                                                                        '(prefers-reduced-motion: reduce)',
-                                                                    ).matches
-                                                                        ? 'auto'
-                                                                        : 'smooth',
-                                                                block: 'start',
-                                                            });
-                                                    }, 100);
-                                                }}
-                                                className={mobileNavItemClass}
-                                            >
-                                                <Icon
-                                                    aria-hidden="true"
-                                                    className="size-4 shrink-0 text-muted-foreground"
-                                                />
-                                                {link.label}
-                                            </a>
-                                        );
-                                    })}
+                                    {navLinks.map((link) => (
+                                        <a
+                                            key={link.href}
+                                            href={link.href}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                setMobileMenuOpen(false);
+                                                window.setTimeout(() => {
+                                                    document
+                                                        .getElementById(
+                                                            link.href.slice(1),
+                                                        )
+                                                        ?.scrollIntoView({
+                                                            behavior:
+                                                                window.matchMedia(
+                                                                    '(prefers-reduced-motion: reduce)',
+                                                                ).matches
+                                                                    ? 'auto'
+                                                                    : 'smooth',
+                                                            block: 'start',
+                                                        });
+                                                }, 100);
+                                            }}
+                                            className={mobileNavItemClass}
+                                        >
+                                            {link.label}
+                                        </a>
+                                    ))}
                                 </nav>
 
                                 <div className="mt-6 border-t border-border pt-5">
@@ -293,23 +267,6 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                         />
                                     ) : (
                                         <div className="flex flex-col gap-2">
-                                            <Button
-                                                variant="outline"
-                                                asChild
-                                                className="h-11 w-full"
-                                            >
-                                                <Link
-                                                    href={login()}
-                                                    onClick={() =>
-                                                        setMobileMenuOpen(false)
-                                                    }
-                                                >
-                                                    {t(
-                                                        'landing.nav.signin',
-                                                        'Sign In',
-                                                    )}
-                                                </Link>
-                                            </Button>
                                             {canRegister && (
                                                 <Button
                                                     asChild
@@ -330,6 +287,23 @@ export function LandingHeader({ canRegister = true }: LandingHeaderProps) {
                                                     </Link>
                                                 </Button>
                                             )}
+                                            <Button
+                                                variant="outline"
+                                                asChild
+                                                className="h-11 w-full"
+                                            >
+                                                <Link
+                                                    href={login()}
+                                                    onClick={() =>
+                                                        setMobileMenuOpen(false)
+                                                    }
+                                                >
+                                                    {t(
+                                                        'landing.nav.signin',
+                                                        'Sign In',
+                                                    )}
+                                                </Link>
+                                            </Button>
                                         </div>
                                     )}
                                 </div>
