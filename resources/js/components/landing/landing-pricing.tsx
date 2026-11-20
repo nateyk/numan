@@ -97,8 +97,8 @@ export function LandingPricing({
                             {freeLimits && (
                                 <ul className="space-y-3 text-sm">
                                     {[
-                                        t('brand.home.pricing.free_posts', '{{count}} active posts', { count: formatLimit(freeLimits.free_active_posts) }),
-                                        t('brand.home.pricing.free_reveals', '{{count}} contact reveals', { count: formatLimit(freeLimits.free_contact_reveals) }),
+                                        t('brand.home.pricing.free_posts', '{{value}} active posts', { value: formatLimit(freeLimits.free_active_posts) }),
+                                        t('brand.home.pricing.free_reveals', '{{value}} contact reveals', { value: formatLimit(freeLimits.free_contact_reveals) }),
                                     ].map((feature) => (
                                         <li key={feature} className="flex items-start gap-2">
                                             <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-sky-strong dark:text-brand-sky" />
