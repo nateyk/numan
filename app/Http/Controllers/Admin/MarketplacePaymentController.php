@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ChapaWebhookDelivery;
 use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentReview;
 use App\Models\MarketplacePaymentTransaction;
@@ -44,6 +45,8 @@ class MarketplacePaymentController extends Controller
             'event' => $e->event,
             'tx_ref' => $e->tx_ref,
             'status' => $e->status,
+            'delivery_count' => ChapaWebhookDelivery::where('tx_ref', $e->tx_ref)
+                ->where('event', $e->event)->count(),
             'processed_at' => $e->processed_at,
             'created_at' => $e->created_at,
         ]);
