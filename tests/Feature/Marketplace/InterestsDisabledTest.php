@@ -81,7 +81,7 @@ it('keeps the listing reveal working when interests are off', function () {
 it('shares the flag with Inertia', function () {
     config(['marketplace.interests_enabled' => false]);
 
-    $this->get('/freight')
+    $this->actingAs(User::factory()->create())->get('/freight')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('marketplace.interests_enabled', false)

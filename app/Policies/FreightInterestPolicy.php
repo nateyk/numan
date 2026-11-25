@@ -25,7 +25,7 @@ class FreightInterestPolicy
             return false;
         }
 
-        if ($post->status !== FreightPostStatus::Active->value) {
+        if ($post->status !== FreightPostStatus::Active->value || $post->isPastPickupWindow()) {
             return false;
         }
 

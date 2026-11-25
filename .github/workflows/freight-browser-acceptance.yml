@@ -1,0 +1,91 @@
+name: Freight browser acceptance
+
+# Runs with synthetic data in a disposable SQLite database. Never sends
+# requests to the deployed Numan Freight application.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freight-browser:
+    # Playwright 1.55 does not support ubuntu-26.04 (new ubuntu-latest).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      APP_ENV: testing
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/browser-acceptance.sqlite
+      SESSION_DRIVER: file
+      CACHE_STORE: array
+      MAIL_MAILER: array
+      QUEUE_CONNECTION: sync
+      BROADCAST_CONNECTION: 'null'
+      MARKETPLACE_INTERESTS_ENABLED: 'false'
+      BROWSER_ACCEPTANCE_ENABLED: 'true'
+      BROWSER_ACCEPTANCE_PASSWORD: synthetic-browser-fixture-only
+      BROWSER_ACCEPTANCE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite
+          tools: composer:v2
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: php artisan key:generate
+      - name: Prepare isolated database and browser fixtures
+        run: |
+          touch database/browser-acceptance.sqlite
+          php artisan migrate --force
+          php artisan db:seed --class=FreightBrowserAcceptanceSeeder --force
+      - run: php artisan wayfinder:generate --with-form
+      - run: pnpm run build
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-1.55.0-${{ runner.os }}
+      - name: Install Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Start local Laravel server
+        run: |
+          nohup php artisan serve --host=127.0.0.1 --port=8000 > /tmp/freight-acceptance-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/freight-acceptance-server.log
+          exit 1
+      - name: Run consignor and transporter Chromium acceptance
+        run: python tests/browser/freight_acceptance.py
+      - name: Run light/dark and responsive UI acceptance
+        run: python tests/browser/brand_theme_acceptance.py
+      - name: Upload synthetic browser screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freight-browser-evidence
+          path: storage/app/browser-acceptance/evidence/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Show application log after failure
+        if: failure()
+        run: |
+          tail -n 100 /tmp/freight-acceptance-server.log || true
+          tail -n 100 storage/logs/laravel.log || true

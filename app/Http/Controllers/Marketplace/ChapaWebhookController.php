@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Marketplace;
 
 use App\Http\Controllers\Controller;
+use App\Models\ChapaWebhookDelivery;
 use App\Models\ChapaWebhookEvent;
 use App\Models\MarketplacePaymentTransaction;
 use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -36,7 +39,10 @@ class ChapaWebhookController extends Controller
 
         $payload = $request->json()->all() ?: json_decode($request->getContent(), true) ?? [];
         $event = $payload['event'] ?? $payload['type'] ?? 'unknown';
-        $txRef = $payload['tx_ref'] ?? $payload['txRef'] ?? $payload['reference'] ?? $payload['data']['tx_ref'] ?? null;
+        $webhookType = $payload['webhook_type'] ?? 'payment';
+        $txRef = $payload['tx_ref'] ?? $payload['txRef']
+            ?? $payload['merchant_reference'] ?? $payload['reference']
+            ?? $payload['data']['tx_ref'] ?? null;
         $chapaRef = $payload['reference'] ?? $payload['data']['reference'] ?? null;
 
         if (! $txRef) {
@@ -46,6 +52,23 @@ class ChapaWebhookController extends Controller
 
             return response()->json(['message' => 'Missing tx_ref'], 422);
         }
+
+        // The old processing row is intentionally one per (tx_ref, event).
+        // Multiple partial refunds legitimately share both fields, so record
+        // each DISTINCT authenticated delivery before its summary is deduped.
+        // Persist only allowlisted accounting fields; no payer identity.
+        $bodyHash = hash('sha256', $request->getContent());
+        ChapaWebhookDelivery::firstOrCreate(
+            ['payload_hash' => $bodyHash],
+            [
+                'tx_ref' => $txRef,
+                'event' => $event,
+                'webhook_type' => $webhookType,
+                'payload' => $payload,
+                'signature' => $request->header('x-chapa-signature') ?? $request->header('chapa-signature'),
+                'received_at' => now(),
+            ],
+        );
 
         $existing = ChapaWebhookEvent::where('tx_ref', $txRef)->where('event', $event)->first();
         if ($existing && $existing->status === 'processed') {
@@ -58,18 +81,37 @@ class ChapaWebhookController extends Controller
                 'chapa_ref' => $chapaRef,
                 'payload' => $payload,
                 'signature' => $request->header('x-chapa-signature') ?? $request->header('chapa-signature'),
+                // Digest the exact signed bytes, not JSON re-encoded by Laravel.
+                'payload_hash' => $bodyHash,
                 'status' => 'pending',
             ]
         );
 
-        $isSuccess = str_contains((string) $event, 'success') || ($payload['status'] ?? null) === 'success';
+        // Never use an arbitrary "success" substring or the payload's
+        // top-level status alone to identify a new charge. Chapa v1 emits
+        // charge.success; v2 payment.success is included for event routing,
+        // but must still pass our v1 provider verification before fulfillment.
+        // Refund events may share the payment.* namespace and payout/refund
+        // notifications may also say status=success.
+        $isSuccess = $webhookType === 'payment'
+            && in_array($event, ['charge.success', 'payment.success'], true)
+            && ($payload['status'] ?? null) === 'success';
         if (! $isSuccess) {
             $webhookEvent->update(['status' => 'processed', 'processed_at' => now()]);
 
             return response()->json(['message' => 'Event ignored'], 200);
         }
 
-        $verified = $this->chapa->verifyTransaction($txRef);
+        try {
+            $verified = $this->chapa->verifyTransaction($txRef);
+        } catch (ConnectionException|RequestException $e) {
+            // Ask the provider to retry. The transaction remains unfulfilled,
+            // and our scheduled reconciliation will verify it separately.
+            report($e);
+            $webhookEvent->update(['status' => 'pending']);
+
+            return response()->json(['message' => 'Temporary verification failure'], 503);
+        }
         $data = $verified['data'] ?? $verified;
         $verifiedSuccess = ($verified['status'] ?? null) === 'success' && (($data['status'] ?? null) === 'success' || ($data['status'] ?? null) === 'paid');
 
@@ -95,14 +137,13 @@ class ChapaWebhookController extends Controller
             return response()->json(['message' => 'Transaction not found'], 200);
         }
 
-        $expected = (string) $transaction->amount_etb;
-        $got = (string) ($data['amount'] ?? '');
-        $currency = $data['currency'] ?? 'ETB';
-        if ($currency !== 'ETB' || ($got !== '' && $got !== $expected && (float) $got !== (float) $expected)) {
-            Log::warning('Chapa webhook amount mismatch', ['tx_ref' => $txRef, 'expected' => $expected, 'got' => $got]);
+        if (! $this->chapa->verifiedPaymentMatches($verified, $transaction)) {
+            Log::warning('Chapa webhook verified payment details incomplete or mismatched', [
+                'tx_ref' => $txRef,
+            ]);
             $webhookEvent->update(['status' => 'failed']);
 
-            return response()->json(['message' => 'Amount mismatch'], 200);
+            return response()->json(['message' => 'Payment verification mismatch'], 200);
         }
 
         try {

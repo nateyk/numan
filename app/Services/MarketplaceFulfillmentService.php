@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplaceSubscription;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -13,6 +14,10 @@ class MarketplaceFulfillmentService
     public function fulfill(MarketplacePaymentTransaction $transaction, array $verified): void
     {
         DB::transaction(function () use ($transaction, $verified) {
+            // Different successful payments can arrive simultaneously. Lock the
+            // common subscription owner before examining either transaction so
+            // both renewals extend from the latest committed period.
+            $workspace = Workspace::whereKey($transaction->workspace_id)->lockForUpdate()->first();
             $transaction = MarketplacePaymentTransaction::where('id', $transaction->id)->lockForUpdate()->first();
 
             if (! $transaction) {
@@ -21,6 +26,17 @@ class MarketplaceFulfillmentService
 
             if ($transaction->status === 'verified' && $transaction->verified_at) {
                 return;
+            }
+
+            // A deleted profile or canceled attempt cannot be reactivated by
+            // a late provider webhook after account deletion.
+            if ($transaction->status === 'canceled' || $transaction->user === null) {
+                return;
+            }
+
+            $plan = $transaction->plan;
+            if (! $workspace || ! $plan) {
+                throw new \RuntimeException('Cannot fulfill a payment without its subscription owner and plan.');
             }
 
             $data = $verified['data'] ?? $verified;
@@ -33,12 +49,6 @@ class MarketplaceFulfillmentService
                 'provider_response' => $verified,
             ]);
 
-            $workspace = $transaction->workspace;
-            $plan = $transaction->plan;
-            if (! $workspace || ! $plan) {
-                return;
-            }
-
             $billingInterval = $transaction->billing_interval ?? 'monthly';
             if (! in_array($billingInterval, ['weekly', 'monthly', 'yearly'], true)) {
                 $billingInterval = 'monthly';
@@ -46,16 +56,13 @@ class MarketplaceFulfillmentService
 
             // A renewal extends the current period instead of overwriting it, so
             // an early upgrade never loses the days already paid for.
-            $current = MarketplaceSubscription::where('workspace_id', $workspace->id)
-                ->whereIn('status', ['active', 'trialing'])
-                ->where(function ($query) {
-                    $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
-                })
-                ->latest('ends_at')
-                ->first();
+            $current = app(MarketplaceEntitlementService::class)->activeSubscription($workspace);
 
             $periodStart = $current?->ends_at?->isFuture() ? $current->ends_at->copy() : now();
 
+            // Canceled-with-grace subscriptions are also prepaid. Superseding
+            // one here ensures early renewal extends the paid-through date
+            // rather than charging again for days already purchased.
             // The previous subscription keeps its original ends_at so access is
             // continuous; only the status changes.
             if ($current) {

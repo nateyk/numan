@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\MarketplacePaymentReceipt;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
+use App\Models\MarketplaceSubscription;
+use App\Models\Workspace;
 use App\Services\ManualPaymentExpiryService;
 use App\Services\MarketplaceEntitlementService;
 use App\Services\MarketplaceSettingsService;
 use App\Services\MarketplaceTextSettingsService;
+use App\Services\PendingChapaCheckoutService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,6 +68,7 @@ class BillingController extends Controller
                 'on_grace_period' => $subscription->onGracePeriod(),
                 'cancelled' => $subscription->canceled(),
             ] : null,
+            'marketplaceAccess' => $this->marketplaceAccessState($workspace, $marketplaceEntitlement),
             'marketplaceSubscription' => $marketplaceSub ? [
                 'id' => $marketplaceSub->id,
                 'plan' => $marketplaceSub->plan?->name ?? $marketplaceSub->plan_id,
@@ -116,6 +120,31 @@ class BillingController extends Controller
     }
 
     /**
+     * Minimal, server-derived marketplace state for both billing screens.
+     * Never infer expiry from a pending checkout or from frontend clocks.
+     *
+     * @return array{status: string, plan: string|null, ends_at: string|null, billing_interval: string|null}
+     */
+    private function marketplaceAccessState(Workspace $workspace, MarketplaceEntitlementService $entitlement): array
+    {
+        $current = $entitlement->activeSubscription($workspace);
+        $last = $current ?: MarketplaceSubscription::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('status', ['active', 'trialing', 'canceled', 'expired'])
+            ->latest('id')
+            ->first();
+
+        return [
+            'status' => $current
+                ? ($current->status === 'canceled' ? 'grace' : 'active')
+                : ($last && ! $entitlement->canBrowseFreight($workspace) ? 'expired' : 'free'),
+            'plan' => $last?->plan?->name,
+            'ends_at' => $last?->ends_at?->toIso8601String(),
+            'billing_interval' => $last?->billing_interval,
+        ];
+    }
+
+    /**
      * Display available plans.
      */
     public function plans(Request $request): Response
@@ -148,8 +177,10 @@ class BillingController extends Controller
             'freeLimits' => $this->getFreeLimitsForDisplay(),
             'currentPlan' => $workspace->plan_key,
             'currentMarketplacePlan' => $marketplaceSub?->plan?->slug ?? $marketplaceEntitlement->getPlanForWorkspace($workspace)['slug'] ?? 'free',
+            'marketplaceAccess' => $this->marketplaceAccessState($workspace, $marketplaceEntitlement),
             'currentBillingPeriod' => $workspace->billing_period,
             'currentMarketplaceBillingPeriod' => $marketplaceSub?->billing_interval,
+            'pendingChapaReference' => app(PendingChapaCheckoutService::class)->find($workspace, $user)?->tx_ref,
             'recommendedPlan' => $recommendedPlan,
             'recommendedBillingPeriod' => $recommendedBillingPeriod,
             'fromOnboarding' => $request->query('onboarding') === '1',

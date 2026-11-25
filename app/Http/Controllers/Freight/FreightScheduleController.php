@@ -17,7 +17,7 @@ class FreightScheduleController extends Controller
     public function show(Request $request, string $ulid): Response
     {
         $post = FreightPost::where('ulid', $ulid)->firstOrFail();
-        Gate::authorize('view', $post);
+        Gate::authorize('viewWizard', $post);
 
         return Inertia::render('freight/schedule', [
             'post' => $post,

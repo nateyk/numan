@@ -5,12 +5,17 @@ use App\Models\CargoType;
 use App\Models\FreightPost;
 use App\Models\FreightPostRoute;
 use App\Models\Location;
+use App\Models\TruckType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('only lists active freight publicly', function () {
+beforeEach(function () {
+    $this->actingAs(User::factory()->create());
+});
+
+it('only lists active freight for signed-in members', function () {
     FreightPost::factory()->create(['status' => FreightPostStatus::Active->value]);
     FreightPost::factory()->create(['status' => FreightPostStatus::Draft->value]);
 
@@ -55,10 +60,10 @@ it('is accessible via discover route as well', function () {
  * sequence that is not the distance ordering.
  */
 it('sorts near to far by real distance, with unrouted posts last', function () {
-    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-01']);
-    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-05']);
-    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-10']);
-    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-15']);
+    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(1)->toDateString()]);
+    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(5)->toDateString()]);
+    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(10)->toDateString()]);
+    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(15)->toDateString()]);
 
     FreightPostRoute::create(['freight_post_id' => $far->id, 'distance_meters' => 500000, 'duration_seconds' => 6000]);
     FreightPostRoute::create(['freight_post_id' => $mid->id, 'distance_meters' => 300000, 'duration_seconds' => 4000]);
@@ -76,10 +81,10 @@ it('sorts near to far by real distance, with unrouted posts last', function () {
 });
 
 it('sorts far to near by real distance, with unrouted posts last', function () {
-    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-01']);
-    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-05']);
-    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-10']);
-    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => '2026-11-15']);
+    $far = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(1)->toDateString()]);
+    $mid = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(5)->toDateString()]);
+    $near = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(10)->toDateString()]);
+    $unrouted = FreightPost::factory()->create(['status' => FreightPostStatus::Active->value, 'pickup_date' => now()->addDays(15)->toDateString()]);
 
     FreightPostRoute::create(['freight_post_id' => $far->id, 'distance_meters' => 500000, 'duration_seconds' => 6000]);
     FreightPostRoute::create(['freight_post_id' => $mid->id, 'distance_meters' => 300000, 'duration_seconds' => 4000]);
@@ -191,4 +196,121 @@ it('omits the route geometry from the discovery list', function () {
 
     expect($snapshot)->not->toHaveKey('geometry')
         ->and($snapshot['distance_meters'])->toBe(932000);
+});
+
+it('searches by origin, destination and their region names without extra filter selections', function () {
+    $semera = Location::factory()->create([
+        'name' => 'Semera',
+        'region_name' => 'Afar',
+        'wereda' => 'Semera Town',
+    ]);
+    $shashemene = Location::factory()->create([
+        'name' => 'Shashemene Zuria',
+        'region_name' => 'Oromia',
+    ]);
+    $other = Location::factory()->create([
+        'name' => 'Dire Dawa',
+        'region_name' => 'Dire Dawa',
+    ]);
+
+    $matching = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $semera->id,
+        'destination_location_id' => $shashemene->id,
+        'item_name' => 'Iodized salt',
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $other->id,
+        'destination_location_id' => $other->id,
+        'item_name' => 'Iodized salt',
+    ]);
+
+    foreach (['Semera', 'Shashemene', 'Afar', 'Oromia', 'Semera Shashemene'] as $query) {
+        $this->get('/freight?search='.urlencode($query))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('freight.total', 1)
+                ->where('freight.data.0.ulid', $matching->ulid));
+    }
+});
+
+it('matches truck type and cargo type names in global discovery search', function () {
+    $cargo = CargoType::factory()->create(['name' => 'Chemical supplies']);
+    $trucks = TruckType::factory()->create(['name' => 'Semi-trailer']);
+    $matching = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'item_name' => 'Salt bags',
+        'cargo_type_id' => $cargo->id,
+        'required_truck_type_id' => $trucks->id,
+    ]);
+
+    foreach (['Chemical', 'Semi-trailer'] as $search) {
+        $this->get('/freight?search='.urlencode($search))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('freight.total', 1)
+                ->where('freight.data.0.ulid', $matching->ulid));
+    }
+});
+
+it('never exposes hidden or draft posts through location search and combines filters', function () {
+    $origin = Location::factory()->create(['name' => 'Semera']);
+    $destination = Location::factory()->create(['name' => 'Shashemene Zuria']);
+    $other = Location::factory()->create(['name' => 'Hawassa']);
+
+    $visible = FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $destination->id,
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $destination->id,
+        'hidden_at' => now(),
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Draft->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $destination->id,
+    ]);
+    FreightPost::factory()->create([
+        'status' => FreightPostStatus::Active->value,
+        'origin_location_id' => $origin->id,
+        'destination_location_id' => $other->id,
+    ]);
+
+    $this->get('/freight?search=Semera%20Shashemene&destination='.$destination->id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('freight.total', 1)
+            ->where('freight.data.0.ulid', $visible->ulid));
+});
+
+it('ignores malformed search arrays instead of breaking the discovery page', function () {
+    FreightPost::factory()->create(['status' => FreightPostStatus::Active->value]);
+
+    $this->get('/freight?search[]=Semera')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('freight.total', 1)
+            ->where('filters.search', ''));
+});
+
+it('sorts latest freight by publication date rather than the later pickup date', function () {
+    $old = FreightPost::factory()->active()->create([
+        'pickup_date' => now()->addDays(25)->toDateString(),
+        'published_at' => now()->subDays(5),
+    ]);
+    $recent = FreightPost::factory()->active()->create([
+        'pickup_date' => now()->addDay()->toDateString(),
+        'published_at' => now()->subHour(),
+    ]);
+
+    $this->get('/freight?sort=latest')->assertOk()->assertInertia(fn ($page) => $page
+        ->component('discover/index')
+        ->where('freight.data.0.ulid', $recent->ulid)
+        ->where('freight.data.1.ulid', $old->ulid)
+        ->etc());
 });

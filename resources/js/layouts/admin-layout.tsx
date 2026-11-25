@@ -23,8 +23,8 @@ import {
     ListChecks,
     Mail,
     MapPin,
-    Menu,
     Megaphone,
+    Menu,
     MessageSquare,
     Package,
     Power,
@@ -32,9 +32,9 @@ import {
     Search,
     ShieldCheck,
     Terminal,
-    TrendingUp,
     Ticket,
     ToggleLeft,
+    TrendingUp,
     Truck,
     Users,
     X,
@@ -73,6 +73,8 @@ function AdminQuickStatsWidget() {
     }, []);
 
     useEffect(() => {
+        // Initial admin quick-stats fetch also sets its loading state.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchStats();
     }, [fetchStats]);
 
@@ -153,7 +155,9 @@ interface AdminNavGroup {
 }
 
 // Navigation groups configuration
-const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => [
+const buildAdminNavGroups = (
+    pendingManualPayments: number,
+): AdminNavGroup[] => [
     {
         title: 'Dashboard',
         icon: LayoutDashboard,
@@ -281,60 +285,73 @@ const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => 
                 icon: Ticket,
                 feature: 'user.support_tickets',
             },
-             {
-                 title: 'Translations',
-                 href: '/admin/translations',
-                 icon: Globe,
-                 feature: 'admin.translations',
-             },
-             {
-                 title: 'Profiles',
-                 href: '/admin/profiles',
-                 icon: Users,
-                 feature: 'admin.transporters',
-             },
-             {
-                 title: 'Freight',
-                 href: '/admin/freight',
-                 icon: Package,
-                 feature: 'admin.freight',
-             },
-         ],
-     },
-     {
-         title: 'Reference Data',
-         icon: Package,
-         storageKey: 'reference-data',
-         defaultExpanded: false,
-         items: [
-             {
-                 title: 'Locations',
-                 href: '/admin/reference-data/locations',
-                 icon: MapPin,
-                 feature: 'admin.reference_data',
-             },
-             {
-                 title: 'Cargo Types',
-                 href: '/admin/reference-data/cargo-types',
-                 icon: Package,
-                 feature: 'admin.reference_data',
-             },
-             {
-                 title: 'Truck Types',
-                 href: '/admin/reference-data/truck-types',
-                 icon: Truck,
-                 feature: 'admin.reference_data',
-             },
-         ],
-     },
+            {
+                title: 'Translations',
+                href: '/admin/translations',
+                icon: Globe,
+                feature: 'admin.translations',
+            },
+            {
+                title: 'Profiles',
+                href: '/admin/profiles',
+                icon: Users,
+                feature: 'admin.transporters',
+            },
+            {
+                title: 'Freight',
+                href: '/admin/freight',
+                icon: Package,
+                feature: 'admin.freight',
+            },
+        ],
+    },
+    {
+        title: 'Reference Data',
+        icon: Package,
+        storageKey: 'reference-data',
+        defaultExpanded: false,
+        items: [
+            {
+                title: 'Locations',
+                href: '/admin/reference-data/locations',
+                icon: MapPin,
+                feature: 'admin.reference_data',
+            },
+            {
+                title: 'Cargo Types',
+                href: '/admin/reference-data/cargo-types',
+                icon: Package,
+                feature: 'admin.reference_data',
+            },
+            {
+                title: 'Truck Types',
+                href: '/admin/reference-data/truck-types',
+                icon: Truck,
+                feature: 'admin.reference_data',
+            },
+        ],
+    },
     {
         title: 'Marketplace',
         icon: DollarSign,
         storageKey: 'marketplace',
         defaultExpanded: true,
         items: [
-            { title: 'Marketplace Plans', href: '/admin/marketplace-plans', icon: Package },
-            { title: 'Payments (Chapa)', href: '/admin/marketplace-payments', icon: DollarSign },
+            {
+                title: 'Marketplace Plans',
+                href: '/admin/marketplace-plans',
+                icon: Package,
+            },
+            {
+                title: 'Payments (Chapa)',
+                href: '/admin/marketplace-payments',
+                icon: DollarSign,
+            },
+            {
+                title: 'Chapa Settings',
+                href: '/admin/chapa-settings',
+                icon: KeyRound,
+            },
             {
                 title: 'Manual Payments',
                 href: '/admin/marketplace-manual-payments',
@@ -343,13 +360,21 @@ const buildAdminNavGroups = (pendingManualPayments: number): AdminNavGroup[] => 
                 // at zero, so the sidebar is quiet until there is work.
                 badge: pendingManualPayments,
             },
-            { title: 'Revenue (ETB)', href: '/admin/marketplace-revenue', icon: TrendingUp },
+            {
+                title: 'Revenue (ETB)',
+                href: '/admin/marketplace-revenue',
+                icon: TrendingUp,
+            },
             {
                 title: 'Payment Instructions',
                 href: '/admin/marketplace-payment-instructions',
                 icon: Landmark,
             },
-            { title: 'Reveal Analytics', href: '/admin/marketplace-reveals', icon: BarChart3 },
+            {
+                title: 'Reveal Analytics',
+                href: '/admin/marketplace-reveals',
+                icon: BarChart3,
+            },
         ],
     },
     {
@@ -593,10 +618,15 @@ function MobileAdminDrawer({
                 onClick={onClose}
             />
             {/* Drawer */}
-            <div className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar lg:hidden">
+            <div
+                role="dialog"
+                aria-label="Admin navigation"
+                aria-modal="true"
+                className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar lg:hidden"
+            >
                 <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
                     <div className="flex items-center gap-2">
-                        <div className="flex size-7 items-center justify-center rounded-md bg-red-600 text-xs font-bold text-white">
+                        <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
                             A
                         </div>
                         <span className="text-sm font-semibold text-sidebar-foreground">
@@ -605,6 +635,7 @@ function MobileAdminDrawer({
                     </div>
                     <button
                         onClick={onClose}
+                        aria-label="Close admin menu"
                         className="rounded p-1 hover:bg-sidebar-accent"
                     >
                         <X className="size-5 text-sidebar-foreground" />
@@ -705,7 +736,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                 {/* Desktop Sidebar */}
                 <aside className="hidden w-64 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
                     <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-6">
-                        <div className="flex size-7 items-center justify-center rounded-md bg-red-600 text-xs font-bold text-white">
+                        <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
                             A
                         </div>
                         <span className="text-sm font-semibold">
@@ -757,11 +788,13 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                     <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden">
                         <button
                             onClick={() => setMobileDrawerOpen(true)}
+                            aria-label="Open admin menu"
+                            aria-expanded={mobileDrawerOpen}
                             className="rounded-md p-2 hover:bg-accent"
                         >
                             <Menu className="size-5" />
                         </button>
-                        <div className="flex size-7 items-center justify-center rounded-md bg-red-600 text-xs font-bold text-white">
+                        <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
                             A
                         </div>
                         <span className="text-sm font-semibold">
@@ -771,7 +804,10 @@ export default function AdminLayout({ children }: PropsWithChildren) {
 
                     <main className="flex-1 overflow-y-auto p-4 lg:p-8">
                         <div className="mx-auto max-w-7xl">
-                            <AdminBreadcrumb currentPath={currentPath} groups={groups} />
+                            <AdminBreadcrumb
+                                currentPath={currentPath}
+                                groups={groups}
+                            />
                             {children}
                         </div>
                     </main>

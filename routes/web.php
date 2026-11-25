@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminTruckTypeController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BroadcastController;
+use App\Http\Controllers\Admin\ChapaPaymentSettingsController;
 use App\Http\Controllers\Admin\CohortAnalysisController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FeatureFlagController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\MarketplaceManualPaymentController;
 use App\Http\Controllers\Admin\MarketplacePaymentController;
 use App\Http\Controllers\Admin\MarketplacePaymentInstructionsController;
+use App\Http\Controllers\Admin\MarketplacePaymentReviewController;
 use App\Http\Controllers\Admin\MarketplacePlanController;
 use App\Http\Controllers\Admin\MarketplaceRevealAnalyticsController;
 use App\Http\Controllers\Admin\MarketplaceSettingController;
@@ -56,6 +58,7 @@ use App\Http\Controllers\Freight\FreightInterestAcceptanceController;
 use App\Http\Controllers\Freight\FreightInterestController;
 use App\Http\Controllers\Freight\FreightInterestStatusController;
 use App\Http\Controllers\Freight\FreightPostController;
+use App\Http\Controllers\Freight\FreightPostLifecycleController;
 use App\Http\Controllers\Freight\FreightReviewController;
 use App\Http\Controllers\Freight\FreightRouteController;
 use App\Http\Controllers\Freight\FreightScheduleController;
@@ -68,12 +71,15 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LocationSearchController;
 use App\Http\Controllers\Marketplace\ChapaCallbackController;
+use App\Http\Controllers\Marketplace\ChapaPaymentStatusController;
+use App\Http\Controllers\Marketplace\ChapaServerCallbackController;
 use App\Http\Controllers\Marketplace\ChapaWebhookController;
 use App\Http\Controllers\Marketplace\CheckoutController;
 use App\Http\Controllers\Marketplace\ManualPaymentController;
 use App\Http\Controllers\MemberActivityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingChecklistController;
+use App\Http\Controllers\PersonalDashboardController;
 use App\Http\Controllers\PhoneNumberController;
 use App\Http\Controllers\ProfileDocumentController;
 use App\Http\Controllers\ProfileSetupController;
@@ -105,6 +111,7 @@ use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceTrashController;
 use App\Http\Middleware\EnsureInterestsEnabled;
 use App\Http\Middleware\EnsureWorkspaceUiEnabled;
+use App\Http\Middleware\PreventFreightPageCaching;
 use App\Http\Middleware\RequireAdminTwoFactor;
 use App\Models\MarketplacePlan;
 use App\Models\Profile;
@@ -158,9 +165,13 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name('freight.discovery');
-Route::get('/freight/{ulid}', [PublicFreightDiscoveryController::class, 'show'])->name('freight.public.show');
-Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
+// Browsing is a member feature. Keep the familiar URLs, but never send
+// listing payloads to unauthenticated visitors (including /discover and detail).
+Route::middleware(['auth', PreventFreightPageCaching::class])->group(function () {
+    Route::get('/freight', [PublicFreightDiscoveryController::class, 'index'])->name('freight.discovery');
+    Route::get('/freight/{ulid}', [PublicFreightDiscoveryController::class, 'show'])->name('freight.public.show');
+    Route::get('/discover', [PublicFreightDiscoveryController::class, 'index'])->name('discover');
+});
 
 // The old directory URL now leads to freight discovery; public profile pages
 // remain available through their own URLs.
@@ -183,7 +194,9 @@ Route::get('/transporters/{slug}', function (string $slug) {
 // Magic Link Auth Routes
 Route::middleware('guest')->group(function () {
     Route::get('/magic-login', [MagicLinkController::class, 'create'])->name('magic-link.create');
-    Route::post('/magic-login', [MagicLinkController::class, 'store'])->name('magic-link.store');
+    Route::post('/magic-login', [MagicLinkController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('magic-link.store');
     Route::get('/magic-login/{user}', [MagicLinkController::class, 'authenticate'])
         ->middleware('signed')
         ->name('magic-link.authenticate');
@@ -221,25 +234,7 @@ Route::middleware(['auth', 'workspace'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip', 'workspace.suspended'])->group(function () {
-    Route::get('dashboard', function () {
-        $user = request()->user();
-
-        if (config('features.workspace.ui') && $user->isIndividual()) {
-            return redirect()->route('freight.discovery');
-        }
-
-        $workspace = $user->currentWorkspace;
-
-        return Inertia::render('dashboard', [
-            'workspace' => [
-                'id' => $workspace->id,
-                'name' => $workspace->name,
-                'slug' => $workspace->slug,
-                'plan' => $workspace->plan_name,
-                'members_count' => $workspace->users()->count(),
-            ],
-        ]);
-    })->name('dashboard');
+    Route::get('dashboard', [PersonalDashboardController::class, 'index'])->name('dashboard');
 
     // Workspace routes
     Route::prefix('workspaces')->name('workspaces.')->middleware(EnsureWorkspaceUiEnabled::class)->group(function () {
@@ -338,6 +333,8 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     Route::get('/marketplace/manual', [ManualPaymentController::class, 'index'])->name('marketplace.manual.index');
     Route::get('/marketplace/manual/{transaction}', [ManualPaymentController::class, 'show'])->name('marketplace.manual.show');
     Route::get('/chapa/callback/{tx_ref}', [ChapaCallbackController::class, 'show'])->name('chapa.callback');
+    Route::post('/marketplace/payments/{tx_ref}/verify', [ChapaPaymentStatusController::class, 'verify'])
+        ->middleware('throttle:10,1')->name('marketplace.payments.verify');
     // Workspace Security Settings
     Route::get('/settings/workspace-security', [WorkspaceSecurityController::class, 'index'])->middleware(EnsureWorkspaceUiEnabled::class)->name('workspace.security');
     Route::put('/settings/workspace-security', [WorkspaceSecurityController::class, 'update'])->middleware(EnsureWorkspaceUiEnabled::class)->name('workspace.security.update');
@@ -418,6 +415,8 @@ Route::middleware(['auth', 'verified', 'workspace', 'require2fa', 'workspace.ip'
     Route::post('/my-freight', [FreightPostController::class, 'store'])->name('freight.store');
     Route::get('/my-freight/{ulid}', [FreightPostController::class, 'show'])->name('freight.show');
     Route::delete('/my-freight/{ulid}', [FreightPostController::class, 'destroy'])->name('freight.destroy');
+    Route::post('/my-freight/{ulid}/close', [FreightPostLifecycleController::class, 'close'])->name('freight.close');
+    Route::post('/my-freight/{ulid}/arrive', [FreightPostLifecycleController::class, 'arrive'])->name('freight.arrive');
     Route::get('/my-freight/{ulid}/route', [FreightRouteController::class, 'show'])->name('freight.route.show');
     Route::put('/my-freight/{ulid}/route', [FreightRouteController::class, 'update'])->name('freight.route.update');
     Route::get('/my-freight/{ulid}/cargo', [FreightCargoController::class, 'show'])->name('freight.cargo.show');
@@ -533,6 +532,11 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook']
     ->name('cashier.webhook');
 
 // Chapa webhook (no CSRF, no auth)
+// Provider callback is public: Chapa does not have the payer's browser session.
+// This route verifies payment directly with Chapa before any subscription grant.
+Route::get('/chapa/notify/{tx_ref}', [ChapaServerCallbackController::class, 'handle'])
+    ->middleware('throttle:20,1')->name('chapa.server-callback');
+
 Route::post('/webhooks/chapa', [ChapaWebhookController::class, 'handle'])
     ->name('webhooks.chapa');
 
@@ -790,7 +794,12 @@ Route::middleware(['auth', 'superadmin'])->prefix('admin')->name('admin.')->grou
         // Free plan limits (admin-editable settings)
         Route::put('/marketplace-settings', [MarketplaceSettingController::class, 'update'])->name('marketplace-settings.update');
 
+        // Credentials are write-only and available to superadmins only.
+        Route::get('/chapa-settings', [ChapaPaymentSettingsController::class, 'index'])->name('chapa-settings.index');
+        Route::put('/chapa-settings', [ChapaPaymentSettingsController::class, 'update'])->name('chapa-settings.update');
         Route::get('/marketplace-payments', [MarketplacePaymentController::class, 'index'])->name('marketplace-payments.index');
         Route::post('/marketplace-payments/{transaction}/reconcile', [MarketplacePaymentController::class, 'reconcile'])->name('marketplace-payments.reconcile');
+        Route::post('/marketplace-payments/{transaction}/reviews', [MarketplacePaymentReviewController::class, 'store'])->name('marketplace-payments.reviews.store');
+        Route::patch('/marketplace-payment-reviews/{review}', [MarketplacePaymentReviewController::class, 'update'])->name('marketplace-payment-reviews.update');
     });
 });

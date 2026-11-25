@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceReminderLog;
 use App\Models\MarketplaceSubscription;
+use App\Services\MarketplaceReminderEligibility;
 use App\Services\MarketplaceReminderWindow;
 use App\Services\ReminderDispatcher;
 use Illuminate\Console\Command;
@@ -49,7 +50,7 @@ class SendMarketplaceReminders extends Command
             if ($reclaimed['reclaimed'] > 0 || $reclaimed['abandoned'] > 0) {
                 $this->components->twoColumnDetail(
                     'Reclaimed stale claims',
-                    "{$reclaimed['reclaimed']} re-sent, {$reclaimed['abandoned']} abandoned"
+                    "{$reclaimed['reclaimed']} processed, {$reclaimed['abandoned']} abandoned"
                 );
             }
         }
@@ -71,6 +72,16 @@ class SendMarketplaceReminders extends Command
             $due = MarketplaceReminderWindow::due($subscription, now());
 
             if ($due['types'] === []) {
+                $nothingDue++;
+
+                continue;
+            }
+
+            // A subscriber who already renewed must not receive a stale
+            // "plan expired" email just because an earlier row was marked
+            // expired before the new paid period was created.
+            if (in_array(MarketplaceReminderWindow::EXPIRED, $due['types'], true)
+                && app(MarketplaceReminderEligibility::class)->hasNewerPaidPeriod($subscription)) {
                 $nothingDue++;
 
                 continue;
@@ -142,7 +153,7 @@ class SendMarketplaceReminders extends Command
         $expiryHorizon = (int) config('marketplace.reminder_expired_window_days', 3);
 
         return MarketplaceSubscription::query()
-            ->whereIn('status', ['active', 'trialing'])
+            ->whereIn('status', ['active', 'trialing', 'canceled', 'expired'])
             ->whereNotNull('ends_at')
             ->where('ends_at', '<=', now()->addDays($renewalHorizon))
             ->where('ends_at', '>=', now()->subDays($expiryHorizon))

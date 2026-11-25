@@ -196,7 +196,7 @@ return [
                 ],
                 [
                     'q' => 'What happens when my plan expires?',
-                    'a' => 'You fall back to the Free state. Your data stays exactly where it is and extra listings are kept.',
+                    'a' => 'Freight discovery is paused until you renew. Your own posts and records remain accessible, and extra listings above the Free limit may be hidden.',
                 ],
                 [
                     'q' => 'Can I renew early?',

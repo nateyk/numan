@@ -31,7 +31,16 @@ class PublicFreightDiscoveryController extends Controller
 
     public function index(Request $request): Response
     {
-        $search = $request->query('search');
+        // No search, count, page links, or freight JSON reaches a viewer whose
+        // paid access has expired. Anonymous visitors are rejected at the route.
+        if (! app(MarketplaceEntitlementService::class)->canBrowseFreight($request->user()?->currentWorkspace)) {
+            return Inertia::render('discover/subscription-required');
+        }
+
+        // Bound public free-text search so a pasted paragraph cannot produce
+        // arbitrarily many relationship checks on the discovery board.
+        $rawSearch = $request->query('search');
+        $search = is_string($rawSearch) ? mb_substr(trim($rawSearch), 0, 120) : '';
         $cargo = $request->query('cargo');
         $sort = $request->query('sort', 'latest');
 
@@ -45,6 +54,7 @@ class PublicFreightDiscoveryController extends Controller
         $query = FreightPost::query()
             ->with(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot'])
             ->active()
+            ->withinPickupWindow()
             ->visible()
             ->when($request->query('origin'), function ($q, $origin) {
                 $this->whereLocationId($q, 'origin_location_id', $origin);
@@ -69,12 +79,40 @@ class PublicFreightDiscoveryController extends Controller
             ->when($request->query('pickup_to'), function ($q, $to) {
                 $q->where('pickup_date', '<=', $to);
             })
-            ->when($search, function ($q, $search) {
-                $q->where(function ($sq) use ($search) {
-                    $sq->where('cargo_description', 'like', "%{$search}%")
-                        ->orWhere('item_name', 'like', "%{$search}%")
-                        ->orWhere('ulid', 'like', "%{$search}%");
-                });
+            ->when($search !== '', function (Builder $q) use ($search) {
+                // Each term can match cargo or either end of the route. Terms
+                // are ANDed, so "Semera Shashemene" finds that lane even
+                // though the two city names are in different location rows.
+                // Parentheses keep active() and visible() scopes in force.
+                $terms = array_slice(
+                    preg_split('/\\s+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [],
+                    0,
+                    8,
+                );
+
+                foreach ($terms as $term) {
+                    $q->where(function (Builder $match) use ($term): void {
+                        $like = "%{$term}%";
+
+                        $match->where('cargo_description', 'like', $like)
+                            ->orWhere('item_name', 'like', $like)
+                            ->orWhere('ulid', 'like', $like)
+                            ->orWhereHas('cargoType', fn (Builder $related) => $related->where('name', 'like', $like))
+                            ->orWhereHas('truckType', fn (Builder $related) => $related->where('name', 'like', $like))
+                            ->orWhereHas('originLocation', function (Builder $location) use ($like): void {
+                                $location->where('name', 'like', $like)
+                                    ->orWhere('region_name', 'like', $like)
+                                    ->orWhere('wereda', 'like', $like)
+                                    ->orWhere('zone', 'like', $like);
+                            })
+                            ->orWhereHas('destinationLocation', function (Builder $location) use ($like): void {
+                                $location->where('name', 'like', $like)
+                                    ->orWhere('region_name', 'like', $like)
+                                    ->orWhere('wereda', 'like', $like)
+                                    ->orWhere('zone', 'like', $like);
+                            });
+                    });
+                }
             });
 
         // Apply sorting. The distance options order by the real route
@@ -84,7 +122,7 @@ class PublicFreightDiscoveryController extends Controller
             'distance_asc' => $this->orderByDistance($query, 'asc'),
             'distance_desc' => $this->orderByDistance($query, 'desc'),
             'pickup_asc' => $query->orderBy('pickup_date', 'asc')->orderBy('created_at', 'asc'),
-            default => $query->orderByDesc('pickup_date')->orderByDesc('created_at'),
+            default => $query->orderByDesc('published_at')->orderByDesc('created_at'),
         };
 
         $posts = $query->paginate(12)->withQueryString();
@@ -171,6 +209,13 @@ class PublicFreightDiscoveryController extends Controller
         $post->load(['user.profile', 'originLocation', 'destinationLocation', 'cargoType', 'truckType', 'routeSnapshot']);
 
         Gate::authorize('view', $post);
+
+        // A lapsed member can still manage their own posts. Every other
+        // listing detail must follow the same access rule as discovery.
+        if (! $this->mayManageHidden($request, $post)
+            && ! app(MarketplaceEntitlementService::class)->canBrowseFreight($request->user()?->currentWorkspace)) {
+            abort(403);
+        }
 
         // Interest state is only collected when the loop is enabled. The board
         // reveal below is independent of it.

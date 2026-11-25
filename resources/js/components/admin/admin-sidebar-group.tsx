@@ -49,6 +49,8 @@ export function AdminSidebarGroup({
                 currentPath.startsWith(item.href + '/'),
         );
         if (isActiveInGroup && !isExpanded) {
+            // Existing route-navigation expansion; state must follow the route.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsExpanded(true);
         }
     }, [currentPath, items, isExpanded]);
@@ -82,6 +84,7 @@ export function AdminSidebarGroup({
         <div className="mb-2">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
+                aria-expanded={isExpanded}
                 className={cn(
                     'flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isGroupActive
@@ -130,7 +133,7 @@ export function AdminSidebarGroup({
                                 )}
                                 <span className="flex-1">{item.title}</span>
                                 {item.badge !== undefined && item.badge > 0 && (
-                                    <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                                    <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums">
                                         {item.badge}
                                     </span>
                                 )}

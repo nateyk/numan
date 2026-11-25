@@ -36,6 +36,11 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/toast';
 import AppLayout from '@/layouts/app-layout';
+import {
+    formatFreightDate,
+    freightLifecycleLabel,
+    freightPublicationLabel,
+} from '@/lib/freight-dates';
 import { freightRoute, routeLabel } from '@/lib/freight-route';
 import { type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -43,9 +48,11 @@ import {
     AlertTriangle,
     ArrowRight,
     Calendar,
+    CheckCheck,
     CheckCircle2,
     ExternalLink,
     Eye,
+    LockKeyhole,
     MapPin,
     MoreHorizontal,
     Package,
@@ -76,6 +83,12 @@ interface Freight {
     truckType?: { name: string } | null;
     truck_type?: { name: string } | null;
     pickup_date: string | null;
+    expires_on?: string | null;
+    created_at?: string | null;
+    published_at?: string | null;
+    closed_at?: string | null;
+    closure_reason?: string | null;
+    arrived_at?: string | null;
     completion_score: number;
     interests_count?: number | null;
     hidden_at?: string | null;
@@ -104,6 +117,7 @@ const STATUSES = [
     { value: 'under_review', label: 'Under Review' },
     { value: 'active', label: 'Active' },
     { value: 'closed', label: 'Closed' },
+    { value: 'arrived', label: 'Arrived' },
     { value: 'expired', label: 'Expired' },
     { value: 'rejected', label: 'Rejected' },
 ];
@@ -118,12 +132,73 @@ const statusColor = (status: string) => {
         case 'rejected':
         case 'expired':
             return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
+        case 'arrived':
+            return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20';
         case 'closed':
             return 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/20';
         default:
             return 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/20';
     }
 };
+
+type LifecycleAction = 'close' | 'arrive';
+
+interface LifecycleTarget {
+    ulid: string;
+    label: string;
+    action: LifecycleAction;
+}
+
+function LifecycleMenuItems({
+    post,
+    onAction,
+}: {
+    post: Freight;
+    onAction: (target: LifecycleTarget) => void;
+}) {
+    const canClose = ['submitted', 'under_review', 'active'].includes(
+        post.status,
+    );
+    const canArrive =
+        post.status === 'closed' &&
+        !post.arrived_at &&
+        post.closure_reason !== 'cancelled';
+
+    if (!canClose && !canArrive) return null;
+
+    return (
+        <>
+            {canClose && (
+                <DropdownMenuItem
+                    onSelect={() => {
+                        onAction({
+                            ulid: post.ulid,
+                            label: routeLabel(post),
+                            action: 'close',
+                        });
+                    }}
+                >
+                    <LockKeyhole className="mr-2 size-4" />
+                    Close listing
+                </DropdownMenuItem>
+            )}
+            {canArrive && (
+                <DropdownMenuItem
+                    onSelect={() => {
+                        onAction({
+                            ulid: post.ulid,
+                            label: routeLabel(post),
+                            action: 'arrive',
+                        });
+                    }}
+                >
+                    <CheckCheck className="mr-2 size-4" />
+                    Mark arrived
+                </DropdownMenuItem>
+            )}
+        </>
+    );
+}
 
 export default function FreightIndex({
     posts,
@@ -154,6 +229,12 @@ export default function FreightIndex({
         label: string;
     } | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [lifecycleTarget, setLifecycleTarget] =
+        useState<LifecycleTarget | null>(null);
+    const [processingLifecycle, setProcessingLifecycle] = useState(false);
+    const [closureReason, setClosureReason] = useState<'matched' | 'cancelled'>(
+        'matched',
+    );
     const { addToast } = useToast();
 
     const confirmDelete = () => {
@@ -171,6 +252,41 @@ export default function FreightIndex({
                 setDeleteTarget(null);
             },
         });
+    };
+
+    const confirmLifecycle = () => {
+        if (!lifecycleTarget || processingLifecycle) return;
+
+        setProcessingLifecycle(true);
+        router.post(
+            `/my-freight/${lifecycleTarget.ulid}/${lifecycleTarget.action}`,
+            lifecycleTarget.action === 'close'
+                ? { closure_reason: closureReason }
+                : {},
+            {
+                preserveScroll: true,
+                onSuccess: () =>
+                    addToast(
+                        lifecycleTarget.action === 'close'
+                            ? 'Freight listing closed.'
+                            : 'Cargo marked as arrived.',
+                        'success',
+                    ),
+                onError: (errors) =>
+                    addToast(
+                        String(
+                            Object.values(errors)[0] ??
+                                'Could not update this freight post.',
+                        ),
+                        'error',
+                    ),
+                onFinish: () => {
+                    setProcessingLifecycle(false);
+                    setLifecycleTarget(null);
+                    setClosureReason('matched');
+                },
+            },
+        );
     };
 
     const allowPost = () => {
@@ -253,7 +369,8 @@ export default function FreightIndex({
                         My Freight
                     </h1>
                     <p className="text-sm text-muted-foreground sm:text-base">
-                        Search, track, and manage your freight posts in one place.
+                        Search, track, and manage your freight posts in one
+                        place.
                     </p>
                 </div>
 
@@ -282,19 +399,22 @@ export default function FreightIndex({
                                     placeholder="Search cargo, towns, or post ID"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="h-11 pr-12"
+                                    className="h-11 pr-14"
                                 />
                                 <Button
                                     type="submit"
                                     size="icon"
-                                    className="absolute top-1/2 right-1 size-9 -translate-y-1/2"
+                                    className="absolute top-0 right-0 size-11 rounded-l-none"
                                     aria-label="Search freight posts"
                                 >
-                                    <Search className="size-4" aria-hidden="true" />
+                                    <Search
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />
                                 </Button>
                             </div>
                         </form>
-                        <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[minmax(11rem,13rem)_auto] sm:self-end lg:shrink-0">
+                        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(11rem,13rem)_auto] sm:self-end lg:shrink-0">
                             <div className="min-w-0 space-y-1.5">
                                 <Label
                                     htmlFor="my-freight-status"
@@ -313,7 +433,10 @@ export default function FreightIndex({
                                     >
                                         <SelectValue placeholder="All statuses" />
                                     </SelectTrigger>
-                                    <SelectContent align="end" className="min-w-[12rem]">
+                                    <SelectContent
+                                        align="end"
+                                        className="min-w-[12rem]"
+                                    >
                                         {STATUSES.map((status) => (
                                             <SelectItem
                                                 key={status.value}
@@ -331,7 +454,7 @@ export default function FreightIndex({
                             </div>
                             <PostFreightButton
                                 onBeforePost={allowPost}
-                                className="h-11 w-full whitespace-nowrap px-3 sm:w-auto sm:min-w-36"
+                                className="h-11 w-full px-3 whitespace-nowrap sm:w-auto sm:min-w-36"
                             />
                         </div>
                     </div>
@@ -347,7 +470,7 @@ export default function FreightIndex({
                                         <TableHead>Route</TableHead>
                                         <TableHead>Cargo</TableHead>
                                         <TableHead>Truck</TableHead>
-                                        <TableHead>Pickup</TableHead>
+                                        <TableHead>Pickup / closes</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">
                                             Actions
@@ -397,12 +520,16 @@ export default function FreightIndex({
                                             // and finished posts can go; live posts
                                             // (submitted / under review / active)
                                             // carry other users' interests.
-                                            const canDelete = [
-                                                'draft',
-                                                'rejected',
-                                                'closed',
-                                                'expired',
-                                            ].includes(p.status);
+                                            const canDelete =
+                                                [
+                                                    'draft',
+                                                    'rejected',
+                                                    'closed',
+                                                    'expired',
+                                                ].includes(p.status) &&
+                                                (p.interests_count ?? 0) ===
+                                                    0 &&
+                                                !p.arrived_at;
                                             return (
                                                 <TableRow key={p.ulid}>
                                                     <TableCell>
@@ -426,6 +553,10 @@ export default function FreightIndex({
                                                                 ''}{' '}
                                                             •{' '}
                                                             {p.ulid.slice(0, 8)}
+                                                            {' · '}
+                                                            {freightPublicationLabel(
+                                                                p,
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -450,23 +581,31 @@ export default function FreightIndex({
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                             <Calendar className="size-4 text-muted-foreground" />{' '}
-                                                            {p.pickup_date
-                                                                ? String(
-                                                                      p.pickup_date,
-                                                                  ).slice(0, 10)
-                                                                : '—'}
+                                                            {formatFreightDate(
+                                                                p.pickup_date,
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {freightLifecycleLabel(
+                                                                p,
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-wrap items-center gap-1">
                                                             <Badge
                                                                 variant="secondary"
-                                                                className={`${statusColor(p.status)} capitalize`}
+                                                                className={`${statusColor(p.arrived_at ? 'arrived' : p.status)} capitalize`}
                                                             >
-                                                                {p.status.replace(
-                                                                    '_',
-                                                                    ' ',
-                                                                )}
+                                                                {p.arrived_at
+                                                                    ? 'Arrived'
+                                                                    : p.closure_reason ===
+                                                                        'cancelled'
+                                                                      ? 'Cancelled'
+                                                                      : p.status.replaceAll(
+                                                                            '_',
+                                                                            ' ',
+                                                                        )}
                                                             </Badge>
                                                             {p.hidden_at && (
                                                                 <Badge
@@ -507,7 +646,7 @@ export default function FreightIndex({
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="size-9"
-                                                                         aria-label={`More actions for ${routeLabel(p)}`}
+                                                                        aria-label={`More actions for ${routeLabel(p)}`}
                                                                     >
                                                                         <MoreHorizontal className="size-4" />
                                                                     </Button>
@@ -594,6 +733,12 @@ export default function FreightIndex({
                                                                                 </Link>
                                                                             </DropdownMenuItem>
                                                                         )}
+                                                                    <LifecycleMenuItems
+                                                                        post={p}
+                                                                        onAction={
+                                                                            setLifecycleTarget
+                                                                        }
+                                                                    />
                                                                     <DropdownMenuSeparator />
                                                                     {canDelete && (
                                                                         <DropdownMenuItem
@@ -651,12 +796,15 @@ export default function FreightIndex({
                                 freightRoute(p);
                             const isDraft = p.status === 'draft';
                             // Same rule as the desktop table and the policy.
-                            const canDelete = [
-                                'draft',
-                                'rejected',
-                                'closed',
-                                'expired',
-                            ].includes(p.status);
+                            const canDelete =
+                                [
+                                    'draft',
+                                    'rejected',
+                                    'closed',
+                                    'expired',
+                                ].includes(p.status) &&
+                                (p.interests_count ?? 0) === 0 &&
+                                !p.arrived_at;
                             return (
                                 <Card key={p.ulid} className="p-4">
                                     <div className="flex items-start justify-between gap-3">
@@ -670,9 +818,17 @@ export default function FreightIndex({
                                         </div>
                                         <Badge
                                             variant="secondary"
-                                            className={`${statusColor(p.status)} text-xs capitalize`}
+                                            className={`${statusColor(p.arrived_at ? 'arrived' : p.status)} text-xs capitalize`}
                                         >
-                                            {p.status.replace('_', ' ')}
+                                            {p.arrived_at
+                                                ? 'Arrived'
+                                                : p.closure_reason ===
+                                                    'cancelled'
+                                                  ? 'Cancelled'
+                                                  : p.status.replaceAll(
+                                                        '_',
+                                                        ' ',
+                                                    )}
                                         </Badge>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -682,12 +838,7 @@ export default function FreightIndex({
                                         </Badge>
                                         <Badge variant="secondary">
                                             <Calendar className="mr-1 size-3" />
-                                            {p.pickup_date
-                                                ? String(p.pickup_date).slice(
-                                                      0,
-                                                      10,
-                                                  )
-                                                : '—'}
+                                            {formatFreightDate(p.pickup_date)}
                                         </Badge>
                                         {/* The desktop table carries this badge
                                             too. Without it here, the banner says
@@ -702,6 +853,11 @@ export default function FreightIndex({
                                             </Badge>
                                         )}
                                     </div>
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                        {freightPublicationLabel(p)}
+                                        {' · '}
+                                        {freightLifecycleLabel(p)}
+                                    </p>
                                     <div className="mt-3 flex gap-2">
                                         <Button
                                             asChild
@@ -755,6 +911,12 @@ export default function FreightIndex({
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
+                                                <LifecycleMenuItems
+                                                    post={p}
+                                                    onAction={
+                                                        setLifecycleTarget
+                                                    }
+                                                />
                                                 {canDelete && (
                                                     <DropdownMenuItem
                                                         className="text-destructive"
@@ -850,6 +1012,83 @@ export default function FreightIndex({
                             </Button>
                             <Button asChild>
                                 <Link href="/billing/plans">View plans</Link>
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                <Dialog
+                    open={lifecycleTarget !== null}
+                    onOpenChange={(open) => {
+                        if (!open) setLifecycleTarget(null);
+                    }}
+                >
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {lifecycleTarget?.action === 'close'
+                                    ? 'Close this freight listing?'
+                                    : 'Confirm cargo arrival?'}
+                            </DialogTitle>
+                            <DialogDescription>
+                                {lifecycleTarget?.label ?? 'This freight'}
+                                {lifecycleTarget?.action === 'close'
+                                    ? ' will stop accepting transporter enquiries. This does not confirm delivery.'
+                                    : ' will be recorded as arrived at its destination.'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        {lifecycleTarget?.action === 'close' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="freight-closure-reason">
+                                    Why are you closing this listing?
+                                </Label>
+                                <Select
+                                    value={closureReason}
+                                    onValueChange={(value) =>
+                                        setClosureReason(
+                                            value as 'matched' | 'cancelled',
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="freight-closure-reason"
+                                        className="w-full"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[2100]">
+                                        <SelectItem value="matched">
+                                            Transport arranged
+                                        </SelectItem>
+                                        <SelectItem value="cancelled">
+                                            Cancelled / no longer needed
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {closureReason === 'cancelled' && (
+                                    <p className="text-xs text-muted-foreground">
+                                        A cancelled freight cannot be marked as
+                                        arrived.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        <DialogFooter className="gap-2">
+                            <Button
+                                variant="outline"
+                                disabled={processingLifecycle}
+                                onClick={() => setLifecycleTarget(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                disabled={processingLifecycle}
+                                onClick={confirmLifecycle}
+                            >
+                                {processingLifecycle
+                                    ? 'Saving…'
+                                    : lifecycleTarget?.action === 'close'
+                                      ? 'Close listing'
+                                      : 'Mark arrived'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

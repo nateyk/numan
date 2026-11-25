@@ -27,6 +27,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    formatFreightDate,
+    freightLifecycleLabel,
+    freightPublicationLabel,
+} from '@/lib/freight-dates';
 import { freightRoute } from '@/lib/freight-route';
 import type { SharedData } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
@@ -58,6 +63,9 @@ interface Freight {
     tariff_amount?: string | null;
     tariff_currency?: string | null;
     pickup_date: string | null;
+    expires_on?: string | null;
+    created_at?: string | null;
+    published_at?: string | null;
     pickup_time?: string | null;
     truck_count?: number | null;
     /**
@@ -171,7 +179,6 @@ export default function DiscoverIndex({
     // "Updating results…" instead of announcing a sort order that has not
     // landed yet.
     const [updatingResults, setUpdatingResults] = useState(false);
-    const [showMoreFilters, setShowMoreFilters] = useState(false);
 
     // Express Interest is a commitment the shipper sees, so it asks first: one
     // tap used to fire the POST from mid-scroll with no confirmation and no
@@ -313,6 +320,7 @@ export default function DiscoverIndex({
         setOriginName('');
         setDestinationName('');
         setSelectedCargo('all');
+        setSelectedSort('latest');
         setSearchQuery('');
         router.get('/freight', {}, { preserveState: true });
     };
@@ -348,7 +356,10 @@ export default function DiscoverIndex({
             <div className="min-h-screen bg-background text-foreground">
                 <DiscoveryHeader canRegister={canRegister} />
                 <main id="main-content">
-                    <section aria-labelledby="freight-heading" className="pt-6 pb-3 sm:pt-8 sm:pb-4">
+                    <section
+                        aria-labelledby="freight-heading"
+                        className="pt-6 pb-3 sm:pt-8 sm:pb-4"
+                    >
                         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="mb-4">
                                 <h1
@@ -374,7 +385,7 @@ export default function DiscoverIndex({
                                             e.preventDefault();
                                             doSearch();
                                         }}
-                                        aria-label="Filter freight posts"
+                                        aria-label="Search and filter freight posts"
                                         className="space-y-4"
                                     >
                                         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end">
@@ -383,7 +394,7 @@ export default function DiscoverIndex({
                                                     htmlFor="freight-search"
                                                     className="text-xs font-medium"
                                                 >
-                                                    Search
+                                                    Search freight
                                                 </Label>
                                                 <div className="relative">
                                                     <Search
@@ -393,7 +404,7 @@ export default function DiscoverIndex({
                                                     <Input
                                                         id="freight-search"
                                                         type="search"
-                                                        placeholder="Search cargo, description..."
+                                                        placeholder="Cargo, city, region or route…"
                                                         value={searchQuery}
                                                         onChange={(e) =>
                                                             setSearchQuery(
@@ -401,7 +412,7 @@ export default function DiscoverIndex({
                                                             )
                                                         }
                                                         className="h-11 pl-10"
-                                                        aria-label="Search cargo and description"
+                                                        aria-label="Search freight by cargo, city, region or route"
                                                     />
                                                 </div>
                                             </div>
@@ -481,195 +492,189 @@ export default function DiscoverIndex({
                                         </div>
 
                                         <div className="sm:contents">
-                                            <button
-                                                type="button"
-                                                aria-expanded={showMoreFilters}
-                                                aria-controls="freight-advanced-filters"
-                                                onClick={() => setShowMoreFilters((current) => !current)}
-                                                className="flex min-h-11 w-full items-center justify-between rounded-md border bg-muted/40 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
-                                            >
-                                                <span className="inline-flex items-center gap-2">
-                                                    <SlidersHorizontal className="size-4" aria-hidden="true" />
-                                                    Route & cargo filters
-                                                </span>
-                                                <ChevronDown className={showMoreFilters ? 'size-4 rotate-180 text-muted-foreground transition-transform' : 'size-4 text-muted-foreground transition-transform'} aria-hidden="true" />
-                                            </button>
                                             <fieldset
                                                 id="freight-advanced-filters"
-                                                className={showMoreFilters ? 'mt-3 block border-0 p-0 sm:mt-0 sm:block' : 'mt-3 hidden border-0 p-0 sm:mt-0 sm:block'}
+                                                className="border-0 p-0"
                                             >
-                                            <legend className="sr-only">
-                                                Location and cargo filters
-                                            </legend>
-                                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(16rem,1fr)]">
-                                                <div className="min-w-0 space-y-1.5">
-                                                    <Label
-                                                        htmlFor="origin-filter"
-                                                        className="text-xs font-medium"
-                                                    >
-                                                        Origin
-                                                    </Label>
-                                                    <LocationSearchInput
-                                                        id="origin-filter"
-                                                        ariaLabel="Origin location"
-                                                        initialName={
-                                                            originName ||
-                                                            undefined
-                                                        }
-                                                        onSelectLocation={(
-                                                            loc,
-                                                        ) => {
-                                                            setOrigin(
-                                                                loc
-                                                                    ? String(
-                                                                          loc.id,
-                                                                      )
-                                                                    : '',
-                                                            );
-                                                            setOriginName(
-                                                                loc
-                                                                    ? `${loc.name}, ${loc.region_name}`
-                                                                    : '',
-                                                            );
-                                                        }}
-                                                        placeholder="Addis Ababa…"
-                                                        className="w-full [&_input]:h-11"
-                                                        localOnly
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 space-y-1.5">
-                                                    <Label
-                                                        htmlFor="destination-filter"
-                                                        className="text-xs font-medium"
-                                                    >
-                                                        Destination
-                                                    </Label>
-                                                    <LocationSearchInput
-                                                        id="destination-filter"
-                                                        ariaLabel="Destination location"
-                                                        initialName={
-                                                            destinationName ||
-                                                            undefined
-                                                        }
-                                                        onSelectLocation={(
-                                                            loc,
-                                                        ) => {
-                                                            setDestination(
-                                                                loc
-                                                                    ? String(
-                                                                          loc.id,
-                                                                      )
-                                                                    : '',
-                                                            );
-                                                            setDestinationName(
-                                                                loc
-                                                                    ? `${loc.name}, ${loc.region_name}`
-                                                                    : '',
-                                                            );
-                                                        }}
-                                                        placeholder="Hawassa…"
-                                                        className="w-full [&_input]:h-11"
-                                                        localOnly
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 space-y-1.5">
-                                                    <Label
-                                                        className="text-xs font-medium"
-                                                        id="cargo-label"
-                                                    >
-                                                        Cargo
-                                                    </Label>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger
-                                                            asChild
+                                                <legend className="sr-only">
+                                                    Route and cargo filters
+                                                </legend>
+                                                <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(16rem,1fr)]">
+                                                    <div className="min-w-0 space-y-1.5">
+                                                        <Label
+                                                            htmlFor="origin-filter"
+                                                            className="text-xs font-medium"
                                                         >
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-11 w-full justify-between gap-2 px-3 text-sm"
-                                                                aria-labelledby="cargo-label"
-                                                            >
-                                                                {selectedCargo ===
-                                                                'all'
-                                                                    ? 'All Cargo'
-                                                                    : selectedCargo}
-                                                                <ChevronDown
-                                                                    className="size-3 opacity-50"
-                                                                    aria-hidden="true"
-                                                                />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent className="w-56">
-                                                            {[
-                                                                'all',
-                                                                'General',
-                                                                'Cereals',
-                                                                'Construction',
-                                                                'Refrigerated',
-                                                            ].map((c) => (
-                                                                <DropdownMenuItem
-                                                                    key={c}
-                                                                    onClick={() => {
-                                                                        setSelectedCargo(
-                                                                            c,
-                                                                        );
-                                                                        doSearch(
-                                                                            {
-                                                                                cargo: c,
-                                                                            },
-                                                                        );
-                                                                    }}
-                                                                    className={
-                                                                        selectedCargo ===
-                                                                        c
-                                                                            ? 'bg-accent'
-                                                                            : ''
-                                                                    }
-                                                                    aria-current={
-                                                                        selectedCargo ===
-                                                                        c
-                                                                            ? 'true'
-                                                                            : undefined
-                                                                    }
-                                                                >
-                                                                    {c === 'all'
-                                                                        ? 'All Cargo'
-                                                                        : c}
-                                                                </DropdownMenuItem>
-                                                            ))}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                                <div
-                                                    role="group"
-                                                    aria-label="Filter actions"
-                                                    className="flex min-w-0 items-center gap-2 self-end"
-                                                >
-                                                    <Button
-                                                        type="submit"
-                                                        className="h-11 min-w-0 flex-1 px-3 text-sm"
-                                                        disabled={updatingResults}
-                                                    >
-                                                        <Search
-                                                            className="size-4"
-                                                            aria-hidden="true"
+                                                            Origin
+                                                        </Label>
+                                                        <LocationSearchInput
+                                                            key={`origin-${origin || 'all'}`}
+                                                            id="origin-filter"
+                                                            ariaLabel="Origin location"
+                                                            initialName={
+                                                                originName ||
+                                                                undefined
+                                                            }
+                                                            onSelectLocation={(
+                                                                loc,
+                                                            ) => {
+                                                                setOrigin(
+                                                                    loc
+                                                                        ? String(
+                                                                              loc.id,
+                                                                          )
+                                                                        : '',
+                                                                );
+                                                                setOriginName(
+                                                                    loc
+                                                                        ? `${loc.name}, ${loc.region_name}`
+                                                                        : '',
+                                                                );
+                                                            }}
+                                                            placeholder="Addis Ababa…"
+                                                            className="w-full [&_input]:h-11"
+                                                            localOnly
                                                         />
-                                                        {updatingResults
-                                                            ? 'Applying…'
-                                                            : 'Apply filters'}
-                                                    </Button>
-                                                    {hasActiveFilters && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            onClick={clearAll}
-                                                            className="h-11 shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                                    </div>
+                                                    <div className="min-w-0 space-y-1.5">
+                                                        <Label
+                                                            htmlFor="destination-filter"
+                                                            className="text-xs font-medium"
                                                         >
-                                                            Clear all
+                                                            Destination
+                                                        </Label>
+                                                        <LocationSearchInput
+                                                            key={`destination-${destination || 'all'}`}
+                                                            id="destination-filter"
+                                                            ariaLabel="Destination location"
+                                                            initialName={
+                                                                destinationName ||
+                                                                undefined
+                                                            }
+                                                            onSelectLocation={(
+                                                                loc,
+                                                            ) => {
+                                                                setDestination(
+                                                                    loc
+                                                                        ? String(
+                                                                              loc.id,
+                                                                          )
+                                                                        : '',
+                                                                );
+                                                                setDestinationName(
+                                                                    loc
+                                                                        ? `${loc.name}, ${loc.region_name}`
+                                                                        : '',
+                                                                );
+                                                            }}
+                                                            placeholder="Hawassa…"
+                                                            className="w-full [&_input]:h-11"
+                                                            localOnly
+                                                        />
+                                                    </div>
+                                                    <div className="min-w-0 space-y-1.5">
+                                                        <Label
+                                                            className="text-xs font-medium"
+                                                            id="cargo-label"
+                                                        >
+                                                            Cargo
+                                                        </Label>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger
+                                                                asChild
+                                                            >
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-11 w-full justify-between gap-2 px-3 text-sm"
+                                                                    aria-labelledby="cargo-label"
+                                                                >
+                                                                    {selectedCargo ===
+                                                                    'all'
+                                                                        ? 'All Cargo'
+                                                                        : selectedCargo}
+                                                                    <ChevronDown
+                                                                        className="size-3 opacity-50"
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent className="w-56">
+                                                                {[
+                                                                    'all',
+                                                                    'General',
+                                                                    'Cereals',
+                                                                    'Construction',
+                                                                    'Refrigerated',
+                                                                ].map((c) => (
+                                                                    <DropdownMenuItem
+                                                                        key={c}
+                                                                        onClick={() => {
+                                                                            setSelectedCargo(
+                                                                                c,
+                                                                            );
+                                                                            doSearch(
+                                                                                {
+                                                                                    cargo: c,
+                                                                                },
+                                                                            );
+                                                                        }}
+                                                                        className={
+                                                                            selectedCargo ===
+                                                                            c
+                                                                                ? 'bg-accent'
+                                                                                : ''
+                                                                        }
+                                                                        aria-current={
+                                                                            selectedCargo ===
+                                                                            c
+                                                                                ? 'true'
+                                                                                : undefined
+                                                                        }
+                                                                    >
+                                                                        {c ===
+                                                                        'all'
+                                                                            ? 'All Cargo'
+                                                                            : c}
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                    <div
+                                                        role="group"
+                                                        aria-label="Filter actions"
+                                                        className="flex min-w-0 items-center gap-2 self-end"
+                                                    >
+                                                        <Button
+                                                            type="submit"
+                                                            className="h-11 min-w-0 flex-1 px-3 text-sm"
+                                                            disabled={
+                                                                updatingResults
+                                                            }
+                                                        >
+                                                            <Search
+                                                                className="size-4"
+                                                                aria-hidden="true"
+                                                            />
+                                                            {updatingResults
+                                                                ? 'Applying…'
+                                                                : 'Apply filters'}
                                                         </Button>
-                                                    )}
+                                                        {hasActiveFilters && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                onClick={
+                                                                    clearAll
+                                                                }
+                                                                className="h-11 shrink-0 px-2 text-sm text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                Clear all
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
                                             </fieldset>
                                         </div>
                                     </form>
@@ -723,15 +728,28 @@ export default function DiscoverIndex({
                                             <div>
                                                 <p className="text-sm font-medium">
                                                     Posting limit reached on{' '}
-                                                    {marketplaceEntitlement.plan.name}
+                                                    {
+                                                        marketplaceEntitlement
+                                                            .plan.name
+                                                    }
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    You can still browse loads. Upgrade to post more freight, billed in ETB via Chapa.
+                                                    You can still browse loads.
+                                                    Upgrade to post more
+                                                    freight, billed in ETB via
+                                                    Chapa.
                                                 </p>
                                             </div>
                                         </div>
-                                        <Button size="sm" variant="outline" className="min-h-9" asChild>
-                                            <Link href="/billing/plans">View plans</Link>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="min-h-9"
+                                            asChild
+                                        >
+                                            <Link href="/billing/plans">
+                                                View plans
+                                            </Link>
                                         </Button>
                                     </aside>
                                 )}
@@ -920,183 +938,150 @@ export default function DiscoverIndex({
                                                 key={f.ulid}
                                                 role="listitem"
                                                 aria-labelledby={titleId}
-                                                className="flex flex-col gap-0 overflow-hidden border bg-card py-0 shadow-xs transition-colors hover:border-primary/25"
+                                                className="flex flex-col gap-0 overflow-hidden border bg-card py-0 shadow-none"
                                             >
-                                                <div className="p-4 pb-3">
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <h3
-                                                            id={titleId}
-                                                            className="flex min-w-0 items-center gap-2 text-base font-semibold tracking-tight"
-                                                        >
-                                                            <span
-                                                                className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10"
-                                                                aria-hidden="true"
+                                                <div className="flex flex-1 flex-col gap-3 p-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <h3
+                                                                id={titleId}
+                                                                className="flex min-w-0 flex-1 items-start gap-2 text-sm leading-5 font-semibold tracking-tight"
                                                             >
-                                                                <MapPin className="size-3.5 text-primary" />
-                                                            </span>
-                                                            <span className="truncate">
-                                                                {origin?.name ??
-                                                                    '—'}
-                                                            </span>
-                                                            <ArrowRight
-                                                                className="size-3.5 shrink-0 text-muted-foreground/50"
-                                                                aria-hidden="true"
-                                                            />
-                                                            <span className="truncate">
-                                                                {destination?.name ??
-                                                                    '—'}
-                                                            </span>
-                                                        </h3>
-                                                        <Badge
-                                                            variant={
-                                                                interest
-                                                                    ? interest.status ===
-                                                                          'rejected' ||
-                                                                      interest.status ===
-                                                                          'withdrawn'
-                                                                        ? 'destructive'
-                                                                        : 'secondary'
-                                                                    : isOwn
-                                                                      ? 'outline'
-                                                                      : 'default'
-                                                            }
-                                                            className="shrink-0 rounded-full px-2.5 py-1 text-xs capitalize"
-                                                            aria-label={`Status: ${interest ? interest.status : isOwn ? 'Your Post' : 'Active'}`}
-                                                        >
-                                                            {interest
-                                                                ? interest.status
-                                                                : isOwn
-                                                                  ? 'Your Post'
-                                                                  : 'Active'}
-                                                        </Badge>
-                                                    </div>
-                                                    {(distanceText ||
-                                                        durationText) && (
-                                                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                                                            {(distanceText ||
-                                                                durationText) && (
-                                                                <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-                                                                    {
-                                                                        distanceText
-                                                                    }
-                                                                    {distanceText &&
-                                                                        durationText && (
-                                                                            <span
-                                                                                className="text-muted-foreground/50"
-                                                                                aria-hidden="true"
-                                                                            >
-                                                                                ·
-                                                                            </span>
-                                                                        )}
-                                                                    {
-                                                                        durationText
-                                                                    }
+                                                                <MapPin
+                                                                    aria-hidden="true"
+                                                                    className="mt-0.5 size-4 shrink-0 text-primary"
+                                                                />
+                                                                <span className="min-w-0 break-words">
+                                                                    {origin?.name ??
+                                                                        '—'}
+                                                                    <ArrowRight
+                                                                        aria-hidden="true"
+                                                                        className="mx-1.5 inline size-3.5 shrink-0 align-middle text-muted-foreground"
+                                                                    />
+                                                                    {destination?.name ??
+                                                                        '—'}
                                                                 </span>
-                                                            )}
+                                                            </h3>
+                                                            <Badge
+                                                                variant={
+                                                                    interest &&
+                                                                    [
+                                                                        'rejected',
+                                                                        'withdrawn',
+                                                                    ].includes(
+                                                                        interest.status,
+                                                                    )
+                                                                        ? 'destructive'
+                                                                        : 'outline'
+                                                                }
+                                                                className="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize"
+                                                                aria-label={`Status: ${interest ? interest.status : isOwn ? 'Your Post' : 'Active'}`}
+                                                            >
+                                                                {interest
+                                                                    ? interest.status
+                                                                    : isOwn
+                                                                      ? 'Your Post'
+                                                                      : 'Active'}
+                                                            </Badge>
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-1 flex-col gap-3 px-4 pb-4">
-                                                    <div className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3">
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                                                                <Package
-                                                                    className="size-3.5"
-                                                                    aria-hidden="true"
-                                                                />{' '}
-                                                                Item
-                                                            </span>
-                                                            <span className="break-words text-sm font-medium">
-                                                                {(
-                                                                    f as unknown as {
-                                                                        item_name?: string;
-                                                                    }
-                                                                ).item_name ??
-                                                                    cargoType?.name ??
-                                                                    'General Cargo'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                        {(distanceText ||
+                                                            durationText) && (
+                                                            <p className="pl-6 text-xs text-muted-foreground">
+                                                                {distanceText}
+                                                                {distanceText &&
+                                                                    durationText &&
+                                                                    ' · '}
+                                                                {durationText}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="border-t border-border/70 pt-3">
+                                                        <p
+                                                            className="line-clamp-2 text-sm leading-5 font-medium"
+                                                            title={
+                                                                f.item_name ??
+                                                                cargoType?.name ??
+                                                                'General cargo'
+                                                            }
+                                                        >
+                                                            {f.item_name ??
+                                                                cargoType?.name ??
+                                                                'General cargo'}
+                                                        </p>
+                                                    </div>
+
+                                                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                                                                 <Calendar
-                                                                    className="size-3.5"
                                                                     aria-hidden="true"
-                                                                />{' '}
+                                                                    className="size-3.5"
+                                                                />
                                                                 Pickup
-                                                            </span>
-                                                            <span className="break-words text-sm font-medium">
-                                                                {f.pickup_date
-                                                                    ? String(
-                                                                          f.pickup_date,
-                                                                      ).slice(
-                                                                          0,
-                                                                          10,
-                                                                      )
-                                                                    : 'Flexible'}
-                                                                {(
-                                                                    f as unknown as {
-                                                                        pickup_time?: string;
-                                                                    }
-                                                                ).pickup_time
-                                                                    ? ` ${String((f as unknown as { pickup_time?: string }).pickup_time).slice(0, 5)}`
-                                                                    : ''}
-                                                            </span>
+                                                            </dt>
+                                                            <dd className="font-medium break-words">
+                                                                {formatFreightDate(
+                                                                    f.pickup_date,
+                                                                )}
+                                                                {f.pickup_time &&
+                                                                    ` · ${String(f.pickup_time).slice(0, 5)}`}
+                                                            </dd>
                                                         </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-3 text-xs">
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                                                                 <Weight
-                                                                    className="size-3.5"
                                                                     aria-hidden="true"
-                                                                />{' '}
+                                                                    className="size-3.5"
+                                                                />
                                                                 Weight
-                                                            </span>
-                                                            <span className="break-words text-sm font-semibold">
-                                                                {(
-                                                                    f as unknown as {
-                                                                        actual_weight?: string;
-                                                                    }
-                                                                ).actual_weight
-                                                                    ? `${(f as unknown as { actual_weight?: string }).actual_weight} ${(f as unknown as { weight_unit?: string }).weight_unit ?? 'ton'}`
+                                                            </dt>
+                                                            <dd className="font-medium break-words">
+                                                                {f.actual_weight
+                                                                    ? `${f.actual_weight} ${f.weight_unit ?? 'ton'}`
                                                                     : '—'}
-                                                            </span>
+                                                            </dd>
                                                         </div>
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                                                                 <Banknote
-                                                                    className="size-3.5"
                                                                     aria-hidden="true"
-                                                                />{' '}
+                                                                    className="size-3.5"
+                                                                />
                                                                 Tariff
-                                                            </span>
-                                                            <span className="break-words text-sm font-semibold">
-                                                                {(
-                                                                    f as unknown as {
-                                                                        tariff_amount?: string;
-                                                                    }
-                                                                ).tariff_amount
-                                                                    ? `${(f as unknown as { tariff_amount?: string }).tariff_amount} ${(f as unknown as { tariff_currency?: string }).tariff_currency ?? 'ETB'}`
+                                                            </dt>
+                                                            <dd className="font-semibold break-words">
+                                                                {f.tariff_amount
+                                                                    ? `${Number(f.tariff_amount).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${f.tariff_currency ?? 'ETB'}`
                                                                     : '—'}
-                                                            </span>
+                                                            </dd>
                                                         </div>
-                                                        <div className="flex min-w-0 flex-col items-start gap-1">
-                                                            <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                                                        <div className="min-w-0">
+                                                            <dt className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                                                                 <Truck
-                                                                    className="size-3.5"
                                                                     aria-hidden="true"
-                                                                />{' '}
+                                                                    className="size-3.5"
+                                                                />
                                                                 Trucks
-                                                            </span>
-                                                            <span className="break-words text-sm font-semibold">
+                                                            </dt>
+                                                            <dd className="font-medium break-words">
                                                                 {truckType?.name ??
-                                                                    'Any'}{' '}
+                                                                    'Any'}
                                                                 {f.truck_count
-                                                                    ? `×${f.truck_count}`
+                                                                    ? ` ×${f.truck_count}`
                                                                     : ''}
-                                                            </span>
+                                                            </dd>
                                                         </div>
-                                                    </div>
+                                                    </dl>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {freightPublicationLabel(
+                                                            f,
+                                                        )}
+                                                        {' · '}
+                                                        {freightLifecycleLabel(
+                                                            f,
+                                                        )}
+                                                    </p>
                                                 </div>
                                                 <div className="flex gap-2 border-t border-border/70 px-4 py-3">
                                                     <Button
@@ -1110,14 +1095,7 @@ export default function DiscoverIndex({
                                                             View Details
                                                         </Link>
                                                     </Button>
-                                                    {isOwn ? (
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="flex flex-1 items-center justify-center rounded-md py-2 text-sm"
-                                                        >
-                                                            Your Post
-                                                        </Badge>
-                                                    ) : interest ? (
+                                                    {isOwn ? null : interest ? (
                                                         <Button
                                                             variant="outline"
                                                             className="min-h-11 flex-1 text-sm capitalize"

@@ -57,7 +57,7 @@ function NumberInput({
                 }
             >
                 <SelectTrigger
-                    className="w-28 shrink-0"
+                    className="h-11 w-28 shrink-0 bg-background"
                     aria-label={`Country code for ${label}`}
                 >
                     <SelectValue>
@@ -81,6 +81,7 @@ function NumberInput({
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel-national"
+                className="h-11 min-w-0 flex-1"
                 value={national}
                 placeholder={country ? '91 123 4567' : '+44 7700 900123'}
                 required={required}
@@ -128,7 +129,7 @@ export default function ContactNumberFields({
                         <Label htmlFor={id} className="sr-only">
                             {label} {index + 1}
                         </Label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                             <div className="min-w-0 flex-1">
                                 <NumberInput
                                     id={id}
@@ -152,6 +153,7 @@ export default function ContactNumberFields({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
+                                    className="size-11 shrink-0"
                                     aria-label={`Remove ${label.toLowerCase()} ${index + 1}`}
                                     onClick={() => {
                                         onChange(
@@ -174,6 +176,7 @@ export default function ContactNumberFields({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="min-h-11"
                 onClick={() => onChange([...numbers, ''])}
             >
                 <Plus className="size-4" />

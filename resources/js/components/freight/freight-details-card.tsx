@@ -5,9 +5,12 @@ import {
     formatDistance,
     formatDuration,
 } from '@/components/freight/format-route';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Route, Truck } from 'lucide-react';
+import {
+    formatFreightDate,
+    freightLifecycleLabel,
+    freightPublicationLabel,
+} from '@/lib/freight-dates';
+import { CalendarDays, ClipboardList, Package, Route } from 'lucide-react';
 
 /**
  * What FreightPostResource sends. Explicit, and only these keys.
@@ -36,6 +39,11 @@ export type FreightDetailsPost = {
     pickup_date: string | null;
     pickup_time: string | null;
     pickup_date_flexibility_days: number | null;
+    expires_on: string | null;
+    published_at: string | null;
+    closure_reason: string | null;
+    arrived_at: string | null;
+    closed_at: string | null;
     created_at: string | null;
     origin_site_note: string | null;
     destination_site_note: string | null;
@@ -74,28 +82,7 @@ function longitudeOf(place: FreightDetailsPost['origin']): number | null {
     return Number(place.longitude);
 }
 
-/**
- * The product's own names for the two ways a load can be awarded. The API
- * stores `one_time` / `recurring`; neither belongs on a public page.
- */
-const scheduleCopy: Record<string, { label: string; detail: string }> = {
-    one_time: {
-        label: 'Direct offer',
-        detail: 'One-time freight, first suitable transporter gets it.',
-    },
-    recurring: {
-        label: 'Tender',
-        detail: 'Recurring need, collect multiple offers.',
-    },
-};
-
-function humanize(value: string): string {
-    const words = value.replaceAll('_', ' ');
-
-    return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-/** Aligned load-sheet rows wrap long place names without horizontal scrolling. */
+/** One full-width list row per fact; no paired mini-fields within a section. */
 function Fact({
     label,
     value,
@@ -106,12 +93,14 @@ function Fact({
     detail?: string;
 }) {
     return (
-        <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 border-b border-border/60 py-2 last:border-0">
-            <dt className="text-sm text-muted-foreground">{label}</dt>
-            <dd className="min-w-0 text-sm font-medium break-words whitespace-pre-line">
+        <div className="grid min-w-0 grid-cols-[6.25rem_minmax(0,1fr)] items-start gap-x-3 py-2.5 first:pt-0 last:pb-0 sm:grid-cols-[7rem_minmax(0,1fr)]">
+            <dt className="text-xs leading-relaxed text-muted-foreground">
+                {label}
+            </dt>
+            <dd className="min-w-0 text-sm leading-relaxed font-medium break-words whitespace-pre-line">
                 {value}
                 {detail && (
-                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                         {detail}
                     </span>
                 )}
@@ -120,213 +109,163 @@ function Fact({
     );
 }
 
-function placeLabel(place: FreightDetailsPost['origin']): string {
-    if (!place) return 'Not stated';
-
-    return place.region_name
-        ? `${place.name} (${place.region_name})`
-        : place.name;
-}
-
 export default function FreightDetailsCard({
     post,
 }: {
     post: FreightDetailsPost;
 }) {
-    const origin = post.origin;
-    const destination = post.destination;
+    const scheduleCopy: Record<string, string> = {
+        one_time: 'Direct offer',
+        recurring: 'Tender',
+    };
+    const offerType = post.schedule_type
+        ? (scheduleCopy[post.schedule_type] ??
+          post.schedule_type.replaceAll('_', ' '))
+        : null;
 
-    const schedule = post.schedule_type
-        ? scheduleCopy[post.schedule_type]
-        : undefined;
-    const scheduleLabel =
-        schedule?.label ?? humanize(post.schedule_type ?? 'one_time');
-
-    // The wizard collects the goods in item_name; cargo_description is an older
-    // field the API still sends. Show it only when it adds something, so the
-    // card never prints the same sentence twice.
-    const description =
-        post.cargo_description && post.cargo_description !== post.item_name
-            ? post.cargo_description
-            : null;
-
-    const tariff = post.tariff_amount
-        ? `${post.tariff_currency ?? 'ETB'} ${post.tariff_amount}`
-        : 'Not stated';
-
-    const laneFact = post.route_snapshot
+    // The route title already names the two towns. Keep location details in
+    // the expanded map, not repeated as half-width rows in the load summary.
+    const routeEstimate = post.route_snapshot
         ? [
               formatDistance(post.route_snapshot.distance_meters),
               formatDuration(post.route_snapshot.duration_seconds),
           ]
               .filter(Boolean)
               .join(' · ')
-        : 'Not calculated';
+        : null;
 
-    // "T00:00:00" so the ISO date lands on the same day in every timezone.
-    const pickupValue = post.pickup_date
-        ? new Date(`${post.pickup_date}T00:00:00`).toLocaleDateString(
-              undefined,
-              { day: 'numeric', month: 'short', year: 'numeric' },
-          )
+    const pickup = post.pickup_date
+        ? formatFreightDate(post.pickup_date)
         : 'Flexible';
+    const pickupWindow = post.pickup_date_flexibility_days ?? 0;
+    const itemDescription =
+        post.cargo_description?.trim() &&
+        post.cargo_description.trim() !== post.item_name?.trim()
+            ? post.cargo_description
+            : null;
 
-    const pickupSub =
-        [
-            post.pickup_time ? post.pickup_time.slice(0, 5) : '',
-            post.pickup_date_flexibility_days
-                ? `±${post.pickup_date_flexibility_days} days`
-                : '',
-        ]
-            .filter(Boolean)
-            .join(' · ') || undefined;
+    const hasDifferentTariffWeight =
+        Boolean(post.tariff_weight) &&
+        (!post.actual_weight ||
+            Number(post.tariff_weight) !== Number(post.actual_weight) ||
+            (post.tariff_weight_unit ?? post.weight_unit) !== post.weight_unit);
 
-    const createdValue = post.created_at
-        ? new Date(post.created_at).toLocaleString(undefined, {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-          })
-        : 'Not stated';
+    const actualWeight = post.actual_weight
+        ? `${post.actual_weight} ${post.weight_unit ?? 'ton'}`
+        : null;
+    const tariffWeight = post.tariff_weight
+        ? `${post.tariff_weight} ${post.tariff_weight_unit ?? 'ton'}`
+        : null;
+    const tariff = post.tariff_amount
+        ? `${post.tariff_currency ?? 'ETB'} ${post.tariff_amount}`
+        : null;
+    const truck = post.truck_type?.name
+        ? `${post.truck_type.name}${post.truck_count ? ` × ${post.truck_count}` : ''}`
+        : post.truck_count
+          ? `${post.truck_count} trucks`
+          : null;
 
     return (
-        <Card className="@container gap-0 overflow-hidden">
-            <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 pb-4">
-                <CardTitle className="flex items-center gap-2 text-base">
-                    <Package
-                        className="size-4 text-muted-foreground"
-                        aria-hidden="true"
-                    />{' '}
-                    Freight details
-                </CardTitle>
-                {post.status && (
-                    <Badge
-                        variant={
-                            post.status === 'active' ? 'default' : 'secondary'
-                        }
-                        className="capitalize"
+        <section
+            aria-label="Freight details"
+            className="@container min-w-0 space-y-5"
+        >
+            <div className="grid min-w-0 gap-6 @min-[42rem]:grid-cols-2 @min-[42rem]:gap-8">
+                <section
+                    aria-labelledby="freight-route-heading"
+                    className="min-w-0 space-y-4"
+                >
+                    <h2
+                        id="freight-route-heading"
+                        className="flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold"
                     >
-                        {post.status}
-                    </Badge>
-                )}
-            </CardHeader>
-            <CardContent className="grid gap-5 @min-[38rem]:grid-cols-2 @min-[38rem]:gap-6">
-                <section aria-labelledby="freight-route-heading">
-                    <div className="flex min-h-10 flex-wrap items-center justify-between gap-2 border-b pb-2">
-                        <h2
-                            id="freight-route-heading"
-                            className="flex items-center gap-2 text-sm font-semibold"
-                        >
-                            <Route
-                                className="size-4 text-muted-foreground"
-                                aria-hidden="true"
-                            />
-                            Route &amp; schedule
-                        </h2>
-                        <div className="shrink-0">
-                            <CollapsibleRouteMap
-                                fromLat={latitudeOf(origin)}
-                                fromLng={longitudeOf(origin)}
-                                toLat={latitudeOf(destination)}
-                                toLng={longitudeOf(destination)}
-                                routeSnapshot={post.route_snapshot}
-                            />
-                        </div>
-                    </div>
-                    <dl>
-                        <Fact label="Origin" value={placeLabel(origin)} />
-                        <Fact
-                            label="Destination"
-                            value={placeLabel(destination)}
+                        <Route
+                            className="size-4 text-muted-foreground"
+                            aria-hidden="true"
                         />
+                        Route &amp; pickup
+                    </h2>
+                    <dl className="divide-y divide-border/50">
                         <Fact
-                            label="Schedule"
-                            value={scheduleLabel}
-                            detail={schedule?.detail}
+                            label="Pickup date"
+                            value={pickup}
+                            detail={post.pickup_time?.slice(0, 5) || undefined}
                         />
-                        <Fact
-                            label="Pickup"
-                            value={[pickupValue, pickupSub]
-                                .filter(Boolean)
-                                .join(' · ')}
-                        />
-                        <Fact
-                            label="Distance / time"
-                            value={laneFact || 'Not calculated'}
-                        />
-                        <Fact label="Created" value={createdValue} />
-                        {post.origin_site_note && (
+                        {pickupWindow > 0 && (
                             <Fact
-                                label="Pickup note"
-                                value={post.origin_site_note}
+                                label="Pickup window"
+                                value={`+${pickupWindow} days`}
                             />
                         )}
-                        {post.destination_site_note && (
+                        {offerType && <Fact label="Offer" value={offerType} />}
+                        {routeEstimate && (
                             <Fact
-                                label="Delivery note"
-                                value={post.destination_site_note}
+                                label="Distance / time"
+                                value={routeEstimate}
                             />
                         )}
+                        <Fact
+                            label="Listing"
+                            value={freightLifecycleLabel(post)}
+                        />
                     </dl>
                 </section>
-                <section aria-labelledby="freight-cargo-heading">
+
+                <section
+                    aria-labelledby="freight-cargo-heading"
+                    className="min-w-0 space-y-4"
+                >
                     <h2
                         id="freight-cargo-heading"
-                        className="flex min-h-10 items-center gap-2 border-b pb-2 text-sm font-semibold"
+                        className="flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold"
                     >
-                        <Truck
+                        <Package
                             className="size-4 text-muted-foreground"
                             aria-hidden="true"
                         />
                         Cargo &amp; truck
                     </h2>
-                    <dl>
-                        <Fact
-                            label="Item"
-                            value={post.item_name ?? 'Not stated'}
-                        />
-                        <Fact
-                            label="Cargo type"
-                            value={post.cargo_type?.name ?? 'Not stated'}
-                        />
-                        <Fact
-                            label="Actual weight"
-                            value={
-                                post.actual_weight
-                                    ? `${post.actual_weight} ${post.weight_unit ?? 'ton'}`
-                                    : 'Not stated'
-                            }
-                        />
-                        {post.tariff_weight && (
+                    <div className="min-w-0 space-y-1">
+                        <p className="text-sm leading-relaxed font-semibold break-words">
+                            {post.item_name ?? 'Cargo not specified'}
+                        </p>
+                        {itemDescription && (
+                            <p className="text-sm leading-relaxed break-words whitespace-pre-line text-muted-foreground">
+                                {itemDescription}
+                            </p>
+                        )}
+                    </div>
+                    <dl className="divide-y divide-border/50">
+                        {post.cargo_type && (
                             <Fact
-                                label="Tariff weight"
-                                value={`${post.tariff_weight} ${post.tariff_weight_unit ?? 'ton'}`}
+                                label="Cargo type"
+                                value={post.cargo_type.name}
                             />
                         )}
-                        <Fact
-                            label="Tariff rate"
-                            value={
-                                <span className="font-semibold tabular-nums">
-                                    {tariff}
-                                </span>
-                            }
-                        />
-                        <Fact
-                            label="Truck"
-                            value={`${post.truck_type?.name ?? 'Any truck'}${post.truck_count ? ` × ${post.truck_count}` : ''}`}
-                        />
-                        {description && (
-                            <Fact label="Description" value={description} />
+                        {actualWeight && (
+                            <Fact label="Weight" value={actualWeight} />
                         )}
+                        {hasDifferentTariffWeight && tariffWeight && (
+                            <Fact label="Tariff weight" value={tariffWeight} />
+                        )}
+                        {tariff && (
+                            <Fact
+                                label="Tariff rate"
+                                value={
+                                    <span className="tabular-nums">
+                                        {tariff}
+                                    </span>
+                                }
+                            />
+                        )}
+                        {truck && <Fact label="Truck" value={truck} />}
                         {post.insurance_required && (
                             <Fact
                                 label="Insurance"
                                 value={
                                     post.insurance_value
                                         ? `${post.tariff_currency ?? 'ETB'} ${post.insurance_value}`
-                                        : 'Required, value not set'
+                                        : 'Required'
                                 }
                             />
                         )}
@@ -338,7 +277,57 @@ export default function FreightDetailsCard({
                         )}
                     </dl>
                 </section>
-            </CardContent>
-        </Card>
+            </div>
+
+            <CollapsibleRouteMap
+                fromLat={latitudeOf(post.origin)}
+                fromLng={longitudeOf(post.origin)}
+                toLat={latitudeOf(post.destination)}
+                toLng={longitudeOf(post.destination)}
+                fromName={post.origin?.name}
+                toName={post.destination?.name}
+                routeSnapshot={post.route_snapshot}
+            />
+
+            {(post.origin_site_note || post.destination_site_note) && (
+                <section
+                    aria-labelledby="freight-site-notes-heading"
+                    className="space-y-3 border-t border-border pt-4"
+                >
+                    <h2
+                        id="freight-site-notes-heading"
+                        className="flex items-center gap-2 text-sm font-semibold"
+                    >
+                        <ClipboardList
+                            className="size-4 text-muted-foreground"
+                            aria-hidden="true"
+                        />
+                        Pickup &amp; delivery notes
+                    </h2>
+                    <dl className="divide-y divide-border/50">
+                        {post.origin_site_note && (
+                            <Fact
+                                label="Pickup"
+                                value={post.origin_site_note}
+                            />
+                        )}
+                        {post.destination_site_note && (
+                            <Fact
+                                label="Delivery"
+                                value={post.destination_site_note}
+                            />
+                        )}
+                    </dl>
+                </section>
+            )}
+
+            <p className="flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+                <CalendarDays
+                    className="size-3.5 shrink-0"
+                    aria-hidden="true"
+                />
+                {freightPublicationLabel(post)}
+            </p>
+        </section>
     );
 }

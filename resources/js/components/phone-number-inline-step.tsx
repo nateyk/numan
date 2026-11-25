@@ -1,9 +1,9 @@
-import { AlertCircle, Phone } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { router, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { router, usePage } from '@inertiajs/react';
+import { AlertCircle, Phone } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 /**
  * The inline "add your phone number to continue" step.
@@ -17,10 +17,11 @@ import { Label } from '@/components/ui/label';
  * page without every page owning a copy of it.
  */
 export default function PhoneNumberInlineStep() {
-    const { requires_phone: requiresPhone, requires_phone_reason: reason } = usePage().props as {
-        requires_phone?: boolean;
-        requires_phone_reason?: string | null;
-    };
+    const { requires_phone: requiresPhone, requires_phone_reason: reason } =
+        usePage().props as {
+            requires_phone?: boolean;
+            requires_phone_reason?: string | null;
+        };
 
     const [phone, setPhone] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -29,8 +30,11 @@ export default function PhoneNumberInlineStep() {
     // A new bounce means a new attempt, so clear whatever was typed before.
     useEffect(() => {
         if (requiresPhone) {
+            // New phone-verification prompts must not reuse previously typed data.
+            /* eslint-disable react-hooks/set-state-in-effect */
             setPhone('');
             setError(null);
+            /* eslint-enable react-hooks/set-state-in-effect */
         }
     }, [requiresPhone]);
 
@@ -72,7 +76,10 @@ export default function PhoneNumberInlineStep() {
             className="sticky top-0 z-40 border-b border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/60"
         >
             <div className="mx-auto max-w-3xl px-4 py-3">
-                <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <form
+                    onSubmit={submit}
+                    className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                >
                     <div className="flex-1 space-y-1">
                         <Label className="flex items-center gap-1.5 text-sm font-medium">
                             <Phone className="size-4" />
@@ -82,8 +89,9 @@ export default function PhoneNumberInlineStep() {
                             {reason
                                 ? `You need a phone number before ${reason}. `
                                 : ''}
-                            Carriers and consignors can only reach you if you publish one. It is
-                            released only when you choose to reveal it.
+                            Carriers and consignors can only reach you if you
+                            publish one. It is released only when you choose to
+                            reveal it.
                         </p>
                         <Input
                             value={phone}
@@ -100,7 +108,11 @@ export default function PhoneNumberInlineStep() {
                             </p>
                         )}
                     </div>
-                    <Button type="submit" disabled={saving} className="shrink-0">
+                    <Button
+                        type="submit"
+                        disabled={saving}
+                        className="shrink-0"
+                    >
                         {saving ? 'Saving…' : 'Save and continue'}
                     </Button>
                 </form>

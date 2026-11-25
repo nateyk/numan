@@ -146,3 +146,21 @@ it('does not confirm a hidden consignor through the old profile URL', function (
 
     $this->get("/transporters/{$consignor->slug}")->assertNotFound();
 });
+
+it('does not expose an approved public profile after its owner deletes the account', function () {
+    $owner = User::factory()->create();
+    $profile = Profile::factory()->approved()->for($owner)->create(['provides_transport' => true]);
+    $viewer = User::factory()->create();
+
+    ContactReveal::create([
+        'revealer_id' => $viewer->id,
+        'revealed_id' => $owner->id,
+    ]);
+
+    $this->get("/p/{$profile->slug}")->assertOk();
+
+    $owner->delete();
+
+    $this->get("/p/{$profile->slug}")->assertNotFound();
+    $this->actingAs($viewer)->get("/p/{$profile->slug}")->assertNotFound();
+});

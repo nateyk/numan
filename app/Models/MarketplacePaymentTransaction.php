@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\ChapaProviderDataSanitizer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A payment attempt, by any rail.
@@ -93,6 +95,20 @@ class MarketplacePaymentTransaction extends Model
         ];
     }
 
+    /**
+     * Chapa verify/initialize results are inspected in memory, but the stored
+     * copy contains only safe financial status fields. No checkout URL, payer
+     * phone, payer email, or provider-supplied customer metadata is retained.
+     *
+     * @param  array<string, mixed>|null  $value
+     */
+    public function setProviderResponseAttribute(?array $value): void
+    {
+        $this->attributes['provider_response'] = $value === null
+            ? null
+            : json_encode(ChapaProviderDataSanitizer::summarize($value), JSON_THROW_ON_ERROR);
+    }
+
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
@@ -113,9 +129,14 @@ class MarketplacePaymentTransaction extends Model
         return $this->belongsTo(User::class, 'manual_reviewed_by');
     }
 
-    public function receipt(): BelongsTo
+    public function receipt(): HasOne
     {
-        return $this->belongsTo(MarketplacePaymentReceipt::class, 'transaction_id');
+        return $this->hasOne(MarketplacePaymentReceipt::class, 'transaction_id');
+    }
+
+    public function paymentReview(): HasOne
+    {
+        return $this->hasOne(MarketplacePaymentReview::class, 'transaction_id');
     }
 
     public function isManual(): bool

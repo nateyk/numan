@@ -1,14 +1,23 @@
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState } from 'react';
+import {
+    MapContainer,
+    Marker,
+    Polyline,
+    Popup,
+    TileLayer,
+    useMap,
+    useMapEvents,
+} from 'react-leaflet';
 
 // Fix Leaflet default icon for Vite (broken image) — per Leaflet docs
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })
+    ._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconUrl: markerIcon,
     iconRetinaUrl: markerIcon2x,
@@ -25,7 +34,11 @@ interface Props {
     selectable?: 'origin' | 'destination' | null;
 }
 
-function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
+function MapClickHandler({
+    onClick,
+}: {
+    onClick?: (lat: number, lng: number) => void;
+}) {
     useMapEvents({
         click(e) {
             onClick?.(e.latlng.lat, e.latlng.lng);
@@ -34,7 +47,17 @@ function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => 
     return null;
 }
 
-function FitBounds({ fromLat, fromLng, toLat, toLng }: { fromLat: number; fromLng: number; toLat: number; toLng: number }) {
+function FitBounds({
+    fromLat,
+    fromLng,
+    toLat,
+    toLng,
+}: {
+    fromLat: number;
+    fromLng: number;
+    toLat: number;
+    toLng: number;
+}) {
     const map = useMap();
     useEffect(() => {
         const bounds = [
@@ -46,10 +69,19 @@ function FitBounds({ fromLat, fromLng, toLat, toLng }: { fromLat: number; fromLn
     return null;
 }
 
-export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geometry: initialGeometry, onMapClick }: Props) {
+export default function LazyLeafletRoute({
+    fromLat,
+    fromLng,
+    toLat,
+    toLng,
+    geometry: initialGeometry,
+    onMapClick,
+}: Props) {
     const [geometry, setGeometry] = useState(initialGeometry ?? null);
     const [loading, setLoading] = useState(!initialGeometry);
 
+    // Existing route-prop synchronization resets stale geometry before fetch.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         setGeometry(initialGeometry ?? null);
         if (initialGeometry) {
@@ -60,16 +92,31 @@ export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geome
         // Fetch OSRM route geometry from backend if not provided
         fetch('/freight/routes/preview', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' },
-            body: JSON.stringify({ from_lat: fromLat, from_lng: fromLng, to_lat: toLat, to_lng: toLng }),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN':
+                    (
+                        document.querySelector(
+                            'meta[name="csrf-token"]',
+                        ) as HTMLMetaElement
+                    )?.content ?? '',
+            },
+            body: JSON.stringify({
+                from_lat: fromLat,
+                from_lng: fromLng,
+                to_lat: toLat,
+                to_lng: toLng,
+            }),
         })
-            .then(r => (r.ok ? r.json() : null))
-            .then(data => {
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
                 if (data?.geometry) setGeometry(data.geometry);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
     }, [fromLat, fromLng, toLat, toLng, initialGeometry]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const center: [number, number] = [
         (fromLat + toLat) / 2,
@@ -77,11 +124,20 @@ export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geome
     ];
 
     const polylinePositions = geometry?.coordinates
-        ? (geometry.coordinates as number[][]).map(c => [c[1], c[0]] as [number, number])
-        : [[fromLat, fromLng], [toLat, toLng]] as [number, number][];
+        ? (geometry.coordinates as number[][]).map(
+              (c) => [c[1], c[0]] as [number, number],
+          )
+        : ([
+              [fromLat, fromLng],
+              [toLat, toLng],
+          ] as [number, number][]);
 
     if (loading && !geometry) {
-        return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Fetching OSRM route…</div>;
+        return (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Fetching OSRM route…
+            </div>
+        );
     }
 
     return (
@@ -96,17 +152,26 @@ export default function LazyLeafletRoute({ fromLat, fromLng, toLat, toLng, geome
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <Marker position={[fromLat, fromLng]} draggable={!!onMapClick}>
-                <Popup>Origin — {fromLat.toFixed(4)}, {fromLng.toFixed(4)}</Popup>
+                <Popup>
+                    Origin — {fromLat.toFixed(4)}, {fromLng.toFixed(4)}
+                </Popup>
             </Marker>
             <Marker position={[toLat, toLng]} draggable={!!onMapClick}>
-                <Popup>Destination — {toLat.toFixed(4)}, {toLng.toFixed(4)}</Popup>
+                <Popup>
+                    Destination — {toLat.toFixed(4)}, {toLng.toFixed(4)}
+                </Popup>
             </Marker>
             <Polyline
                 positions={polylinePositions}
                 color="#2563eb"
                 weight={4}
             />
-            <FitBounds fromLat={fromLat} fromLng={fromLng} toLat={toLat} toLng={toLng} />
+            <FitBounds
+                fromLat={fromLat}
+                fromLng={fromLng}
+                toLat={toLat}
+                toLng={toLng}
+            />
             <MapClickHandler onClick={onMapClick} />
         </MapContainer>
     );

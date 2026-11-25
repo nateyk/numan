@@ -83,3 +83,39 @@ it('tells the freight list whether posting is still allowed', function () {
             ->where('livePostLimit', 1)
         );
 });
+
+it('cannot submit an earlier draft after another live freight post consumes the only slot', function () {
+    $user = limitTestUser(1);
+    $post = FreightPost::factory()->create([
+        'user_id' => $user->id,
+        'workspace_id' => $user->current_workspace_id,
+        'status' => 'draft',
+    ]);
+
+    $this->actingAs($user)
+        ->post("/my-freight/{$post->ulid}/submit")
+        ->assertSessionHasErrors('freight');
+
+    expect($post->fresh()->status)->toBe('draft');
+    expect($post->moderationLogs()->count())->toBe(0);
+});
+
+it('allows one draft submission but rejects the next when the free live cap is one', function () {
+    $user = limitTestUser(0);
+    $drafts = FreightPost::factory()->count(2)->create([
+        'user_id' => $user->id,
+        'workspace_id' => $user->current_workspace_id,
+        'status' => 'draft',
+    ]);
+
+    $this->actingAs($user)
+        ->post("/my-freight/{$drafts[0]->ulid}/submit")
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($user)
+        ->post("/my-freight/{$drafts[1]->ulid}/submit")
+        ->assertSessionHasErrors('freight');
+
+    expect($drafts[0]->fresh()->status)->toBe('submitted');
+    expect($drafts[1]->fresh()->status)->toBe('draft');
+});

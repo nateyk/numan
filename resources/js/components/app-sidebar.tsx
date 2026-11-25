@@ -1,3 +1,4 @@
+import BrandLockup from '@/components/brand-lockup';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -17,7 +18,6 @@ import { useTranslations } from '@/hooks/use-translations';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
-    BarChart3,
     BookOpen,
     Heart,
     LayoutGrid,
@@ -25,7 +25,6 @@ import {
     Search,
     Settings,
     ShieldAlert,
-    Truck,
     UserRound,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -71,11 +70,6 @@ const getMainNavItems = (
                   },
               ]
             : []),
-        {
-            title: t('navigation.usage', 'Usage'),
-            href: '/usage',
-            icon: BarChart3,
-        },
         ...(!workspaceUiEnabled || isIndividual
             ? []
             : [
@@ -124,18 +118,11 @@ function IndividualBrand() {
         <SidebarMenu>
             <SidebarMenuItem>
                 <SidebarMenuButton size="lg" asChild>
-                    <Link href="/freight">
-                        <span className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                            <Truck className="size-4" />
-                        </span>
-                        <span className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                            <span className="truncate font-semibold">
-                                Numan Freight
-                            </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                                Personal account
-                            </span>
-                        </span>
+                    <Link
+                        href="/freight"
+                        aria-label="Numan Freight — browse freight"
+                    >
+                        <BrandLockup wordmarkClassName="group-data-[collapsible=icon]:hidden" />
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
@@ -145,13 +132,27 @@ function IndividualBrand() {
 
 export function AppSidebar() {
     const { t, i18n } = useTranslations();
-    const { auth, marketplace, is_individual, workspace_ui_enabled } = usePage<SharedData>().props;
+    const { auth, marketplace, is_individual, workspace_ui_enabled } =
+        usePage<SharedData>().props;
     const isSuperadmin = auth.user.is_superadmin === true;
     const interestsEnabled = marketplace?.interests_enabled ?? false;
 
     const mainNavItems = useMemo(
-        () => getMainNavItems(t, isSuperadmin, interestsEnabled, is_individual, workspace_ui_enabled),
-        [t, isSuperadmin, interestsEnabled, is_individual, workspace_ui_enabled],
+        () =>
+            getMainNavItems(
+                t,
+                isSuperadmin,
+                interestsEnabled,
+                is_individual,
+                workspace_ui_enabled,
+            ),
+        [
+            t,
+            isSuperadmin,
+            interestsEnabled,
+            is_individual,
+            workspace_ui_enabled,
+        ],
     );
     const footerNavItems = useMemo(() => getFooterNavItems(t), [t]);
 
@@ -163,7 +164,11 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset" side={sidebarSide}>
             <SidebarHeader>
-                {!workspace_ui_enabled || is_individual ? <IndividualBrand /> : <WorkspaceSwitcher />}
+                {!workspace_ui_enabled || is_individual ? (
+                    <IndividualBrand />
+                ) : (
+                    <WorkspaceSwitcher />
+                )}
             </SidebarHeader>
             <SidebarSeparator />
 

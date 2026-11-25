@@ -6,8 +6,13 @@ time; after that, jump to the section you need.
 The marketplace work in this repository replaced a single-plan model with one paid
 plan in three durations, an admin-editable Free state, ETB-only payments by Chapa
 or manual transfer, metered contact reveals, and automatic hiding of listings that
-exceed the plan. Most of it is inert until you turn flags on. **Nothing in Steps
-1–6 changes behaviour on deploy except the migrations.**
+exceed the plan. **Freight discovery authorization takes effect immediately on
+deploy**: guests must sign in, and previously paid members whose plans have
+ended are shown a renewal screen instead of freight results. Members who have
+never subscribed retain Free browsing. Paid benefits remain available during a
+valid canceled-plan grace period. Owners keep access to their own freight records.
+The two marketplace flags only control scheduled expiry maintenance and reminder
+delivery; they do not disable request-time access checks or Chapa reconciliation.
 
 | Step | What it is | Inert until |
 |---|---|---|
@@ -17,6 +22,26 @@ exceed the plan. Most of it is inert until you turn flags on. **Nothing in Steps
 | 4 | Contact-reveal ledger and metering; server-side contact stripping | backfill (§4) |
 | 5 | Manual payment (Telebirr / CBE Birr / bank transfer) | configure an account (§7) |
 | 6 | Renewal and expiry reminders | `MARKETPLACE_REMINDERS_ENABLED` (§14) |
+| 7 | Freight discovery login and paid-expiry access enforcement | deploy (request time) |
+
+## Read-only release preflight
+
+Before activating expiry, reminders, a real bot, or Chapa production keys, run:
+
+```bash
+php artisan marketplace:release-check
+php artisan marketplace:release-check --strict
+```
+
+Both variants are **read-only**: they make no provider calls, issue no subscription, refund or receipt, never print secrets, and never send notifications. The first variant reports warnings but returns a successful command status; `--strict` fails when a required configuration or database prerequisite is missing or outstanding financial cases require review.
+
+The report checks Chapa v1 mode/API origin, key and webhook secret **presence only**, HTTPS application URL, mail/queue transports, marketplace migration tables, old unresolved Chapa attempts, and open refund/dispute cases. It also shows the independent expiry/reminder schedule flags.
+
+**It is not a production go-live certificate.** A clean preflight does not verify real Chapa Test Mode payments, webhook delivery, cron execution, a running queue worker, actual outbound mail, Telegram BotFather setup, or backup restoration. Require evidence for each before enabling live processing. Use `chapa:reconcile --all --dry-run` for a read-only reference-level payment backlog and `chapa:accept-renewal` only after two genuine Chapa Test Mode hosted checkouts.
+
+## Telegram rollout is a separate manual gate
+
+Merging Telegram notification code does **not** register a Telegram bot, add it as an administrator to the current Numan Freight channel, register its secret-verified webhook, or supervise queue workers. Before enabling Telegram environment credentials, follow [Telegram channel rollout](telegram-channel-rollout.md): verify the actual existing bot, grant only channel-posting permission, test private `/start` linking and `/stop`, verify no contact leakage, and retain a rollback plan.
 
 ## Deploy order
 
@@ -25,14 +50,14 @@ Read this once. Each step is safe to stop after.
 | # | Step | Gate before continuing |
 |---|---|---|
 | 1 | Back up the database **and** `storage/app/private` | §1 — a restore you have not tested is a hypothesis |
-| 2 | Deploy the code, **both flags off** | — |
+| 2 | Deploy the code, **both flags off** | Login and paid-expiry browsing rules take effect immediately; verify the expected access matrix before release |
 | 3 | `php artisan migrate --force` | §3 — then read the verify output |
 | 4 | Check `storage/app/reports/` for the CSV | §4 — read **every row**; a wrong-duration row is a customer's access wrong right now |
 | 5 | `php artisan marketplace:install --dry-run`, then for real | §3 — expect `active: standard` |
 | 6 | `marketplace:backfill-contact-reveals --dry-run`, then for real | §5 — `written today` must be `0` |
 | 7 | `marketplace:expire-subscriptions --dry-run`, then for real | §6 — check the keep limit against what an admin set |
 | 8 | `marketplace:expire-manual-payments --dry-run`, then for real | §6 |
-| 9 | Confirm the queue worker is supervised and running | §9 — **hard gate for step 12** |
+| 9 | Confirm the queue worker is supervised and running | §9 — required for queued manual-payment expiry and other `ShouldQueue` notifications |
 | 10 | Configure a payment instruction account if offering manual payment | §7 |
 | 11 | `marketplace:send-reminders --dry-run` | §14 — works with the flag off |
 | 12 | Turn on `MARKETPLACE_EXPIRY_ENABLED`, then `MARKETPLACE_REMINDERS_ENABLED` | §12, §14 — **separately** |
@@ -40,6 +65,31 @@ Read this once. Each step is safe to stop after.
 
 Steps 4 through 8 are all idempotent and all safe to re-run. Steps 11 onward are
 the only ones that email anybody.
+
+---
+
+## Freight discovery and renewal acceptance gate
+
+The login and paid-expiry restrictions are **request-time rules**, not scheduled
+tasks. Do not wait for the expiry sweep to confirm they work. Test the following
+on a disposable account before any live rollout:
+
+| Account state | Required result |
+|---|---|
+| Guest | `/freight`, `/discover` and direct `/freight/{ulid}` prompt for login; no freight payload is returned |
+| Signed-in Free account without a paid history | Freight discovery remains available within Free plan limits |
+| Verified active Chapa subscription | Freight discovery, contact rules and paid limits remain available |
+| Canceled plan still inside the paid-through period | Paid benefits remain available until `ends_at` |
+| Paid term past `ends_at` | Discovery and direct third-party freight details are restricted immediately; the dashboard withholds market-wide freight counts |
+| Expired owner | Can still view and manage their **own** freight records |
+| Successful provider-verified renewal | Browsing returns, with unused prepaid days preserved and one payment receipt |
+| Pending, failed or mismatched Chapa verification | Must not grant access or issue a receipt |
+
+Authenticated discovery and freight public-detail responses use `Cache-Control: no-store`. An expired member
+should see a renewal route at `/billing/plans`, not a stale freight card.
+Run synthetic/Chapa Test Mode checks before considering live-money acceptance.
+The CI tests cover these paths, but **they do not execute real provider test
+payments or a production deployment**.
 
 ---
 
@@ -96,9 +146,10 @@ data. One flag also means only one thing to forget at a time.
 php artisan schedule:list | grep marketplace || echo "OK: nothing marketplace is scheduled"
 ```
 
-`chapa:reconcile` runs every five minutes and is deliberately **not** gated: it
-only inspects and never changes entitlement. So `schedule:list` showing a chapa
-entry tells you nothing about the flag.
+`chapa:reconcile` runs every five minutes independently of these flags. It
+verifies pending Chapa attempts with the provider and **can activate a paid
+subscription** when the transaction is genuinely verified. Its presence in
+`schedule:list` does not imply either marketplace flag is enabled.
 
 A DDEV or local scheduler runs `schedule:work` continuously. Before this flag
 existed the hourly expiry sweep ran unattended against the development database
@@ -343,9 +394,10 @@ Both are idempotent. Running either twice changes nothing the second time.
 Worth calling out because it is the one command in this runbook that
 **cannot be inspected before it acts**:
 
-- `chapa:reconcile` accepts **no options at all**. Passing `--dry-run` fails with
-  `The "--dry-run" option does not exist`. Do not put it in a deploy script that
-  expects a dry-run first.
+- `chapa:reconcile` does **not** support `--dry-run`. It supports `--all`, which
+  widens reconciliation to older pending attempts. Both the default invocation
+  and `--all` can **fulfill verified transactions**. Do not invoke either as a
+  read-only deployment check.
 - It is **not** inert: for each pending Chapa transaction it calls Chapa's verify
   API and, on a genuine success, calls `MarketplaceFulfillmentService::fulfill()`.
   Running it grants subscriptions.
@@ -446,11 +498,17 @@ Without it nothing scheduled ever fires — not the expiry sweep, not
 
 ### Queue worker (supervisor)
 
-Manual payment notifications, Chapa notifications and (in Step 6) reminders are
-queued. **Without a worker nothing is lost but nobody is told a payment arrived**,
-and in Step 6 a claimed-but-undelivered reminder is permanent.
+Manual-payment notifications and other classes implementing `ShouldQueue`
+require a running queue worker. Without one, queued messages can remain in the
+jobs table and recipients may not be notified.
 
-`QUEUE_CONNECTION=database` by default, so the worker is not optional.
+`MarketplacePlanReminder` is different: it is sent **inline**, not queued.
+Its claim-recovery mechanism addresses interrupted synchronous sends (§14).
+`chapa:reconcile` is a scheduled Artisan command and can fulfill verified
+payments; it does not rely on a queue worker for that action.
+
+`QUEUE_CONNECTION=database` is the default for queued notifications, so a
+worker is still required for those separate jobs.
 
 ```ini
 ; /etc/supervisor/conf.d/numanfreight-worker.conf
@@ -579,8 +637,8 @@ SELECT reminder_type, status, COUNT(*) FROM marketplace_reminder_logs GROUP BY 1
 ```
 
 → one `sent` row per reminder, plus `skipped` rows for the windows it passed
-over. A `claimed` row older than an hour means the queue worker is not running —
-go back to §9 before trusting any of this.
+over. A `claimed` row older than the recovery threshold points to an interrupted
+inline send or a mailer failure; inspect the reminder log and command errors (§14).
 23. Confirm the email arrived, and that the end date is in the reader's timezone
     rather than UTC. Then check the log file for the address:
 
@@ -597,9 +655,12 @@ and §11 has passed.
 `MARKETPLACE_REMINDERS_ENABLED` is a **separate** decision — see §14. Turning on
 the expiry sweep does not turn on reminders.
 
-The worker is a hard gate here, not a nice-to-have: the expiry sweep sends
-`FreightPostsHiddenNotification`, which is queued. Enabling the flag with no worker
-means workspaces get silently hidden with nobody told.
+The queue worker is needed for **queued manual-payment expiry notifications**
+(`ManualPaymentExpired` implements `ShouldQueue`), which are also scheduled
+when this flag is enabled. By contrast, `FreightPostsHiddenNotification` is
+dispatched inline to the database channel and does not require a queue worker.
+Keep the worker running for the separate queued work, not because freight
+visibility itself depends on it.
 
 ```dotenv
 MARKETPLACE_EXPIRY_ENABLED=true
@@ -723,9 +784,10 @@ command that has never run before.
 **No queue worker is involved.** `MarketplacePlanReminder` does not implement
 `ShouldQueue`, so `Notification::send()` delivers both channels inline and the
 command finishes the send before it marks the claim delivered. Earlier drafts of
-this section claimed a queue worker was a hard gate; that was wrong, and sizing
-infrastructure off it would be a waste. §9's supervisor is still needed for
-Chapa reconciliation and the digests, but not for reminders.
+this section claimed a queue worker was a hard gate; that was wrong.
+§9's worker remains necessary for separate queued notifications, including
+manual-payment updates and queued digests. Chapa reconciliation runs as an
+Artisan scheduler command, not as a queued notification.
 
 **What the 60-minute reclaim actually covers.** The claim row is written before the
 send, precisely so two runs cannot both send. The cost of that ordering is a window
@@ -839,10 +901,12 @@ php artisan config:clear
 php artisan schedule:clear-cache
 ```
 
-Verify nothing is still queued to run:
+Verify the **flag-controlled marketplace jobs** are no longer registered.
+Unrelated scheduled jobs, including `freight:expire` and legacy billing
+reminders, can still legitimately appear:
 
 ```bash
-php artisan schedule:list | grep -E "expire|reminder"   # expect no output
+php artisan schedule:list | grep -E "marketplace:(expire-subscriptions|expire-manual-payments|send-reminders)" || echo "OK: marketplace tasks disabled"
 ```
 
 ### 15b. Roll back the code — instant, no data loss
@@ -897,7 +961,7 @@ be confirmed after the fact.
 | Situation | What to do |
 |---|---|
 | Subscriptions were expired early | `marketplace_subscriptions` has `current_period_ends_at` and `ends_at`. Restore those two columns from backup for the affected rows. Listings hidden by the sweep are **restorable without a backup**: `MarketplaceListingVisibilityService::restoreHiddenPosts($workspace)` clears `hidden_at` for one workspace. |
-| Manual payments were expired | They are in `status`, not deleted. `chapa:reconcile` will re-derive them from Chapa — see §6, and note it grants nothing on its own. |
+| Manual payment requests were expired | The requests remain in `status` with their review history. They are **not Chapa transactions**: `chapa:reconcile` cannot restore or approve them. Review the original manual payment request and its proof in the authorized admin workflow, restoring records from backup only when appropriate. |
 | Reminders went to the wrong people | Nothing to undo. The log records exactly what was sent: `marketplace_reminder_logs` has `marketplace_subscription_id`, `reminder_type`, `status`, `sent_at`. Delete a row to let that reminder send again; leave it and it will not. |
 | Prices were changed | `marketplace_plans` holds the three price columns. Restore from backup. Nothing was archived or deleted by a price edit. |
 

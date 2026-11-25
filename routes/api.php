@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ReferenceDataController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -32,3 +33,7 @@ Route::prefix('v1')->middleware('api-key:read')->group(function () {
     Route::get('/workspace', [WorkspaceController::class, 'show']);
     Route::get('/members', [WorkspaceController::class, 'members']);
 });
+
+Route::post('/telegram/webhook', TelegramWebhookController::class)
+    ->middleware('throttle:60,1')
+    ->name('telegram.webhook');

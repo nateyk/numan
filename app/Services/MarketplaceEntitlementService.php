@@ -85,12 +85,53 @@ class MarketplaceEntitlementService
         }
 
         return MarketplaceSubscription::where('workspace_id', $workspace->id)
-            ->whereIn('status', ['active', 'trialing'])
             ->where(function ($query) {
-                $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
+                $query->where(function ($active) {
+                    $active->whereIn('status', ['active', 'trialing'])
+                        ->where(function ($period) {
+                            $period->whereNull('ends_at')->orWhere('ends_at', '>', now());
+                        });
+                })->orWhere(function ($grace) {
+                    // Cancellation ends future renewals, not prepaid access.
+                    $grace->where('status', 'canceled')->where('ends_at', '>', now());
+                });
             })
             ->latest('ends_at')
             ->first();
+    }
+
+    /**
+     * Free members can discover freight, but a lapsed paid subscription
+     * suspends access until renewed. This is checked at request time: the
+     * hourly expiry job is not a security boundary.
+     *
+     * Ignore superseded payment periods and pending checkout attempts. A
+     * newer active renewal wins over historical expired rows; cancellation
+     * preserves access through the paid-for grace period.
+     */
+    public function canBrowseFreight(?Workspace $workspace): bool
+    {
+        if (! $workspace || ! Schema::hasTable('marketplace_subscriptions')) {
+            return true;
+        }
+
+        if ($this->activeSubscription($workspace)) {
+            return true;
+        }
+
+        $latest = MarketplaceSubscription::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('status', ['active', 'trialing', 'canceled', 'expired'])
+            ->latest('id')
+            ->first();
+
+        if (! $latest || $latest->onGracePeriod()) {
+            return true;
+        }
+
+        return $latest->status !== 'expired'
+            && $latest->status !== 'canceled'
+            && ($latest->ends_at === null || $latest->ends_at->isFuture());
     }
 
     public function hasPaidSubscription(?Workspace $workspace): bool

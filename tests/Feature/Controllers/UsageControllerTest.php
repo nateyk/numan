@@ -4,6 +4,8 @@ use App\Models\User;
 use App\Models\Workspace;
 
 beforeEach(function () {
+    // These assertions exercise the dormant legacy workspace usage page.
+    config()->set('features.workspace.ui', true);
     $this->user = User::factory()->withoutTwoFactor()->create();
     $this->workspace = Workspace::factory()->create(['owner_id' => $this->user->id]);
     $this->workspace->users()->attach($this->user->id, ['role' => 'owner']);

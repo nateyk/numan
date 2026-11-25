@@ -75,7 +75,7 @@ it('a hidden post is absent from public discovery', function () {
         'cargo_description' => 'visible listing',
     ]);
 
-    $this->get(route('freight.discovery'))
+    $this->actingAs(User::factory()->create())->get(route('freight.discovery'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('discover/index')
@@ -92,10 +92,10 @@ it('a hidden post 404s on its public URL for a stranger', function () {
     $this->actingAs($stranger)->get("/freight/{$hidden->ulid}")->assertNotFound();
 });
 
-it('a hidden post 404s on its public URL for a guest', function () {
+it('a guest is redirected to sign in before viewing a hidden post', function () {
     $hidden = hiddenActivePost();
 
-    $this->get("/freight/{$hidden->ulid}")->assertNotFound();
+    $this->get("/freight/{$hidden->ulid}")->assertRedirect(route('login'));
 });
 
 it('the owner can still open a hidden post', function () {

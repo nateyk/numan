@@ -51,7 +51,8 @@ function readPlace(value: unknown): FreightPlace | null {
     if (typeof value !== 'object') return null;
 
     const candidate = value as FreightPlace;
-    const name = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+    const name =
+        typeof candidate.name === 'string' ? candidate.name.trim() : '';
 
     return name === '' ? null : { ...candidate, name };
 }

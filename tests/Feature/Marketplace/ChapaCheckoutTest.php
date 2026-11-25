@@ -3,11 +3,14 @@
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
 use App\Models\MarketplaceSubscription;
+use App\Models\User;
 use App\Services\ChapaService;
 use App\Services\MarketplaceFulfillmentService;
 use Database\Seeders\MarketplacePlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -237,4 +240,256 @@ it('fulfilling all three durations gives 7, 30 and 365 day periods', function ()
         expect((int) $sub->current_period_start->diffInDays($sub->current_period_ends_at))->toBe($days);
         expect((int) $sub->ends_at->diffInSeconds($sub->current_period_ends_at, false))->toBe(0);
     }
+});
+
+it('does not activate a paid plan from Chapa verification missing an amount', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+
+    MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-verified-no-amount',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => 'initialized',
+        'mode' => 'test',
+    ]);
+
+    // Keep ChapaService's real, initialized webhook secret and signature
+    // check while overriding only the remote verification response.
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            return [
+                'status' => 'success',
+                'data' => ['status' => 'paid', 'currency' => 'ETB', 'reference' => 'chapa-ref'],
+            ];
+        }
+    });
+
+    $payload = json_encode([
+        'event' => 'charge.success',
+        'tx_ref' => 'NF-verified-no-amount',
+        'status' => 'success',
+    ]);
+    $signature = hash_hmac('sha256', $payload, config('chapa.webhookSecret'));
+
+    $this->postJson('/webhooks/chapa', json_decode($payload, true), ['x-chapa-signature' => $signature])
+        ->assertSuccessful();
+
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->count())->toBe(0);
+    expect(MarketplacePaymentTransaction::where('tx_ref', 'NF-verified-no-amount')->value('verified_at'))->toBeNull();
+});
+
+it('refuses a freight plan checkout by a profile without billing permission', function () {
+    [$owner, $workspace] = marketplaceTestUserWithWorkspace();
+    $member = User::factory()->create();
+    $workspace->users()->attach($member->id, ['role' => 'member']);
+    $member->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($member)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])->assertForbidden();
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(0);
+});
+
+it('keeps the payment attempt pending when Chapa checkout times out', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->mock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('generateReference')->andReturn('NF-timeout-preserve-ref');
+        $mock->shouldReceive('initializePayment')->andThrow(
+            new ConnectionException('Connection timed out'),
+        );
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])->assertStatus(503)
+        ->assertJsonPath('retryable', true);
+
+    $attempt = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->first();
+    expect($attempt)->not->toBeNull()
+        ->and($attempt->status)->toBe('pending')
+        ->and($attempt->verified_at)->toBeNull();
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('marks a rejected checkout initialization failed instead of initialized', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->mock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('generateReference')->andReturn('NF-rejected-init');
+        $mock->shouldReceive('initializePayment')->andReturn([
+            'status' => 'failed',
+            'message' => 'Provider unavailable.',
+        ]);
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'weekly',
+    ])->assertStatus(422);
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->value('status'))->toBe('failed');
+});
+
+it('requests a webhook retry when provider verification is unavailable', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+    $plan = MarketplacePlan::where('slug', 'standard')->first();
+
+    $transaction = MarketplacePaymentTransaction::create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'user_id' => $user->id,
+        'tx_ref' => 'NF-webhook-verification-outage',
+        'amount_etb' => 449,
+        'currency' => 'ETB',
+        'billing_interval' => 'monthly',
+        'status' => 'initialized',
+        'mode' => 'test',
+        'provider' => 'chapa',
+    ]);
+
+    $this->app->instance(ChapaService::class, new class extends ChapaService
+    {
+        public function verifyTransaction(string $txRef): array
+        {
+            throw new ConnectionException('Provider timed out');
+        }
+    });
+
+    $payload = json_encode([
+        'event' => 'charge.success',
+        'tx_ref' => $transaction->tx_ref,
+        'status' => 'success',
+    ]);
+    $signature = hash_hmac('sha256', $payload, config('chapa.webhookSecret'));
+
+    $this->postJson('/webhooks/chapa', json_decode($payload, true), [
+        'x-chapa-signature' => $signature,
+    ])->assertStatus(503);
+
+    expect($transaction->fresh()->status)->toBe('initialized');
+    expect(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('blocks a second Chapa initialization until the first payment is settled', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])->assertSuccessful();
+
+    $first = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->firstOrFail();
+
+    // A different duration must not create a second charge attempt either.
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'weekly',
+    ])
+        ->assertStatus(409)
+        ->assertJsonPath('retryable', true)
+        ->assertJsonPath('tx_ref', $first->tx_ref);
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(1)
+        ->and($first->fresh()->status)->toBe('initialized');
+
+    Http::assertSentCount(1);
+});
+
+it('restores the unresolved Chapa reference on Plans after a browser reload', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])->assertSuccessful();
+
+    $first = MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->firstOrFail();
+
+    $this->actingAs($user)->get('/billing/plans')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Billing/plans')
+            ->where('pendingChapaReference', $first->tx_ref)
+            ->etc());
+
+    // A verified payment clears the block and leaves an ordinary receipt.
+    $this->actingAs($user)
+        ->postJson('/marketplace/payments/'.$first->tx_ref.'/verify')
+        ->assertOk()
+        ->assertJsonPath('status', 'verified');
+
+    $this->actingAs($user)->get('/billing/plans')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pendingChapaReference', null)
+            ->etc());
+
+    expect($first->fresh()->receipt)->not->toBeNull();
+});
+
+it('keeps the same pending reference after a provider timeout and blocks another checkout', function () {
+    [$user, $workspace] = marketplaceTestUserWithWorkspace();
+
+    $this->mock(ChapaService::class, function ($mock): void {
+        $mock->shouldReceive('generateReference')->once()->andReturn('NF-timeout-stable');
+        $mock->shouldReceive('initializePayment')->once()->andThrow(
+            new ConnectionException('Gateway timed out'),
+        );
+    });
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'monthly',
+    ])
+        ->assertStatus(503)
+        ->assertJsonPath('tx_ref', 'NF-timeout-stable');
+
+    $this->actingAs($user)->get('/billing/plans')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pendingChapaReference', 'NF-timeout-stable')
+            ->etc());
+
+    $this->actingAs($user)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'yearly',
+    ])
+        ->assertStatus(409)
+        ->assertJsonPath('tx_ref', 'NF-timeout-stable');
+
+    expect(MarketplacePaymentTransaction::where('workspace_id', $workspace->id)->count())->toBe(1)
+        ->and(MarketplaceSubscription::where('workspace_id', $workspace->id)->exists())->toBeFalse();
+});
+
+it('does not expose another payer checkout reference on the Plans page', function () {
+    [$firstUser, $firstWorkspace] = marketplaceTestUserWithWorkspace();
+    [$secondUser] = marketplaceTestUserWithWorkspace();
+
+    $this->actingAs($firstUser)->postJson('/marketplace/checkout', [
+        'plan' => 'standard',
+        'billing_interval' => 'weekly',
+    ])->assertSuccessful();
+
+    $pending = MarketplacePaymentTransaction::where('workspace_id', $firstWorkspace->id)->firstOrFail();
+
+    $this->actingAs($secondUser)->get('/billing/plans')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pendingChapaReference', null)
+            ->etc());
+
+    $this->actingAs($secondUser)
+        ->postJson('/marketplace/payments/'.$pending->tx_ref.'/verify')
+        ->assertNotFound();
 });

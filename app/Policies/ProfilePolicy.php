@@ -18,6 +18,12 @@ class ProfilePolicy
 {
     public function view(?User $user, Profile $profile): bool
     {
+        // Deleted single profiles must no longer be reachable, including
+        // approved carriers and profiles with permanent contact-reveal ledgers.
+        if (! User::whereKey($profile->user_id)->exists()) {
+            return false;
+        }
+
         // An approved carrier is the public directory entry. Anyone, including a
         // guest, may read it.
         if ($profile->provides_transport && $profile->isApproved()) {

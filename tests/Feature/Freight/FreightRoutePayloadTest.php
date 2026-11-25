@@ -178,7 +178,7 @@ it('sends a discover card a route it can render', function () {
     [$owner, $workspace] = routeConsignor();
     routePost($owner, $workspace);
 
-    $response = $this->get('/freight');
+    $response = $this->actingAs(User::factory()->create())->get('/freight');
     $response->assertOk();
 
     expectRowsRenderTheRoute(inertiaProps($response)['freight']['data'] ?? null);
@@ -209,7 +209,7 @@ it('sends the public post page the origin its details card reads', function () {
     [$owner, $workspace] = routeConsignor();
     $post = routePost($owner, $workspace);
 
-    $this->get(route('freight.public.show', $post->ulid))
+    $this->actingAs(User::factory()->create())->get(route('freight.public.show', $post->ulid))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('post.origin.name', 'Kombolcha'));
 });

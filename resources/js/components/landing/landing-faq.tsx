@@ -1,140 +1,155 @@
+import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/hooks/use-translations';
-import { ChevronDown } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { ArrowRight, ChevronDown, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 
 export function LandingFaq() {
     const { t } = useTranslations();
-    const [openIndex, setOpenIndex] = useState<number | null>(null);
+    const [openIndex, setOpenIndex] = useState<number | null>(0);
 
     const faqs = [
         {
             question: t(
-                'landing.faq.items.what_is.question',
-                'What is NumanFreight?',
+                'brand.home.faq.what.question',
+                'What is Numan Freight?',
             ),
             answer: t(
-                'landing.faq.items.what_is.answer',
-                "NumanFreight is Ethiopia's freight marketplace connecting shippers with verified carriers. Post loads, discover trucks, track shipments, and pay securely in ETB via Chapa — optimized for the Addis–Djibouti corridor and nationwide routes.",
+                'brand.home.faq.what.answer',
+                'Numan Freight is a marketplace for people shipping goods and transporters looking for freight routes in Ethiopia. Shippers post load details, and transporters review the requirements to find suitable work.',
             ),
         },
         {
             question: t(
-                'landing.faq.items.tech_stack.question',
-                'How do Chapa ETB payments work?',
+                'brand.home.faq.browse.question',
+                'Do I need an account to browse freight?',
             ),
             answer: t(
-                'landing.faq.items.tech_stack.answer',
-                'All payments are in Ethiopian Birr (ETB) via Chapa — supporting cards, mobile money, and bank transfers. Funds are held securely and released on proof-of-delivery or agreed milestones. Transparent fees, instant confirmations, and receipts in ETB.',
+                'brand.home.faq.browse.answer',
+                'Yes. Freight discovery is for signed-in members. Your subscription and applicable access limits determine whether you can view listings and private contact information.',
             ),
         },
         {
             question: t(
-                'landing.faq.items.multiple_projects.question',
-                'How do you verify carriers?',
+                'brand.home.faq.post.question',
+                'What do I need to post a load?',
             ),
             answer: t(
-                'landing.faq.items.multiple_projects.answer',
-                'Every carrier completes KYC — ID, driver license, truck plate, and ownership documents are verified. Verified carriers get a badge, ratings, and priority in discovery so shippers book with confidence.',
+                'brand.home.faq.post.answer',
+                'Start with the pickup location, destination, cargo description and truck requirements. The posting flow guides you through the required details.',
             ),
         },
         {
             question: t(
-                'landing.faq.items.production_ready.question',
-                'Which routes do you cover?',
+                'brand.home.faq.contact.question',
+                'Can everyone see phone numbers and contact details?',
             ),
             answer: t(
-                'landing.faq.items.production_ready.answer',
-                'We are optimized for Addis Ababa–Djibouti, including Mojo Dry Port and Dire Dawa, with growing coverage to Kombolcha, Hawassa, Bahir Dar, Mekelle, and all major Ethiopian corridors. Post any domestic load — our network is nationwide.',
+                'brand.home.faq.contact.answer',
+                'No. Contact details are protected. The platform checks your account access and applicable limits before revealing private information.',
             ),
         },
         {
             question: t(
-                'landing.faq.items.customization.question',
-                'How does tracking work?',
+                'brand.home.faq.plans.question',
+                'Where can I see the current subscription prices?',
             ),
             answer: t(
-                'landing.faq.items.customization.answer',
-                'Once a load is assigned, shippers get live status updates — accepted, loaded, in-transit, delivered — with ETB milestone tracking and proof-of-delivery upload. No extra hardware needed; updates work even on low bandwidth.',
-            ),
-        },
-        {
-            question: t(
-                'landing.faq.items.support.question',
-                'What are the fees?',
-            ),
-            answer: t(
-                'landing.faq.items.support.answer',
-                'Posting loads is free. A small transparent service fee applies on completed shipments and is shown upfront in ETB before you confirm. No hidden subscriptions — carriers get competitive ETB bids and fast Chapa payouts.',
-            ),
-        },
-        {
-            question: t(
-                'landing.faq.items.getting_started.question',
-                'How do I get started?',
-            ),
-            answer: t(
-                'landing.faq.items.getting_started.answer',
-                'Create an account, choose shipper or carrier, and you’re ready. Shippers post a load in under a minute; carriers browse the board and bid in ETB. KYC takes minutes and payouts run via Chapa in ETB.',
+                'brand.home.faq.plans.answer',
+                'The plans section on this page displays the current marketplace rates and available billing periods. Your account shows the access you are eligible for.',
             ),
         },
     ];
 
     return (
-        <section id="faq" className="bg-muted/30 py-20 sm:py-32">
-            <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-                {/* Section Header */}
-                <div className="text-center">
-                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-                        {t('landing.faq.title.part1', 'Frequently Asked')}{' '}
-                        <span className="text-primary">
-                            {t('landing.faq.title.part2', 'Questions')}
-                        </span>
+        <section
+            id="faq"
+            className="scroll-mt-20 border-t border-border py-16 sm:py-24"
+        >
+            <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)] md:gap-14 lg:px-8">
+                <div>
+                    <span className="text-xs font-semibold tracking-widest text-brand-sky-strong uppercase dark:text-brand-sky">
+                        {t('brand.home.faq.eyebrow', 'Common questions')}
+                    </span>
+                    <h2 className="mt-4 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+                        {t('brand.home.faq.title', 'Questions & answers')}
                     </h2>
-                    <p className="mt-4 text-lg text-muted-foreground">
+                    <p className="mt-4 text-sm leading-7 text-muted-foreground">
                         {t(
-                            'landing.faq.description',
-                            'Everything you need to know about moving freight with NumanFreight in Ethiopia. Chapa payments, verification, tracking, and more.',
+                            'brand.home.faq.description',
+                            'Learn how load posting, freight browsing and account access work before getting started.',
                         )}
                     </p>
-                </div>
-
-                {/* FAQ Accordion */}
-                <div className="mt-10 space-y-2">
-                    {faqs.map((faq, index) => (
-                        <div
-                            key={index}
-                            className="overflow-hidden rounded-md border bg-card"
-                        >
-                            <button
-                                onClick={() =>
-                                    setOpenIndex(
-                                        openIndex === index ? null : index,
-                                    )
-                                }
-                                className="flex w-full items-center justify-between p-4 text-left text-sm font-medium transition-colors hover:bg-muted/50 sm:px-5 sm:py-4"
-                            >
-                                <span>{faq.question}</span>
-                                <ChevronDown
-                                    className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${
-                                        openIndex === index ? 'rotate-180' : ''
-                                    }`}
+                    <div className="mt-7 rounded-lg border border-border bg-card p-5">
+                        <div className="flex items-center gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-secondary text-brand-sky-strong dark:text-brand-sky">
+                                <HelpCircle
+                                    aria-hidden="true"
+                                    className="size-5"
                                 />
-                            </button>
-                            <div
-                                className={`grid transition-all duration-300 ease-in-out ${
-                                    openIndex === index
-                                        ? 'grid-rows-[1fr]'
-                                        : 'grid-rows-[0fr]'
-                                }`}
-                            >
-                                <div className="overflow-hidden">
-                                    <p className="px-4 pb-4 text-muted-foreground sm:px-6 sm:pb-6">
+                            </span>
+                            <div>
+                                <p className="text-sm font-semibold">
+                                    {t(
+                                        'brand.home.faq.next.title',
+                                        'Ready to explore?',
+                                    )}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {t(
+                                        'brand.home.faq.next.description',
+                                        'Your freight board is available after sign-in.',
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                        <Button asChild className="mt-5 w-full justify-between">
+                            <Link href="/freight">
+                                {t('brand.home.nav.browse', 'Browse freight')}
+                                <ArrowRight
+                                    aria-hidden="true"
+                                    className="size-4"
+                                />
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
+                <div className="divide-y divide-border border-y border-border">
+                    {faqs.map((faq, index) => {
+                        const expanded = openIndex === index;
+                        const panelId = 'landing-faq-panel-' + index;
+                        return (
+                            <div key={faq.question}>
+                                <h3>
+                                    <button
+                                        type="button"
+                                        aria-expanded={expanded}
+                                        aria-controls={panelId}
+                                        onClick={() =>
+                                            setOpenIndex(
+                                                expanded ? null : index,
+                                            )
+                                        }
+                                        className="flex min-h-14 w-full items-center justify-between gap-5 py-4 text-left text-sm font-semibold text-foreground transition-colors outline-none hover:text-brand-sky-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:hover:text-brand-sky"
+                                    >
+                                        {faq.question}
+                                        <ChevronDown
+                                            aria-hidden="true"
+                                            className={
+                                                'size-4 shrink-0 text-muted-foreground transition-transform ' +
+                                                (expanded ? 'rotate-180' : '')
+                                            }
+                                        />
+                                    </button>
+                                </h3>
+                                <div id={panelId} hidden={!expanded}>
+                                    <p className="pr-7 pb-5 text-sm leading-7 text-muted-foreground">
                                         {faq.answer}
                                     </p>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </section>

@@ -46,6 +46,13 @@ interface PlansPageProps {
     freeLimits?: FreeLimits;
     currentMarketplacePlan?: string;
     currentMarketplaceBillingPeriod?: BillingPeriod | null;
+    pendingChapaReference?: string | null;
+    marketplaceAccess?: {
+        status: 'free' | 'active' | 'grace' | 'expired';
+        plan: string | null;
+        ends_at: string | null;
+        billing_interval: BillingPeriod | null;
+    };
     recommendedBillingPeriod?: BillingPeriod | null;
     fromOnboarding: boolean;
     userRole: WorkspaceRole;
@@ -80,6 +87,8 @@ export default function PlansPage({
     freeLimits,
     currentMarketplacePlan,
     currentMarketplaceBillingPeriod,
+    pendingChapaReference,
+    marketplaceAccess,
     recommendedBillingPeriod,
     fromOnboarding,
     userRole,
@@ -90,9 +99,19 @@ export default function PlansPage({
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>(
         (recommendedBillingPeriod as BillingPeriod) ||
             (currentMarketplaceBillingPeriod as BillingPeriod) ||
+            marketplaceAccess?.billing_interval ||
             'monthly',
     );
     const [processing, setProcessing] = useState<string | null>(null);
+    const [pendingReference, setPendingReference] = useState<string | null>(
+        pendingChapaReference ?? null,
+    );
+    const [pendingNotice, setPendingNotice] = useState<string | null>(
+        pendingChapaReference
+            ? 'A previous Chapa checkout is unresolved. Check its status before attempting another payment.'
+            : null,
+    );
+    const [checkingPayment, setCheckingPayment] = useState(false);
     const { addToast } = useToast();
     const isOwner = userRole === 'owner';
 
@@ -126,6 +145,14 @@ export default function PlansPage({
     const handleSubscribe = async (slug: string) => {
         if (!isOwner) return;
 
+        if (pendingReference) {
+            addToast(
+                'Check your pending payment before starting another checkout.',
+                'error',
+            );
+            return;
+        }
+
         setProcessing(slug);
 
         try {
@@ -134,12 +161,26 @@ export default function PlansPage({
                 success?: boolean;
                 error?: string;
                 message?: string;
+                retryable?: boolean;
+                tx_ref?: string;
             }>('/marketplace/checkout', {
                 body: { plan: slug, billing_interval: billingPeriod },
             });
 
             if (data?.checkout_url) {
                 window.location.href = data.checkout_url;
+                return;
+            }
+
+            // A gateway timeout is indeterminate: keep this reference so the
+            // customer can check the same payment before starting another.
+            if (data?.retryable && typeof data.tx_ref === 'string') {
+                setPendingReference(data.tx_ref);
+                setPendingNotice(
+                    data.error ??
+                        'Chapa is temporarily unavailable. Check your payment before retrying.',
+                );
+                setProcessing(null);
                 return;
             }
 
@@ -167,6 +208,39 @@ export default function PlansPage({
         }
     };
 
+    const checkPendingPayment = async () => {
+        if (!pendingReference || checkingPayment) return;
+
+        setCheckingPayment(true);
+        try {
+            const { data } = await http.post<{
+                status?: string;
+                message?: string;
+            }>(
+                `/marketplace/payments/${encodeURIComponent(pendingReference)}/verify`,
+            );
+
+            if (data?.status === 'verified') {
+                window.location.href = '/billing';
+                return;
+            }
+
+            setPendingNotice(
+                data?.message ??
+                    'Payment confirmation is still pending. Keep your reference and check later.',
+            );
+            if (data?.status === 'canceled' || data?.status === 'failed') {
+                setPendingReference(null);
+            }
+        } catch {
+            setPendingNotice(
+                'Unable to check Chapa right now. Keep your reference and try later.',
+            );
+        } finally {
+            setCheckingPayment(false);
+        }
+    };
+
     const savings = yearlySavingsPercent();
     const periodSuffix =
         billingPeriod === 'weekly'
@@ -188,6 +262,35 @@ export default function PlansPage({
                 fullWidth
             >
                 <div className="space-y-6">
+                    {marketplaceAccess?.status === 'expired' && (
+                        <div
+                            role="status"
+                            className="mx-auto max-w-5xl rounded-lg border px-4 py-3"
+                        >
+                            <p className="text-sm font-medium">
+                                Your paid access has expired
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Freight discovery is paused until you renew.
+                                Select a duration below to restore access after
+                                Chapa confirms payment.
+                            </p>
+                        </div>
+                    )}
+                    {marketplaceAccess?.status === 'grace' && (
+                        <div
+                            role="status"
+                            className="mx-auto max-w-5xl rounded-lg border px-4 py-3"
+                        >
+                            <p className="text-sm font-medium">
+                                Your plan is canceled but still active
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                You can browse freight until your paid period
+                                ends. Renew now to preserve the days remaining.
+                            </p>
+                        </div>
+                    )}
                     {fromOnboarding && (
                         <Card className="border-primary/40 bg-primary/5">
                             <CardContent className="py-4">
@@ -242,29 +345,67 @@ export default function PlansPage({
                         </div>
                     </div>
 
+                    {pendingReference && (
+                        <div
+                            role="status"
+                            className="mx-auto flex max-w-5xl flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                            <div className="min-w-0 space-y-1">
+                                <p className="text-sm font-medium">
+                                    Check this payment before paying again
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {pendingNotice}
+                                </p>
+                                <p className="font-mono text-xs break-all text-muted-foreground">
+                                    Reference: {pendingReference}
+                                </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    disabled={checkingPayment}
+                                    onClick={checkPendingPayment}
+                                >
+                                    {checkingPayment
+                                        ? 'Checking…'
+                                        : 'Check status'}
+                                </Button>
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link href="/billing">
+                                        Billing overview
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="mx-auto grid max-w-5xl gap-8 pb-6 md:grid-cols-2">
                         {/* Free — numbers come from marketplace_settings */}
                         <Card
                             className={`relative flex flex-col ${
-                                currentMarketplacePlan === 'free'
+                                currentMarketplacePlan === 'free' &&
+                                marketplaceAccess?.status !== 'expired'
                                     ? 'border-primary shadow-md ring-2 ring-primary/20'
                                     : ''
                             }`}
                         >
-                            {currentMarketplacePlan === 'free' && (
-                                <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
-                                    <Badge className="gap-1 bg-green-600 px-3 py-1 font-bold shadow-lg">
-                                        <Check className="h-3.5 w-3.5 stroke-[3]" />{' '}
-                                        Your Plan
-                                    </Badge>
-                                </div>
-                            )}
+                            {currentMarketplacePlan === 'free' &&
+                                marketplaceAccess?.status !== 'expired' && (
+                                    <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
+                                        <Badge className="gap-1 bg-green-600 px-3 py-1 font-bold shadow-lg">
+                                            <Check className="h-3.5 w-3.5 stroke-[3]" />{' '}
+                                            Your Plan
+                                        </Badge>
+                                    </div>
+                                )}
                             <CardHeader className="pt-8 text-center">
                                 <CardTitle className="text-2xl font-black tracking-tight">
                                     Free
                                 </CardTitle>
                                 <CardDescription className="font-medium text-muted-foreground/80">
-                                    Browse, search and post as a consignor
+                                    Free accounts can browse and post within the
+                                    plan limits
                                 </CardDescription>
                                 <div className="mt-4">
                                     <span className="text-4xl font-black tracking-tighter">
@@ -300,15 +441,17 @@ export default function PlansPage({
                                 <Button
                                     className="h-11 w-full font-bold"
                                     variant={
-                                        currentMarketplacePlan === 'free'
+                                        currentMarketplacePlan === 'free' &&
+                                        marketplaceAccess?.status !== 'expired'
                                             ? 'secondary'
                                             : 'outline'
                                     }
                                     disabled
                                 >
-                                    {currentMarketplacePlan === 'free'
+                                    {currentMarketplacePlan === 'free' &&
+                                    marketplaceAccess?.status !== 'expired'
                                         ? 'Current Plan'
-                                        : 'Free forever'}
+                                        : 'Free tier'}
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -395,9 +538,9 @@ export default function PlansPage({
                                                     : 'default'
                                             }
                                             disabled={
-                                                isOnPlan ||
                                                 !isOwner ||
-                                                processing !== null
+                                                processing !== null ||
+                                                pendingReference !== null
                                             }
                                             onClick={() =>
                                                 handleSubscribe(plan.slug)
@@ -406,10 +549,11 @@ export default function PlansPage({
                                             {processing === plan.slug && (
                                                 <Spinner className="mr-2" />
                                             )}
-                                            {isCurrent
-                                                ? 'Current Plan'
-                                                : isOnPlan
-                                                  ? 'Renew'
+                                            {isOnPlan
+                                                ? 'Extend plan'
+                                                : marketplaceAccess?.status ===
+                                                    'expired'
+                                                  ? 'Renew plan'
                                                   : `Subscribe — ${price.toLocaleString()} ETB`}
                                         </Button>
                                         {manualPayment?.enabled && (

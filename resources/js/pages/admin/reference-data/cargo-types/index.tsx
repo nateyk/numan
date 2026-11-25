@@ -84,12 +84,9 @@ export default function AdminCargoTypes({ cargoTypes, filters }: Props) {
 
     const deleteCargoType = (cargoType: CargoTypeItem) => {
         if (confirm(`Delete cargo type "${cargoType.name}"?`)) {
-            router.delete(
-                `/admin/reference-data/cargo-types/${cargoType.id}`,
-                {
-                    preserveScroll: true,
-                },
-            );
+            router.delete(`/admin/reference-data/cargo-types/${cargoType.id}`, {
+                preserveScroll: true,
+            });
         }
     };
 
@@ -126,7 +123,7 @@ export default function AdminCargoTypes({ cargoTypes, filters }: Props) {
 
                 {/* Search */}
                 <div className="relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         placeholder="Search cargo types…"
                         defaultValue={filters.search}
@@ -263,7 +260,7 @@ export default function AdminCargoTypes({ cargoTypes, filters }: Props) {
                                         <TableCell className="text-muted-foreground">
                                             {cargoType.sort_order ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
+                                        <TableCell className="text-sm text-muted-foreground">
                                             {new Date(
                                                 cargoType.created_at,
                                             ).toLocaleDateString()}

@@ -1,3 +1,4 @@
+import BrandLockup from '@/components/brand-lockup';
 import { PostFreightButton } from '@/components/profile/post-freight-button';
 import { PublicAccountMenu } from '@/components/public-account-menu';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { login, register } from '@/routes';
 import { discovery, myInterests } from '@/routes/freight';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Menu, Truck } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useState } from 'react';
 
 /**
@@ -99,17 +100,10 @@ export function DiscoveryHeader({
             <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                 <Link
                     href={discovery()}
-                    className="flex shrink-0 items-center gap-2"
+                    aria-label="Numan Freight — browse freight"
+                    className="flex shrink-0 items-center"
                 >
-                    <span
-                        className="flex size-7 items-center justify-center rounded-sm bg-foreground"
-                        aria-hidden="true"
-                    >
-                        <Truck className="size-4 text-background" />
-                    </span>
-                    <span className="text-base font-bold tracking-tight">
-                        Numan Freight
-                    </span>
+                    <BrandLockup />
                 </Link>
 
                 <nav
@@ -156,7 +150,7 @@ export function DiscoveryHeader({
                     </SheetTrigger>
                     <SheetContent
                         side="right"
-                        className="w-[calc(100%-2rem)] max-w-sm gap-0 overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-sm [&>button]:right-1 [&>button]:top-1 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center"
+                        className="w-[calc(100%-2rem)] max-w-sm gap-0 overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-sm [&>button]:top-1 [&>button]:right-1 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center"
                     >
                         <SheetHeader className="border-b px-1 pb-4">
                             <SheetTitle className="text-base">Menu</SheetTitle>
@@ -179,7 +173,7 @@ export function DiscoveryHeader({
                                             : undefined
                                     }
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className={`flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    className={`flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                                         currentUrl === link.href.url
                                             ? 'bg-muted text-foreground'
                                             : 'text-muted-foreground hover:bg-muted hover:text-foreground'

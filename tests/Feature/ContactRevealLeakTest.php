@@ -211,7 +211,7 @@ it('leak 2: the public freight show page exposes no owner email or phone', funct
     [$consignor, $workspace] = leakConsignor();
     $post = leakActivePost($consignor, $workspace);
 
-    $response = $this->get("/freight/{$post->ulid}");
+    $response = $this->actingAs(User::factory()->create())->get("/freight/{$post->ulid}");
 
     $response->assertOk();
     assertPayloadOmits($response, array_merge(consignorStrings(), transporterStrings()));
@@ -221,7 +221,7 @@ it('leak 2b: the public discovery listing exposes no owner email or phone', func
     [$consignor, $workspace] = leakConsignor();
     leakActivePost($consignor, $workspace);
 
-    $response = $this->get(route('freight.discovery'));
+    $response = $this->actingAs(User::factory()->create())->get(route('freight.discovery'));
 
     $response->assertOk();
     assertPayloadOmits($response, array_merge(consignorStrings(), transporterStrings()));

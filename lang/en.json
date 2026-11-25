@@ -159,7 +159,7 @@
     "landing.testimonials.title.part1": "Loved by",
     "landing.testimonials.title.part2": "Developers",
     "landing.testimonials.title.part3": "Worldwide",
-    "marketplace.reminder.body.plan_expired": "Your :plan plan (:interval) ended on :date, so your workspace is on the Free plan again. Your data is exactly where you left it.",
+    "marketplace.reminder.body.plan_expired": "Your :plan plan (:interval) ended on :date. Freight discovery is paused until you renew. Your own freight posts and records remain available to manage.",
     "marketplace.reminder.body.renewal_1d": "Your :plan plan (:interval) ends on :date. Renew to keep unlimited posts, interests and contact reveals.",
     "marketplace.reminder.body.renewal_3d": "Your :plan plan (:interval) ends on :date. Renewing takes a moment and nothing is lost in the meantime.",
     "marketplace.reminder.body.renewal_7d": "Your :plan plan (:interval) ends on :date. Renew early so there is no gap.",

@@ -5,8 +5,15 @@ namespace App\Http\Controllers\Marketplace;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplacePaymentTransaction;
 use App\Models\MarketplacePlan;
+use App\Models\Workspace;
+use App\Services\ChapaConfiguration;
 use App\Services\ChapaService;
+use App\Services\PendingChapaCheckoutService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
@@ -26,6 +33,10 @@ class CheckoutController extends Controller
         if (! $workspace) {
             return back()->withErrors(['plan' => 'No active workspace.']);
         }
+
+        // Individual profiles own the underlying billing account. Never allow
+        // a participant without billing authority to initiate a purchase.
+        Gate::authorize('manageBilling', $workspace);
 
         $plan = MarketplacePlan::where('slug', $data['plan'])->where('is_active', true)->firstOrFail();
 
@@ -50,21 +61,53 @@ class CheckoutController extends Controller
             return back()->withErrors(['plan' => 'This duration has no price. Please choose Weekly, Monthly or Yearly.']);
         }
 
-        $txRef = $this->chapa->generateReference('NF-'.$plan->slug.'-'.$data['billing_interval']);
+        // Serialise attempt creation for this billing owner. Two requests made
+        // together must not initialize two provider payments before either
+        // response comes back. Never hold a database lock across Chapa I/O.
+        $attempt = DB::transaction(function () use ($workspace, $user, $plan, $amount, $data): array {
+            $lockedWorkspace = Workspace::whereKey($workspace->id)->lockForUpdate()->firstOrFail();
+            $pending = app(PendingChapaCheckoutService::class)->find($lockedWorkspace, $user);
 
-        $transaction = MarketplacePaymentTransaction::create([
-            'workspace_id' => $workspace->id,
-            'plan_id' => $plan->id,
-            'user_id' => $user->id,
-            'tx_ref' => $txRef,
-            'amount_etb' => $amount,
-            'currency' => 'ETB',
-            'status' => 'pending',
-            'mode' => config('chapa.mode', 'test'),
-            'billing_interval' => $data['billing_interval'],
-        ]);
+            if ($pending) {
+                return ['pending' => $pending];
+            }
 
-        $callback = route('chapa.callback', ['tx_ref' => $txRef]);
+            $txRef = $this->chapa->generateReference('NF-'.$plan->slug.'-'.$data['billing_interval']);
+
+            return ['transaction' => MarketplacePaymentTransaction::create([
+                'workspace_id' => $lockedWorkspace->id,
+                'plan_id' => $plan->id,
+                'user_id' => $user->id,
+                'tx_ref' => $txRef,
+                'amount_etb' => $amount,
+                'currency' => 'ETB',
+                'status' => 'pending',
+                'mode' => app(ChapaConfiguration::class)->mode(),
+                'provider' => MarketplacePaymentTransaction::PROVIDER_CHAPA,
+                'billing_interval' => $data['billing_interval'],
+            ])];
+        });
+
+        if (isset($attempt['pending'])) {
+            $message = 'A previous Chapa checkout is still unresolved. Check that payment before starting another to avoid a duplicate charge.';
+
+            if ($request->wantsJson() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $message,
+                    'retryable' => true,
+                    'tx_ref' => $attempt['pending']->tx_ref,
+                ], 409);
+            }
+
+            return back()->withErrors(['plan' => $message]);
+        }
+
+        $transaction = $attempt['transaction'];
+        $txRef = $transaction->tx_ref;
+
+        $callback = route('chapa.server-callback', ['tx_ref' => $txRef]);
+        $return = route('chapa.callback', ['tx_ref' => $txRef]);
 
         // Chapa only accepts letters, numbers, hyphens, underscores, spaces
         // and dots in the customization description. Plan copy contains
@@ -86,7 +129,7 @@ class CheckoutController extends Controller
             'last_name' => trim(Str::after($user->name, explode(' ', $user->name)[0] ?? '')) ?: 'User',
             'tx_ref' => $txRef,
             'callback_url' => $callback,
-            'return_url' => $callback,
+            'return_url' => $return,
             'customization' => [
                 'title' => Str::limit($plan->name, 16, ''),
                 'description' => Str::limit($description, 50, ''),
@@ -98,15 +141,42 @@ class CheckoutController extends Controller
             ],
         ];
 
-        $response = $this->chapa->initializePayment($payload);
+        try {
+            $response = $this->chapa->initializePayment($payload);
+        } catch (ConnectionException|RequestException $e) {
+            // Keep the attempt pending: Chapa may have received the request
+            // before the network failed. Reconciliation can verify the ref.
+            // Never grant access or erase the pending transaction on a timeout.
+            report($e);
+
+            $message = 'The payment provider is temporarily unavailable. Check your payment status before retrying. No plan has been activated yet.';
+
+            if ($request->wantsJson() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $message,
+                    'retryable' => true,
+                    // The payer can check this exact attempt without making
+                    // another checkout request (and risking a second charge).
+                    'tx_ref' => $txRef,
+                ], 503);
+            }
+
+            return back()->withErrors(['plan' => $message]);
+        }
+
+        $checkoutUrl = $response['data']['checkout_url'] ?? null;
+        $initialized = ($response['status'] ?? null) === 'success'
+            && is_string($checkoutUrl)
+            && str_starts_with($checkoutUrl, 'https://');
 
         $transaction->update([
             'provider_response' => $response,
-            'status' => 'initialized',
+            'status' => $initialized ? 'initialized' : 'failed',
             'chapa_ref' => $response['data']['tx_ref'] ?? $response['data']['reference'] ?? null,
         ]);
 
-        if (($response['status'] ?? null) === 'success' && isset($response['data']['checkout_url'])) {
+        if ($initialized) {
             if ($request->wantsJson() || $request->header('X-Inertia')) {
                 return response()->json(['checkout_url' => $response['data']['checkout_url']]);
             }
