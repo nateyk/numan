@@ -1,0 +1,45 @@
+name: PR 50 dependency resolution (temporary)
+on:
+  push:
+    branches: [maintenance/pr50-lockfile-resolution]
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - name: Resolve security updates with Composer
+        run: |
+          composer update spomky-labs/cbor-php spomky-labs/pki-framework web-auth/cose-lib web-auth/webauthn-lib symfony/http-kernel symfony/mailer symfony/routing symfony/serializer --with-all-dependencies --minimal-changes --no-install --no-scripts --no-plugins --no-interaction --prefer-dist
+          composer validate --no-check-publish
+          composer audit --locked
+      - name: Format the two changed frontend files
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm exec prettier --write resources/js/layouts/settings/workspace-layout.tsx resources/js/pages/Billing/index.tsx
+          pnpm exec prettier --check resources/js/layouts/settings/workspace-layout.tsx resources/js/pages/Billing/index.tsx
+      - name: Print generated patch
+        run: |
+          git diff --stat
+          git diff -- composer.lock resources/js/layouts/settings/workspace-layout.tsx resources/js/pages/Billing/index.tsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr50-verified-fixes
+          path: |
+            composer.lock
+            resources/js/layouts/settings/workspace-layout.tsx
+            resources/js/pages/Billing/index.tsx
+          retention-days: 3
