@@ -1,0 +1,34 @@
+name: PR 40 Sail dependency resolution (temporary)
+on:
+  push:
+    branches: [maintenance/pr40-sail-resolution]
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+      - name: Resolve Sail only with minimal dependency changes
+        run: |
+          composer update laravel/sail:1.71.0 --with-dependencies --minimal-changes --no-install --no-scripts --no-plugins --no-interaction --prefer-dist
+          composer validate --no-check-publish
+          composer audit --locked
+      - name: Inspect and verify lockfile changes
+        run: |
+          git diff --stat
+          git diff -- composer.lock
+          composer install --no-interaction --prefer-dist --no-scripts
+          vendor/bin/pint --test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr40-sail-lockfile
+          path: composer.lock
+          retention-days: 3
