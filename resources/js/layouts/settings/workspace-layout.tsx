@@ -218,7 +218,10 @@ export default function WorkspaceLayout({
                 className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8"
                 dir={isRTL ? 'rtl' : 'ltr'}
             >
-                <Heading title={defaultTitle} description={defaultDescription} />
+                <Heading
+                    title={defaultTitle}
+                    description={defaultDescription}
+                />
                 <section className="mt-6 min-w-0 space-y-8">{children}</section>
             </div>
         );

@@ -289,16 +289,18 @@ export default function BillingIndex({
                                         <p className="text-4xl font-extrabold tracking-tight">
                                             {displayedPlan}
                                         </p>
-                                        {workspace_ui_enabled && currentPlan && (
-                                            <p className="font-medium text-muted-foreground">
-                                                {currentPlan.price.monthly > 0
-                                                    ? `$${currentPlan.price.monthly}/month`
-                                                    : t(
-                                                          'billing.free_forever',
-                                                          'Free forever',
-                                                      )}
-                                            </p>
-                                        )}
+                                        {workspace_ui_enabled &&
+                                            currentPlan && (
+                                                <p className="font-medium text-muted-foreground">
+                                                    {currentPlan.price.monthly >
+                                                    0
+                                                        ? `$${currentPlan.price.monthly}/month`
+                                                        : t(
+                                                              'billing.free_forever',
+                                                              'Free forever',
+                                                          )}
+                                                </p>
+                                            )}
                                         {workspace.on_trial &&
                                             workspace.trial_ends_at && (
                                                 <div className="mt-2 flex w-fit items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
@@ -516,28 +518,28 @@ export default function BillingIndex({
                             {workspace_ui_enabled &&
                                 !subscription &&
                                 workspace.plan === 'Free' && (
-                                <Card className="border bg-muted/20 shadow-none">
-                                    <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
-                                        <Sparkles className="size-7 text-primary" />
-                                        <p className="text-base font-semibold">
-                                            Unlock more power
-                                        </p>
-                                        <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-                                            Unlimited freight posts and contact
-                                            reveals, paid in ETB.
-                                        </p>
-                                        <Button
-                                            asChild
-                                            size="lg"
-                                            className="w-full max-w-[180px] font-medium"
-                                        >
-                                            <Link href="/billing/plans">
-                                                Explore Plans
-                                            </Link>
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                    <Card className="border bg-muted/20 shadow-none">
+                                        <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
+                                            <Sparkles className="size-7 text-primary" />
+                                            <p className="text-base font-semibold">
+                                                Unlock more power
+                                            </p>
+                                            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+                                                Unlimited freight posts and
+                                                contact reveals, paid in ETB.
+                                            </p>
+                                            <Button
+                                                asChild
+                                                size="lg"
+                                                className="w-full max-w-[180px] font-medium"
+                                            >
+                                                <Link href="/billing/plans">
+                                                    Explore Plans
+                                                </Link>
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                )}
                         </div>
                     </div>
 
