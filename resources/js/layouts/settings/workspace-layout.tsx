@@ -188,7 +188,8 @@ export default function WorkspaceLayout({
     fullWidth = false,
 }: WorkspaceLayoutProps) {
     const { t, i18n } = useTranslations();
-    const { currentWorkspace, is_individual, workspace_ui_enabled } = usePage<SharedData>().props;
+    const { currentWorkspace, is_individual, workspace_ui_enabled } =
+        usePage<SharedData>().props;
     const userRole = currentWorkspace?.role;
     const navSections = useMemo(
         () => getNavSections(t, currentWorkspace, userRole, is_individual),
