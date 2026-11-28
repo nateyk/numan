@@ -513,7 +513,9 @@ export default function BillingIndex({
                                 still registered on the server. */}
 
                             {/* Trial Countdown or Help */}
-                            {workspace_ui_enabled && !subscription && workspace.plan === 'Free' && (
+                            {workspace_ui_enabled &&
+                                !subscription &&
+                                workspace.plan === 'Free' && (
                                 <Card className="border bg-muted/20 shadow-none">
                                     <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
                                         <Sparkles className="size-7 text-primary" />
